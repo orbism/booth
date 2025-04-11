@@ -1,0 +1,62 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String?
+  email         String       @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  sessions      Session[]
+  boothSessions BoothSession[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BoothSession {
+  id           String   @id @default(cuid())
+  userId       String?
+  userName     String
+  userEmail    String
+  photoPath    String
+  createdAt    DateTime @default(now())
+  shared       Boolean  @default(false)
+  emailSent    Boolean  @default(false)
+  templateUsed String?
+  eventName    String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Settings {
+  id              String @id @default(cuid())
+  eventName       String @default("Photo Booth Event")
+  adminEmail      String
+  countdownTime   Int    @default(3)
+  resetTime       Int    @default(60)
+  emailSubject    String @default("Your Photo Booth Picture")
+  emailTemplate   String @default("Thank you for using our photo booth! Here's your picture.")
+  smtpHost        String
+  smtpPort        Int
+  smtpUser        String
+  smtpPassword    String
+  companyName     String @default("BoothBoss")
+  companyLogo     String?
+  primaryColor    String @default("#3B82F6")
+  secondaryColor  String @default("#1E40AF")
+}
