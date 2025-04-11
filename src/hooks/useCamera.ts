@@ -7,7 +7,7 @@ interface UseCameraProps {
 }
 
 interface UseCameraReturn {
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   photoDataUrl: string | null;
   isLoading: boolean;
   error: string | null;
@@ -17,7 +17,7 @@ interface UseCameraReturn {
 }
 
 export function useCamera({ onPhotoCapture }: UseCameraProps = {}): UseCameraReturn {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

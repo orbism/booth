@@ -2,8 +2,8 @@
 
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { authConfig } from "./auth.config";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { authOptions } from "./auth.config";
 import { z } from "zod";
 import { prisma } from "./lib/prisma";
 import bcryptjs from "bcryptjs";
@@ -22,13 +22,17 @@ async function getUser(email: string) {
 }
 
 export const { auth, signIn, signOut } = NextAuth({
-  ...authConfig,
+  ...authOptions,
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
   providers: [
-    Credentials({
+    CredentialsProvider({
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
       async authorize(credentials) {
         const parsedCredentials = z
           .object({

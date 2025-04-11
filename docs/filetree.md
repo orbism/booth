@@ -19,9 +19,13 @@ booth-boss/
 │   ├── app/                          # Next.js App Router
 │   │   ├── (admin)/                  # Admin routes (grouped)
 │   │   ├── (auth)/                   # Authentication routes
+│   │   │   └── login/                # Login page
+│   │   │       └── page.tsx          # Login page component
 │   │   ├── (booth)/                  # Photo/video booth routes
 │   │   ├── api/                      # API routes
 │   │   │   ├── auth/                 # Authentication endpoints
+│   │   │   │   └── [...nextauth]/    # NextAuth.js API route
+│   │   │   │       └── route.ts      # NextAuth.js route handler
 │   │   │   ├── booth/                # Booth endpoints
 │   │   │   │   └── capture/          # Photo capture endpoint
 │   │   │   │       └── route.ts      # Photo capture API handler
@@ -33,6 +37,7 @@ booth-boss/
 │   │   └── page.tsx                  # Landing page
 │   ├── auth.config.ts                # NextAuth config
 │   ├── auth.ts                       # NextAuth setup
+│   ├── middleware.ts                 # Next.js middleware for auth protection
 │   ├── components/                   # React components
 │   │   ├── ui/                       # Basic UI components (shadcn)
 │   │   ├── booth/                    # Photo booth components
@@ -49,7 +54,8 @@ booth-boss/
 │   ├── lib/                          # Utility functions and libraries
 │   │   ├── email.ts                  # Email sending utilities
 │   │   └── prisma.ts                 # Prisma client setup
-│   ├── ...                           # Other directories as in original filetree
+│   ├── types/                        # TypeScript type definitions
+│   │   └── next-auth.d.ts            # NextAuth type extensions
 │   └── middleware.ts                 # Next.js middleware
 ├── .env.local                        # Environment variables (git-ignored)
 ├── .env.sample                       # Sample environment variables
