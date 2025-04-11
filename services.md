@@ -1,4 +1,4 @@
-# External Services
+# BoothBoss: External Services
 
 ## Version Control & CI/CD
 
@@ -90,7 +90,7 @@
 
 ## Media Processing
 
-### Cloudinary (Optional Alternative to DreamHost)
+### Cloudinary
 - **Purpose**: Image and video processing/optimization
 - **Requirements**:
   - Plus plan ($99/month) for:
@@ -101,6 +101,26 @@
   - Create account and configure API keys
   - Set up upload presets
   - Configure transformation profiles
+
+### Replicate
+- **Purpose**: AI model hosting for image enhancement and AR features
+- **Requirements**:
+  - Pay-as-you-go plan (starting at ~$0.10 per API call)
+  - Custom model training options
+- **Setup Tasks**:
+  - Create account and generate API keys
+  - Deploy selected AI models
+  - Set up webhooks for processing results
+
+### TensorFlow.js Model Hosting
+- **Purpose**: Local AI model serving for offline capabilities
+- **Requirements**:
+  - Optimized and quantized TensorFlow.js models
+  - Caching and version management
+- **Setup Tasks**:
+  - Convert models to TensorFlow.js format
+  - Implement model caching strategy
+  - Set up fallback to server models when online
 
 ## Monitoring & Analytics
 

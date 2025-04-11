@@ -1,4 +1,4 @@
-# Photo/Video Booth Software Development Stack
+# BoothBoss: Development Technology Stack
 
 ## Core Technologies
 
@@ -16,6 +16,8 @@
 - **React Context API**: For global state
 - **React Query**: v5.0.0 or later (Data fetching and caching)
 - **Zustand**: v4.4.0 or later (For complex state)
+- **Jotai**: v2.4.0 or later (Atomic state management)
+- **Immer**: v10.0.2 or later (Immutable state updates)
 
 ## UI and Styling
 - **Tailwind CSS**: v3.3.0 or later
@@ -38,16 +40,26 @@
 - **sharp**: v0.32.0 or later (Image processing)
 - **html2canvas**: v1.4.0 or later (Screenshot capture)
 - **canvas-confetti**: v1.6.0 or later (Effects)
+- **TensorFlow.js**: v4.10.0 or later (AI-powered image enhancement)
+- **MediaPipe**: v0.10.0 or later (Face tracking and AR effects)
+- **tracking.js**: v1.1.3 or later (Object tracking)
+- **AR.js**: v3.4.0 or later (Augmented reality experiences)
+- **Face-api.js**: v0.22.2 or later (Facial recognition and filters)
 
 ## Storage
 - **AWS SDK**: v3.0.0 or later (Alternative for cloud storage)
 - **multer**: v1.4.5 or later (File uploads)
 - **custom DreamHost storage integration**
 
-## Communication
+## Communication & Sharing
 - **Nodemailer**: v6.9.0 or later (Email sending)
 - **SendGrid**: v7.7.0 or later (Email service)
 - **twilio**: v4.11.0 or later (SMS)
+- **QRCode.js**: v1.0.0 or later (QR code generation)
+- **share-api-polyfill**: v1.1.0 or later (Native sharing)
+- **react-social-sharing**: v3.3.0 or later (Social media integration)
+- **Socket.IO**: v4.7.2 or later (Real-time interaction for games)
+- **PeerJS**: v1.5.1 or later (WebRTC for AirDrop-like functionality)
 
 ## Printing
 - **print.js**: v1.6.0 or later
@@ -86,6 +98,11 @@
 - **Sentry**: v7.53.0 or later (Error tracking)
 - **Posthog**: v1.96.0 or later (Product analytics)
 - **Plausible**: For privacy-friendly analytics
+- **Cube.js**: v0.33.0 or later (Real-time analytics dashboards)
+- **Chart.js**: v4.4.0 or later (Interactive data visualization)
+- **react-chartjs-2**: v5.2.0 or later (React wrapper for Chart.js)
+- **D3.js**: v7.8.5 or later (Advanced data visualization)
+- **Mixpanel**: v2.47.0 or later (Event analytics)
 
 ## Deployment
 - **Vercel**: For frontend hosting

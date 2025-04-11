@@ -1,4 +1,4 @@
-# Photo/Video Booth Software Codebase Structure
+# BoothBoss: AI-Powered Event Media Platform Codebase Structure
 
 ```
 photo-booth-app/
@@ -20,7 +20,9 @@ photo-booth-app/
 │   │   │   ├── settings/             # System settings
 │   │   │   ├── users/                # User management
 │   │   │   ├── licenses/             # License management
-│   │   │   └── analytics/            # Usage analytics
+│   │   │   ├── analytics/            # Usage analytics
+│   │   │   ├── white-label/          # White-label configuration
+│   │   │   └── ai-models/            # AI model management
 │   │   ├── (auth)/                   # Authentication routes
 │   │   │   ├── login/                # Login page
 │   │   │   ├── register/             # Registration page
@@ -29,19 +31,32 @@ photo-booth-app/
 │   │   │   ├── capture/              # Media capture interface
 │   │   │   ├── review/               # Media review
 │   │   │   ├── edit/                 # Basic editing
+│   │   │   ├── enhance/              # AI enhancement
+│   │   │   ├── ar-effects/           # AR effects and filters
+│   │   │   ├── games/                # Interactive games
 │   │   │   ├── share/                # Sharing options
+│   │   │   ├── qr/                   # QR code generation
 │   │   │   └── gallery/              # User gallery
 │   │   ├── (leaser)/                 # Leaser-specific routes
 │   │   │   ├── dashboard/            # Leaser dashboard
 │   │   │   ├── settings/             # Booth configuration
-│   │   │   └── events/               # Event management
+│   │   │   ├── events/               # Event management
+│   │   │   ├── branding/             # Brand configuration
+│   │   │   ├── analytics/            # Event analytics
+│   │   │   ├── gamification/         # Leaderboard & contest setup
+│   │   │   └── templates/            # Event templates
 │   │   ├── api/                      # API routes
 │   │   │   ├── auth/                 # Authentication endpoints
 │   │   │   ├── media/                # Media handling endpoints
 │   │   │   ├── users/                # User management endpoints
 │   │   │   ├── settings/             # Settings endpoints
 │   │   │   ├── licenses/             # License management endpoints
-│   │   │   └── webhooks/             # External service webhooks
+│   │   │   ├── webhooks/             # External service webhooks
+│   │   │   ├── ai/                   # AI processing endpoints
+│   │   │   ├── analytics/            # Analytics data endpoints
+│   │   │   ├── share/                # Social sharing endpoints
+│   │   │   ├── games/                # Gamification endpoints
+│   │   │   └── sdk/                  # SDK access endpoints
 │   │   ├── error.tsx                 # Error page
 │   │   ├── layout.tsx                # Root layout
 │   │   ├── not-found.tsx             # 404 page
@@ -51,7 +66,13 @@ photo-booth-app/
 │   │   ├── booth/                    # Photo booth components
 │   │   │   ├── camera/               # Camera components
 │   │   │   ├── filters/              # Filter components
+│   │   │   ├── ai-enhance/           # AI enhancement components
+│   │   │   ├── ar/                   # AR effect components
+│   │   │   ├── background-removal/   # Background removal
+│   │   │   ├── face-tracking/        # Face tracking components
+│   │   │   ├── games/                # Interactive game components
 │   │   │   ├── countdown/            # Countdown timer
+│   │   │   ├── sharing/              # Social sharing components
 │   │   │   └── output/               # Output components
 │   │   ├── admin/                    # Admin components
 │   │   ├── leaser/                   # Leaser components
@@ -71,7 +92,14 @@ photo-booth-app/
 │   │   ├── db/                       # Database utilities
 │   │   ├── hardware/                 # Hardware detection utilities
 │   │   ├── media/                    # Media processing utilities
+│   │   ├── ai/                       # AI processing utilities
+│   │   ├── ar/                       # AR processing utilities
 │   │   ├── storage/                  # Storage utilities
+│   │   ├── offline/                  # Offline functionality
+│   │   ├── sync/                     # Cloud syncing utilities
+│   │   ├── analytics/                # Analytics utilities
+│   │   ├── sharing/                  # Social sharing utilities
+│   │   ├── games/                    # Game utilities
 │   │   ├── licensing/                # License validation utilities
 │   │   └── printing/                 # Printing utilities
 │   ├── providers/                    # React context providers
