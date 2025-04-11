@@ -1,7 +1,4 @@
-# BoothBoss: AI-Powered Event Media Platform Codebase Structure
-
-```
-photo-booth-app/
+booth-boss/
 ├── .github/                          # GitHub CI/CD configuration
 │   └── workflows/                    # GitHub Actions workflows
 ├── .husky/                           # Git hooks for code quality
@@ -9,131 +6,59 @@ photo-booth-app/
 │   ├── fonts/                        # Custom fonts
 │   ├── images/                       # Static images
 │   │   └── templates/                # Photo booth templates and props
-│   └── locales/                      # i18n translation files
+│   ├── locales/                      # i18n translation files
+│   ├── sounds/                       # Sound effects
+│   │   ├── beep.mp3                  # Countdown beep
+│   │   └── camera-shutter.mp3        # Camera shutter sound
+│   └── uploads/                      # Uploaded photos (local storage)
 ├── prisma/                           # Database ORM
 │   ├── migrations/                   # Database migrations
-│   └── schema.prisma                 # Prisma schema definition
+│   ├── schema.prisma                 # Prisma schema definition
+│   └── seed.ts                       # Database seed script
 ├── src/                              # Application source code
 │   ├── app/                          # Next.js App Router
 │   │   ├── (admin)/                  # Admin routes (grouped)
-│   │   │   ├── dashboard/            # Admin dashboard
-│   │   │   ├── settings/             # System settings
-│   │   │   ├── users/                # User management
-│   │   │   ├── licenses/             # License management
-│   │   │   ├── analytics/            # Usage analytics
-│   │   │   ├── white-label/          # White-label configuration
-│   │   │   └── ai-models/            # AI model management
 │   │   ├── (auth)/                   # Authentication routes
-│   │   │   ├── login/                # Login page
-│   │   │   ├── register/             # Registration page
-│   │   │   └── forgot-password/      # Password recovery
 │   │   ├── (booth)/                  # Photo/video booth routes
-│   │   │   ├── capture/              # Media capture interface
-│   │   │   ├── review/               # Media review
-│   │   │   ├── edit/                 # Basic editing
-│   │   │   ├── enhance/              # AI enhancement
-│   │   │   ├── ar-effects/           # AR effects and filters
-│   │   │   ├── games/                # Interactive games
-│   │   │   ├── share/                # Sharing options
-│   │   │   ├── qr/                   # QR code generation
-│   │   │   └── gallery/              # User gallery
-│   │   ├── (leaser)/                 # Leaser-specific routes
-│   │   │   ├── dashboard/            # Leaser dashboard
-│   │   │   ├── settings/             # Booth configuration
-│   │   │   ├── events/               # Event management
-│   │   │   ├── branding/             # Brand configuration
-│   │   │   ├── analytics/            # Event analytics
-│   │   │   ├── gamification/         # Leaderboard & contest setup
-│   │   │   └── templates/            # Event templates
 │   │   ├── api/                      # API routes
 │   │   │   ├── auth/                 # Authentication endpoints
-│   │   │   ├── media/                # Media handling endpoints
-│   │   │   ├── users/                # User management endpoints
-│   │   │   ├── settings/             # Settings endpoints
-│   │   │   ├── licenses/             # License management endpoints
-│   │   │   ├── webhooks/             # External service webhooks
-│   │   │   ├── ai/                   # AI processing endpoints
-│   │   │   ├── analytics/            # Analytics data endpoints
-│   │   │   ├── share/                # Social sharing endpoints
-│   │   │   ├── games/                # Gamification endpoints
-│   │   │   └── sdk/                  # SDK access endpoints
+│   │   │   ├── booth/                # Booth endpoints
+│   │   │   │   └── capture/          # Photo capture endpoint
+│   │   │   │       └── route.ts      # Photo capture API handler
+│   │   │   └── ...                   # Other API endpoints
 │   │   ├── error.tsx                 # Error page
 │   │   ├── layout.tsx                # Root layout
+│   │   ├── loading.tsx               # Loading state component
 │   │   ├── not-found.tsx             # 404 page
 │   │   └── page.tsx                  # Landing page
+│   ├── auth.config.ts                # NextAuth config
+│   ├── auth.ts                       # NextAuth setup
 │   ├── components/                   # React components
 │   │   ├── ui/                       # Basic UI components (shadcn)
 │   │   ├── booth/                    # Photo booth components
-│   │   │   ├── camera/               # Camera components
-│   │   │   ├── filters/              # Filter components
-│   │   │   ├── ai-enhance/           # AI enhancement components
-│   │   │   ├── ar/                   # AR effect components
-│   │   │   ├── background-removal/   # Background removal
-│   │   │   ├── face-tracking/        # Face tracking components
-│   │   │   ├── games/                # Interactive game components
-│   │   │   ├── countdown/            # Countdown timer
-│   │   │   ├── sharing/              # Social sharing components
-│   │   │   └── output/               # Output components
-│   │   ├── admin/                    # Admin components
-│   │   ├── leaser/                   # Leaser components
+│   │   │   ├── CountdownTimer.tsx    # Countdown component
+│   │   │   ├── PhotoBooth.tsx        # Main booth component
+│   │   │   ├── PhotoPreview.tsx      # Photo review component
+│   │   │   └── ...                   # Other booth components
 │   │   ├── forms/                    # Form components
+│   │   │   └── UserInfoForm.tsx      # User information form
 │   │   └── layouts/                  # Layout components
-│   ├── config/                       # Application configuration
-│   │   ├── hardware/                 # Hardware configurations
-│   │   ├── filters/                  # Filter configurations
-│   │   └── templates/                # Template configurations
+│   │       └── BoothLayout.tsx       # Booth layout wrapper
 │   ├── hooks/                        # Custom React hooks
-│   │   ├── use-camera.ts             # Camera hook
-│   │   ├── use-filters.ts            # Filters hook
-│   │   ├── use-printer.ts            # Printer hook
-│   │   └── use-storage.ts            # Storage hook
+│   │   └── useCamera.ts              # Camera access hook
 │   ├── lib/                          # Utility functions and libraries
-│   │   ├── auth/                     # Authentication utilities
-│   │   ├── db/                       # Database utilities
-│   │   ├── hardware/                 # Hardware detection utilities
-│   │   ├── media/                    # Media processing utilities
-│   │   ├── ai/                       # AI processing utilities
-│   │   ├── ar/                       # AR processing utilities
-│   │   ├── storage/                  # Storage utilities
-│   │   ├── offline/                  # Offline functionality
-│   │   ├── sync/                     # Cloud syncing utilities
-│   │   ├── analytics/                # Analytics utilities
-│   │   ├── sharing/                  # Social sharing utilities
-│   │   ├── games/                    # Game utilities
-│   │   ├── licensing/                # License validation utilities
-│   │   └── printing/                 # Printing utilities
-│   ├── providers/                    # React context providers
-│   │   ├── auth-provider.tsx         # Authentication provider
-│   │   ├── camera-provider.tsx       # Camera provider
-│   │   └── settings-provider.tsx     # Settings provider
-│   ├── services/                     # Service integrations
-│   │   ├── email/                    # Email service
-│   │   ├── storage/                  # Storage service
-│   │   ├── payment/                  # Payment service
-│   │   └── analytics/                # Analytics service
-│   ├── state/                        # State management
-│   │   ├── booth/                    # Photo booth state
-│   │   ├── settings/                 # Settings state
-│   │   └── user/                     # User state
-│   ├── types/                        # TypeScript type definitions
-│   │   ├── hardware.ts               # Hardware types
-│   │   ├── media.ts                  # Media types
-│   │   ├── settings.ts               # Settings types
-│   │   └── user.ts                   # User types
-│   ├── utils/                        # Utility functions
-│   │   ├── format.ts                 # Formatting utilities
-│   │   ├── validation.ts             # Validation utilities
-│   │   └── hardware.ts               # Hardware utilities
+│   │   ├── email.ts                  # Email sending utilities
+│   │   └── prisma.ts                 # Prisma client setup
+│   ├── ...                           # Other directories as in original filetree
 │   └── middleware.ts                 # Next.js middleware
-├── .env.example                      # Example environment variables
+├── .env.local                        # Environment variables (git-ignored)
+├── .env.sample                       # Sample environment variables
 ├── .eslintrc.json                    # ESLint configuration
 ├── .gitignore                        # Git ignore file
 ├── .prettierrc                       # Prettier configuration
-├── jest.config.js                    # Jest configuration
 ├── next.config.js                    # Next.js configuration
 ├── package.json                      # NPM dependencies
 ├── postcss.config.js                 # PostCSS configuration
 ├── README.md                         # Project documentation
 ├── tailwind.config.js                # Tailwind CSS configuration
 └── tsconfig.json                     # TypeScript configuration
-```

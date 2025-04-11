@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BoothBoss Photo Booth Application
+
+A modern, AI-powered photo booth application built with Next.js, TypeScript, and Prisma.
+
+## Features
+
+- User-friendly photo capture experience
+- Customizable countdown timer
+- Email sharing with captured photos
+- Admin dashboard for managing settings
+- Responsive design for various devices
+
+## Tech Stack
+
+- **Frontend**: Next.js, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: MySQL
+- **Authentication**: NextAuth.js
+- **Email**: Nodemailer with DreamHost SMTP
+
+## Prerequisites
+
+- Node.js 18.x or later
+- MySQL database
+- DreamHost SMTP credentials (or another email provider)
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone the repository
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+`git clone https://github.com/yourusername/booth-boss.git`
+`cd booth-boss`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`bashnpm install`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Set up environment variables
 
-## Learn More
+Copy the sample environment file and update it with your own values:
 
-To learn more about Next.js, take a look at the following resources:
+`.env.sample .env.local`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Edit `.env.local` with your database connection string, SMTP settings, and other configuration.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Set up the database
 
-## Deploy on Vercel
+Run Prisma migrations to create your database schema:
+`npm run db:migrate`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Seed the database with initial data:
+`npm run db:seed`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 5. Start the development server
+`bashnpm run dev`
+
+The application will be available at http://localhost:3000
+
+## Project Structure
+
+`/src/app`: Next.js App Router pages and API routes
+`/src/components`: React components organized by function
+`/src/hooks`: Custom React hooks
+`/src/lib`: Utility functions and libraries
+`/prisma`: Database schema and migrations
+
+## Development Workflow
+
+1. Create a new branch for your feature or fix
+2. Make your changes with clear, descriptive commits
+3. Push your branch and create a pull request
+4. After review and approval, merge to the main branch
+
+## Deployment
+
+Follow these steps to deploy the application:
+
+1. Build the application:
+`npm run build`
+
+2. Start the production server:
+`npm start`
+
+## License
+TBD
