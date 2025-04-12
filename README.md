@@ -31,30 +31,57 @@ A modern, AI-powered photo booth application built with Next.js, TypeScript, and
 `git clone https://github.com/yourusername/booth-boss.git`
 `cd booth-boss`
 
-### 2. Install dependencies
-
-`bashnpm install`
-
-### 3. Set up environment variables
+### 2. Set up environment variables
 
 Copy the sample environment file and update it with your own values:
+Copy .env.sample to both .env.local and .env
+Edit both files with your database connection details:
 
-`.env.sample .env.local`
+#### Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=yourusername
+DB_PASSWORD=yourpassword
+DB_NAME=boothboss
 
-Edit `.env.local` with your database connection string, SMTP settings, and other configuration.
+#### SMTP Configuration
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=mail@example.com
+SMTP_PASS=yoursmtppassword
 
-### 4. Set up the database
+#### NextAuth Secret
+NEXTAUTH_SECRET=your-nextauth-secret
+NEXTAUTH_URL=http://localhost:3000
 
-Run Prisma migrations to create your database schema:
-`npm run db:migrate`
+### 3. Setup the application
+
+Run the setup process:
+`npm install`
+`node scripts/setup-env.js`
+`npx prisma db push`
+`npx prisma generate`
+
+Or use npm scripts:
+`npm install`
+`npm run setup`
+`npm run db`
+
+#### Database Management
+
+Update Schema: Modify prisma/schema.prisma
+Apply Changes: Run `npm run db`
+Regenerate Client: Automatically done after push, or run `npx prisma generate`
+
+### 4. Seed the database with initial data
 
 Seed the database with initial data:
-`npm run db:seed`
+`npm run db`
 
 ### 5. Start the development server
-`bashnpm run dev`
+`npm run dev`
 
-The application will be available at http://localhost:3000
+The application will be available at http://localhost:3000 (or next available port)
 
 ## Project Structure
 
@@ -63,13 +90,12 @@ The application will be available at http://localhost:3000
 `/src/hooks`: Custom React hooks
 `/src/lib`: Utility functions and libraries
 `/prisma`: Database schema and migrations
+- `/scripts`: Helper scripts for setup and deployment
 
 ## Development Workflow
 
-1. Create a new branch for your feature or fix
-2. Make your changes with clear, descriptive commits
-3. Push your branch and create a pull request
-4. After review and approval, merge to the main branch
+Learn how to use git and not wreck other people's branches. 
+We love a good PR.
 
 ## Deployment
 

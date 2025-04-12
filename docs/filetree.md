@@ -15,6 +15,9 @@ booth-boss/
 │   ├── migrations/                   # Database migrations
 │   ├── schema.prisma                 # Prisma schema definition
 │   └── seed.ts                       # Database seed script
+├── scripts/                          # Helper scripts
+│   ├── setup-env.js                  # Database URL generator
+│   └── setupscript.sh                # Complete setup script
 ├── src/                              # Application source code
 │   ├── app/                          # Next.js App Router
 │   │   ├── (admin)/                  # Admin routes (grouped)
@@ -52,12 +55,14 @@ booth-boss/
 │   ├── hooks/                        # Custom React hooks
 │   │   └── useCamera.ts              # Camera access hook
 │   ├── lib/                          # Utility functions and libraries
+│   │   ├── db-url.ts                 # Database URL constructor
 │   │   ├── email.ts                  # Email sending utilities
 │   │   └── prisma.ts                 # Prisma client setup
 │   ├── types/                        # TypeScript type definitions
 │   │   └── next-auth.d.ts            # NextAuth type extensions
 │   └── middleware.ts                 # Next.js middleware
-├── .env.local                        # Environment variables (git-ignored)
+├── .env.local                        # Environment variables for Prisma (git-ignored)
+├── .env.local                        # Environment variables for Next.js (git-ignored)
 ├── .env.sample                       # Sample environment variables
 ├── .eslintrc.json                    # ESLint configuration
 ├── .gitignore                        # Git ignore file
