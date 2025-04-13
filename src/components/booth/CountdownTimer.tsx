@@ -1,5 +1,5 @@
 // src/components/booth/CountdownTimer.tsx
-
+"use client";
 import React, { useState, useEffect, useCallback } from 'react';
 
 interface CountdownTimerProps {

@@ -1,7 +1,7 @@
 // src/components/booth/PhotoBooth.tsx
-
+"use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { useCamera } from '@/hooks/useCamera';
+import Webcam from 'react-webcam';
 import UserInfoForm from '@/components/forms/UserInfoForm';
 import CountdownTimer from '@/components/booth/CountdownTimer';
 import PhotoPreview from '@/components/booth/PhotoPreview';
@@ -24,19 +24,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 }) => {
   const [stage, setStage] = useState<BoothStage>('collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isCameraError, setIsCameraError] = useState<boolean>(false);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const webcamRef = useRef<Webcam>(null);
   
-  const { 
-    videoRef, 
-    photoDataUrl, 
-    isLoading, 
-    error: cameraError, 
-    isCameraReady,
-    takePhoto, 
-    resetPhoto 
-  } = useCamera();
-
   // Handle user info submission
   const handleUserInfoSubmit = (data: UserData) => {
     setUserData(data);
@@ -45,13 +38,19 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Handle countdown completion
   const handleCountdownComplete = () => {
-    takePhoto();
-    setStage('preview');
+    if (webcamRef.current) {
+      const screenshot = webcamRef.current.getScreenshot();
+      setPhotoDataUrl(screenshot);
+      setStage('preview');
+    } else {
+      console.error('Webcam reference not available');
+      setIsCameraError(true);
+    }
   };
 
   // Handle photo retake
   const handleRetake = () => {
-    resetPhoto();
+    setPhotoDataUrl(null);
     setStage('countdown');
   };
 
@@ -105,7 +104,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setStage('collect-info');
     setUserData(null);
     setSessionId(null);
-    resetPhoto();
+    setPhotoDataUrl(null);
     
     if (resetTimerRef.current) {
       clearTimeout(resetTimerRef.current);
@@ -122,6 +121,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     };
   }, []);
 
+  // Video constraints
+  const videoConstraints = {
+    width: 1280,
+    height: 720,
+    facingMode: "user"
+  };
+
   // Render different stages
   const renderStage = () => {
     switch (stage) {
@@ -134,12 +140,14 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         return (
           <div className="relative">
             <div className="aspect-video bg-black rounded overflow-hidden">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover transform scale-x-[-1]"
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                videoConstraints={videoConstraints}
+                className="w-full h-full object-cover"
+                mirrored={true}
+                onUserMediaError={() => setIsCameraError(true)}
               />
             </div>
             <div className="absolute inset-0 flex items-center justify-center">
@@ -186,20 +194,11 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto"></div>
-        <p className="mt-4">Initializing camera...</p>
-      </div>
-    );
-  }
-
-  if (cameraError) {
+  if (isCameraError) {
     return (
       <div className="p-6 text-center text-red-600">
         <p className="text-xl font-bold mb-2">Camera Error</p>
-        <p>{cameraError}</p>
+        <p>Failed to access camera. Please ensure camera access is granted and try refreshing the page.</p>
         <p className="mt-4 text-sm">
           Please ensure camera access is granted and try refreshing the page.
         </p>
