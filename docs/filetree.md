@@ -21,7 +21,13 @@ booth-boss/
 │   └── setupscript.sh                # Complete setup script
 ├── src/                              # Application source code
 │   ├── app/                          # Next.js App Router
-│   │   ├── (admin)/                  # Admin routes (grouped)
+│   │   ├── admin/                    # Admin section
+│   │   │   ├── page.tsx              # Admin dashboard
+│   │   │   ├── layout.tsx            # Admin layout with sidebar
+│   │   │   ├── sessions/             # Sessions management
+│   │   │   │   └── page.tsx          # All sessions list with pagination
+│   │   │   └── settings/             # Settings management
+│   │   │       └── page.tsx          # Settings view page
 │   │   ├── (auth)/                   # Authentication routes
 │   │   │   └── login/                # Login page
 │   │   │       └── page.tsx          # Login page component

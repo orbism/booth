@@ -109,5 +109,22 @@ Follow these steps to deploy the application:
 2. Start the production server:
 `npm start`
 
+## Admin Dashboard
+
+The application includes an admin dashboard for managing booth sessions and settings:
+
+### Features
+- Dashboard with recent sessions overview
+- Complete session listing with pagination
+- Settings management interface
+- Secure authentication using NextAuth.js
+
+### Routes
+- `/admin` - Main dashboard with recent sessions
+- `/admin/sessions` - Complete list of all photo booth sessions
+- `/admin/settings` - Booth configuration settings
+
+Access to these routes is protected by authentication middleware.
+
 ## License
 TBD
