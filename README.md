@@ -75,8 +75,10 @@ Regenerate Client: Automatically done after push, or run `npx prisma generate`
 
 ### 4. Seed the database with initial data
 
-Seed the database with initial data:
-`npm run db`
+To initialize the database with default settings:
+`npm run db:seed`
+
+The seed script will use values from your .env file for SMTP settings if available.
 
 ### 5. Start the development server
 `npm run dev`

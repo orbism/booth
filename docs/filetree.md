@@ -16,6 +16,7 @@ booth-boss/
 │   ├── schema.prisma                 # Prisma schema definition
 │   └── seed.ts                       # Database seed script
 ├── scripts/                          # Helper scripts
+│   ├── seed.js                     # Simplified seed script
 │   ├── setup-env.js                  # Database URL generator
 │   └── setupscript.sh                # Complete setup script
 ├── src/                              # Application source code

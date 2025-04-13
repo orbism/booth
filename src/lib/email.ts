@@ -22,6 +22,21 @@ export async function sendEmail({
       throw new Error('SMTP settings not found');
     }
 
+    // In development, log email instead of sending it
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📧 Email would be sent in production:');
+      console.log(`📧 To: ${to}`);
+      console.log(`📧 Subject: ${subject}`);
+      console.log(`📧 Attachments: ${attachments.length}`);
+      
+      // Skip actual sending and return mock info
+      return {
+        messageId: `mock-id-${Date.now()}`,
+        success: true
+      };
+    }
+
+    // Production email sending
     const transporter = nodemailer.createTransport({
       host: settings.smtpHost,
       port: settings.smtpPort,
