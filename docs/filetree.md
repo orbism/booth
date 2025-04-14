@@ -30,7 +30,8 @@ booth-boss/
 │   │   │   ├── analytics/                      # New analytics section
 │   │   │   │   └── page.tsx                    # Analytics dashboard
 │   │   │   ├── sessions/                       # Sessions management
-│   │   │   │   └── page.tsx                    # All sessions list with pagination
+│   │   │   │   ├── page.tsx                    # Server component for data fetching with simplified props
+│   │   │   │   └── SessionsList.tsx            # Client component that handles UI rendering and pagination
 │   │   │   ├── settings/                       # Settings management
 │   │   │   │   └── page.tsx                    # Settings view page
 │   │   │   └── setup/                          # Admin setup management 
