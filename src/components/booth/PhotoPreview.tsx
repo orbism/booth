@@ -1,8 +1,7 @@
 // src/components/booth/PhotoPreview.tsx
 
 import React, { useState } from 'react';
-import Image from 'next/image';
-
+import OptimizedImage from '@/components/ui/OptimizedImage';
 
 interface PhotoPreviewProps {
   photoDataUrl: string;
@@ -44,12 +43,10 @@ const PhotoPreview: React.FC<PhotoPreviewProps> = ({
       <div className="flex flex-col items-center space-y-4">
         <div className="relative border-4 border-blue-500 rounded shadow-lg overflow-hidden">
           <div className="relative w-full aspect-video">
-            <Image
+            <OptimizedImage
               src={photoDataUrl}
               alt="Your captured photo"
-              fill
-              className="object-contain"
-              unoptimized={true} // using data URL
+              className="max-w-full h-auto"
             />
           </div>
         </div>

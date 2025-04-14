@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -113,11 +113,30 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     reset,
     formState: { errors }
   } = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsSchema) as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(settingsSchema) as unknown as Resolver<SettingsFormValues, any>,
     defaultValues: {
-      ...initialSettings,
-      theme: (initialSettings.theme as any) || 'custom'
-    } as any
+      eventName: initialSettings.eventName,
+      adminEmail: initialSettings.adminEmail,
+      countdownTime: initialSettings.countdownTime,
+      resetTime: initialSettings.resetTime,
+      emailSubject: initialSettings.emailSubject,
+      emailTemplate: initialSettings.emailTemplate,
+      smtpHost: initialSettings.smtpHost,
+      smtpPort: initialSettings.smtpPort,
+      smtpUser: initialSettings.smtpUser,
+      smtpPassword: initialSettings.smtpPassword,
+      companyName: initialSettings.companyName,
+      companyLogo: initialSettings.companyLogo || '',
+      theme: initialSettings.theme || 'custom',
+      primaryColor: initialSettings.primaryColor,
+      secondaryColor: initialSettings.secondaryColor,
+      backgroundColor: initialSettings.backgroundColor || '#ffffff',
+      borderColor: initialSettings.borderColor || '#e5e7eb',
+      buttonColor: initialSettings.buttonColor || initialSettings.primaryColor,
+      textColor: initialSettings.textColor || '#111827',
+      notes: initialSettings.notes || ''
+    }
   });
 
   // Watch theme and color values for preview
@@ -433,10 +452,11 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
                 <div className="text-sm">
                     {watch('emailTemplate')}
                 </div>
-                <div className="mt-4 pt-4 border-t text-xs text-right" style={{
-                    borderColor: watchTheme === 'custom' ? watchBorderColor : THEMES[watchTheme].borderColor,
-                    color: watchTheme === 'custom' ? watchSecondaryColor : THEMES[watchTheme].secondaryColor
-                }}>
+                <div className="mt-4 pt-4 border-t text-xs text-right" 
+                  style={{ 
+                    backgroundColor: watchTheme === 'custom' ? watchButtonColor : THEMES[watchTheme as keyof typeof THEMES].buttonColor,
+                    color: watchTheme === 'custom' ? watchTextColor : (watchTheme === 'bw' ? '#ffffff' : THEMES[watchTheme as keyof typeof THEMES].textColor)
+                  }}>
                     {watch('companyName')}
                 </div>
                 </div>
@@ -676,8 +696,8 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
                     className="px-4 py-2 rounded font-medium" 
                     style={{ 
                         backgroundColor: watchTheme === 'custom' ? watchBgColor : THEMES[watchTheme as keyof typeof THEMES].backgroundColor,
-                        color: watchTheme === 'custom' ? watchTextColor : (watchTheme === 'bw' as any ? '#ffffff' : THEMES[watchTheme as keyof typeof THEMES].textColor)
-                    }}
+                        color: watchTheme === 'custom' ? watchTextColor : (watchTheme === 'bw' ? '#ffffff' : THEMES[watchTheme as keyof typeof THEMES].textColor)
+                      }}
                   >
                     Sample Button
                   </button>
@@ -708,7 +728,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
                     <div className="pt-4 border-t border-gray-200">
                     <button
                         type="button"
-                        onClick={() => reset(initialSettings as any)}
+                        onClick={() => reset({...initialSettings, theme: initialSettings.theme || 'custom'} as unknown as SettingsFormValues)}
                         className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                         Reset to Default

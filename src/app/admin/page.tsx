@@ -5,6 +5,7 @@ import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
 import { getAnalyticsSummary } from '@/lib/analytics';
 import Link from 'next/link';
+import OptimizedImage from '@/components/ui/OptimizedImage';
 
 export const metadata = {
   title: 'Admin Dashboard - BoothBoss',
@@ -37,7 +38,8 @@ export default async function AdminDashboard() {
     take: 10,
   });
 
-  const analytics = await getAnalyticsSummary(7);
+  // TODO - pass number of days for analytics summary here, eg. `(7)` for a week.
+  const analytics = await getAnalyticsSummary();
 
   return (
     <div className="p-6">
@@ -53,11 +55,14 @@ export default async function AdminDashboard() {
             {recentSessions.map((item: PhotoSession) => (
               <div key={item.id} className="border rounded-lg overflow-hidden bg-white shadow-sm">
                 <div className="aspect-video relative">
-                  <img 
-                    src={item.photoPath} 
-                    alt={`Photo by ${item.userName}`}
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="relative w-full h-full">
+                    <OptimizedImage 
+                      src={item.photoPath} 
+                      alt={`Photo by ${item.userName}`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
                 <div className="p-4">
                   <p className="font-medium">{item.userName}</p>

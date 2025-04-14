@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
+import OptimizedImage from '@/components/ui/OptimizedImage';
 
 export const metadata = {
   title: 'All Sessions - BoothBoss Admin',
@@ -88,11 +89,14 @@ export default async function SessionsPage({ searchParams }: PageProps) {
                 <tr key={item.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="w-20 h-20 relative">
-                      <img
-                        src={item.photoPath}
-                        alt={`Photo by ${item.userName}`}
-                        className="w-full h-full object-cover rounded"
-                      />
+                      <div className="relative w-full h-full">
+                        <OptimizedImage
+                          src={item.photoPath}
+                          alt={`Photo by ${item.userName}`}
+                          fill
+                          className="object-cover rounded"
+                        />
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

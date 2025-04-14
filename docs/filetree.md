@@ -81,7 +81,8 @@ booth-boss/
 │   ├── components/                             # React components
 │   │   ├── ErrorBoundary.tsx                   # Client-side error boundary component
 │   │   ├── ui/                                 # Basic UI components (shadcn)
-│   │   │   └── ErrorMessage.tsx                # Reusable error message component
+│   │   │   ├── ErrorMessage.tsx                # Reusable error message component
+│   │   │   └── OptimizedImage.tsx              # Reusable data URL handler for images
 │   │   ├── booth/                              # Photo booth components
 │   │   │   ├── CountdownTimer.tsx              # Countdown component
 │   │   │   ├── PhotoBooth.tsx                  # Main booth component
