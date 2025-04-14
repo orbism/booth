@@ -147,7 +147,7 @@ export async function getAnalyticsSummary(days: number = 30) {
     // Check if tables exist before querying
     const tableExists = await prisma.$queryRaw`
         SELECT EXISTS (
-            SELECT FROM information_schema.tables 
+            SELECT 1 FROM information_schema.tables 
             WHERE table_name = 'BoothAnalytics'
         );
     `;

@@ -13,20 +13,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "BoothBoss Beta",
-  description: "Photo Booth Software",
-};
-
- // Dynamically load theme settings
- export async function generateMetadata(): Promise<Metadata> {
-   const themeSettings = await getThemeSettings();
+export async function generateMetadata(): Promise<Metadata> {
+  const themeSettings = await getThemeSettings();
    
-   return {
-     title: `${themeSettings?.companyName || 'BoothBoss'} - Photo Booth`,
-     description: "Photo Booth Software",
-   };
- }
+  return {
+    title: `${themeSettings?.companyName || 'BoothBoss'} - Photo Booth App`,
+    description: "Photo Booth Software",
+  };
+}
 
  export default async function RootLayout({
   children,
