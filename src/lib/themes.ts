@@ -10,6 +10,8 @@ export interface ThemeColors {
   borderColor: string;
   buttonColor: string;
   textColor: string;
+  companyName?: string;
+  companyLogo?: string | null;
 }
 
 // Predefined themes

@@ -6,7 +6,7 @@ import { handleApiError } from '@/lib/errors';
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { event, sessionId, analyticsId, boothSessionId, duration, emailDomain, userAgent } = data;
+    const { event, sessionId, analyticsId, boothSessionId, duration, emailDomain, userAgent, eventType, metadata } = data;
     
     // Track different event types
     switch (event) {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       }
       
       case 'event': {
-        if (!analyticsId || !data.eventType) {
+        if (!analyticsId || !eventType) {
           return NextResponse.json(
             { error: 'Missing required parameters' },
             { status: 400 }
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
         const eventLog = await prisma.boothEventLog.create({
           data: {
             analyticsId,
-            eventType: data.eventType,
-            metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+            eventType,
+            metadata: metadata ? JSON.stringify(metadata) : null,
             timestamp: new Date(),
           },
         });

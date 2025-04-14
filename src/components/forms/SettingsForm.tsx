@@ -404,13 +404,31 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
 
             {/* Email Preview */}
             <div className="mt-6 border rounded-md p-4 bg-gray-50">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Email Preview</h4>
-              <div className="border bg-white rounded-md p-4">
-                <div className="text-sm font-medium mb-2">Subject: {watchTheme === 'custom' ? watchTextColor : THEMES[watchTheme].textColor}</div>
-                <div className="text-sm" style={{ color: watchTheme === 'custom' ? watchTextColor : THEMES[watchTheme].textColor }}>
-                  {watch('emailTemplate')}
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Email Preview</h4>
+            <div className="border rounded-md p-4" style={{ 
+                backgroundColor: watchTheme === 'custom' ? watchBgColor : THEMES[watchTheme].backgroundColor,
+                color: watchTheme === 'custom' ? watchTextColor : THEMES[watchTheme].textColor,
+                borderColor: watchTheme === 'custom' ? watchBorderColor : THEMES[watchTheme].borderColor
+            }}>
+                <div className="text-sm font-medium mb-2" style={{ 
+                color: watchTheme === 'custom' ? watchPrimaryColor : THEMES[watchTheme].primaryColor 
+                }}>
+                Subject: {watch('emailSubject')}
                 </div>
-              </div>
+                <div className="p-4 border rounded" style={{
+                borderColor: watchTheme === 'custom' ? watchBorderColor : THEMES[watchTheme].borderColor
+                }}>
+                <div className="text-sm">
+                    {watch('emailTemplate')}
+                </div>
+                <div className="mt-4 pt-4 border-t text-xs text-right" style={{
+                    borderColor: watchTheme === 'custom' ? watchBorderColor : THEMES[watchTheme].borderColor,
+                    color: watchTheme === 'custom' ? watchSecondaryColor : THEMES[watchTheme].secondaryColor
+                }}>
+                    {watch('companyName')}
+                </div>
+                </div>
+            </div>
             </div>
           </div>
         )}
