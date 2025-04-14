@@ -2,45 +2,60 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { prisma } from './prisma';
-import { cookies } from 'next/headers';
+
+type BoothAnalyticsRecord = {
+    id: string;
+    sessionId: string;
+    boothSessionId?: string;
+    eventType: string;
+    timestamp: Date;
+    completedAt?: Date;
+    userAgent?: string;
+    emailDomain?: string;
+    durationMs?: number;
+  };
 
 /**
  * Anonymize email addresses for privacy-conscious analytics
  */
 export function anonymizeEmail(email: string): string {
-  if (!email) return '';
-  
-  const parts = email.split('@');
-  if (parts.length !== 2) return '';
-  
-  // Get first 2 chars and hash the rest
-  const name = parts[0];
-  const firstTwo = name.substring(0, 2);
-  const domain = parts[1];
-  
-  return `${firstTwo}***@${domain}`;
+    if (!email) return '';
+    
+    const parts = email.split('@');
+    if (parts.length !== 2) return '';
+    
+    // Get first 2 chars and hash the rest
+    const name = parts[0];
+    const firstTwo = name.substring(0, 2);
+    const domain = parts[1];
+    
+    return `${firstTwo}***@${domain}`;
 }
 
 /**
  * Generate a unique session ID or retrieve an existing one
+ * This version doesn't rely on cookies and can be used anywhere (TODO - build server component that can handle cookies)
  */
-export async function getBoothSessionId(): Promise<string> {
-    try {
-      const cookieStore = await cookies();
-      let sessionId = cookieStore.get('booth_session_id')?.value;
-      
-      if (!sessionId) {
-        sessionId = uuidv4();
-        // Note: cookies can only be set in a Server Action or Route Handler
-        // We'll need to set this in the appropriate place when calling this function
-      }
-      
-      return sessionId;
-    } catch (error) {
-      // Fallback if cookies() fails (e.g., in client components)
-      return uuidv4();
-    }
-  }
+// export async function getBoothSessionId(): Promise<string> {
+//     try {
+//         const cookieStore = await cookies();
+//         let sessionId = cookieStore.get('booth_session_id')?.value;
+        
+//         if (!sessionId) {
+//         sessionId = uuidv4();
+//         // Note: cookies can only be set in a Server Action or Route Handler
+//         // We'll need to set this in the appropriate place when calling this function
+//         }
+        
+//         return sessionId;
+//     } catch (error) {
+//         // Fallback if cookies() fails (e.g., in client components)
+//         return uuidv4();
+//     }
+// }
+export function generateSessionId(): string {
+    return uuidv4();
+}
 
 /**
  * Track a booth session start (when user begins interacting with booth)
@@ -129,24 +144,45 @@ export async function getAnalyticsSummary(days: number = 30) {
   startDate.setDate(startDate.getDate() - days);
   
   try {
+    // Check if tables exist before querying
+    const tableExists = await prisma.$queryRaw`
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'BoothAnalytics'
+        );
+    `;
+    
+    const exists = Array.isArray(tableExists) && tableExists.length > 0 && tableExists[0].exists;
+    
+    if (!exists) {
+        // Return empty data if table doesn't exist
+        return {
+        totalSessions: 0,
+        completedSessions: 0,
+        averageCompletionTimeMs: 0,
+        completionRate: '0',
+        topEmailDomains: []
+        };
+    }
+
     // Get session count
-    const sessionCount = await prisma.boothAnalytics.count({
-      where: {
-        timestamp: {
-          gte: startDate,
+    const sessionCount = await prisma.boothAnalytics.findMany({
+        where: {
+          timestamp: {
+            gte: startDate,
+          },
         },
-      },
-    });
+      }).then((results: BoothAnalyticsRecord[]) => results.length);
     
     // Get completed session count
-    const completedSessionCount = await prisma.boothAnalytics.count({
-      where: {
-        eventType: 'session_complete',
-        timestamp: {
-          gte: startDate,
+    const completedSessionCount = await prisma.boothAnalytics.findMany({
+        where: {
+          eventType: 'session_complete',
+          timestamp: {
+            gte: startDate,
+          },
         },
-      },
-    });
+    }).then((results: BoothAnalyticsRecord[]) => results.length);
     
     // Get average completion time
     const completionTimeResult = await prisma.boothAnalytics.aggregate({
@@ -203,6 +239,13 @@ export async function getAnalyticsSummary(days: number = 30) {
     };
   } catch (error) {
     console.error('Failed to get analytics summary:', error);
-    return null;
+    return {
+        totalSessions: 0,
+        completedSessions: 0,
+        averageCompletionTimeMs: 0,
+        completionRate: '0',
+        topEmailDomains: []
+      };
+    // return null;
   }
 }
