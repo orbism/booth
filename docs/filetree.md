@@ -24,6 +24,8 @@ booth-boss/
 │   │   ├── admin/                    # Admin section
 │   │   │   ├── page.tsx              # Admin dashboard
 │   │   │   ├── layout.tsx            # Admin layout with sidebar
+│   │   │   ├── analytics/               # New analytics section
+│   │   │   │   └── page.tsx             # Analytics dashboard
 │   │   │   ├── sessions/             # Sessions management
 │   │   │   │   └── page.tsx          # All sessions list with pagination
 │   │   │   ├── settings/             # Settings management
@@ -40,6 +42,9 @@ booth-boss/
 │   │   │   │   │   └── route.ts      # Handler for checking if admin needs setup
 │   │   │   │   └── setup/            # API for admin account creation
 │   │   │   │       └── route.ts      # Handler for setting admin password
+│   │   │   ├── analytics/            # Analytics API routes
+│   │   │   │   └── track/            # Analytics tracking endpoint
+│   │   │   │       └── route.ts      # Handler for analytics events
 │   │   │   ├── auth/                 # Authentication API endpoints
 │   │   │   │   ├── route.ts          # General auth API handler
 │   │   │   │   ├── [...nextauth]/    # NextAuth.js dynamic route
@@ -85,6 +90,7 @@ booth-boss/
 │   │   └── useCamera.ts              # Camera access hook
 │   ├── lib/                          # Utility functions and libraries
 │   │   ├── admin.ts                  # Admin user utility functions
+│   │   ├── analytics.ts              # Analytics utility functions
 │   │   ├── db-url.ts                 # Database URL constructor
 │   │   ├── email.ts                  # Email sending utilities
 │   │   ├── errors.ts                 # Error handling utilities

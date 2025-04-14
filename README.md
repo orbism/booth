@@ -139,5 +139,27 @@ The application includes an admin dashboard for managing booth sessions and sett
 
 Access to these routes is protected by authentication middleware.
 
+## Analytics Features
+
+The application includes comprehensive analytics tracking for booth sessions:
+
+### User Metrics
+- Session tracking with start/completion events
+- User interaction events (photo captures, retakes, etc.)
+- Completion rates and average session duration
+- Email domain analytics (anonymized for privacy)
+
+### Admin Dashboard
+- Real-time analytics overview on the main dashboard
+- Dedicated analytics page with daily/weekly/monthly metrics
+- Recent events log for detailed session tracking
+- Top email domains to identify user demographics
+
+### Privacy Considerations
+- All personal data is anonymized for analytics purposes
+- Email addresses are stored with partial masking for privacy
+- Session data is separated from personally identifiable information
+- GDPR-compliant data collection with consent mechanisms
+
 ## License
 TBD

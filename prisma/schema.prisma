@@ -62,3 +62,29 @@ model Settings {
   primaryColor    String @default("#3B82F6")
   secondaryColor  String @default("#1E40AF")
 }
+
+// Analytics models start here
+
+model BoothAnalytics {
+  id             String          @id @default(cuid())
+  sessionId      String          @unique
+  boothSessionId String?
+  eventType      String          // session_start, session_complete
+  timestamp      DateTime        @default(now())
+  completedAt    DateTime?
+  userAgent      String?
+  emailDomain    String?
+  durationMs     Int?
+  events         BoothEventLog[]
+}
+
+model BoothEventLog {
+  id          String         @id @default(cuid())
+  analyticsId String
+  eventType   String
+  metadata    String?        // JSON string
+  timestamp   DateTime       @default(now())
+  analytics   BoothAnalytics @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
+
+  @@index([analyticsId])
+}

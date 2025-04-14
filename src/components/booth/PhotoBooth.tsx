@@ -6,6 +6,8 @@ import UserInfoForm from '@/components/forms/UserInfoForm';
 import CountdownTimer from '@/components/booth/CountdownTimer';
 import PhotoPreview from '@/components/booth/PhotoPreview';
 import ErrorMessage from '@/components/ui/ErrorMessage';
+import { v4 as uuidv4 } from 'uuid';
+import { trackBoothEvent } from '@/lib/analytics';
 
 type UserData = {
   name: string;
@@ -31,29 +33,118 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
+
+  // Analytics tracking
+  const [analyticsId, setAnalyticsId] = useState<string | null>(null);
+  const sessionStartTimeRef = useRef<number>(Date.now());
+
+  // Initialize tracking session
+  useEffect(() => {
+    const initializeAnalytics = async () => {
+      try {
+        // Generate a local tracking session ID
+        const localAnalyticsId = uuidv4();
+        setAnalyticsId(localAnalyticsId);
+        
+        // Record session start
+        const response = await fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            event: 'session_start',
+            sessionId: localAnalyticsId,
+            userAgent: navigator.userAgent,
+          }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.id) {
+            setAnalyticsId(data.id);
+          }
+        }
+        
+        // Track view start event
+        trackBoothEvent(localAnalyticsId, 'view_start');
+      } catch (error) {
+        console.error('Failed to initialize analytics:', error);
+      }
+    };
+    
+    initializeAnalytics();
+    sessionStartTimeRef.current = Date.now();
+    
+    return () => {
+      // Track session end if component unmounts
+      const duration = Date.now() - sessionStartTimeRef.current;
+      if (analyticsId) {
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            event: 'session_end',
+            analyticsId,
+            duration,
+          }),
+        }).catch(err => console.error('Failed to track session end:', err));
+      }
+    };
+  }, []);
+  
+  
   
   // Handle user info submission
-  const handleUserInfoSubmit = (data: UserData) => {
+  const handleUserInfoSubmit = async (data: UserData) => {
     setUserData(data);
     setStage('countdown');
+    
+    // Track info submission
+    if (analyticsId) {
+      await trackBoothEvent(analyticsId, 'info_submitted', {
+        hasName: !!data.name,
+        emailDomain: data.email.split('@')[1],
+      });
+    }
   };
 
   // Handle countdown completion
-  const handleCountdownComplete = () => {
+  const handleCountdownComplete = async () => {
     if (webcamRef.current) {
       const screenshot = webcamRef.current.getScreenshot();
       setPhotoDataUrl(screenshot);
       setStage('preview');
+      
+      // Track photo captured
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'photo_captured');
+      }
     } else {
       console.error('Webcam reference not available');
       setIsCameraError(true);
+      
+      // Track error
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'error', {
+          type: 'camera_error',
+          message: 'Webcam reference not available',
+        });
+      }
     }
   };
 
   // Handle photo retake
-  const handleRetake = () => {
+  const handleRetake = async () => {
     setPhotoDataUrl(null);
     setStage('countdown');
+    
+    // Track retake
+    if (analyticsId) {
+      await trackBoothEvent(analyticsId, 'retake_photo');
+    }
   };
 
   // Send email with photo
@@ -73,6 +164,16 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       formData.append('name', userData.name);
       formData.append('email', userData.email);
       
+      // Add analytics ID if available
+      if (analyticsId) {
+        formData.append('analyticsId', analyticsId);
+      }
+      
+      // Track photo approved
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'photo_approved');
+      }
+      
       // Send to API endpoint
       const result = await fetch('/api/booth/capture', {
         method: 'POST',
@@ -88,6 +189,30 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       setSessionId(data.sessionId);
       setStage('complete');
       
+      // Track completion
+      if (analyticsId) {
+        const duration = Date.now() - sessionStartTimeRef.current;
+        await trackBoothEvent(analyticsId, 'email_sent', {
+          duration,
+          boothSessionId: data.sessionId,
+        });
+        
+        // Record session completion
+        await fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            event: 'session_complete',
+            analyticsId,
+            boothSessionId: data.sessionId,
+            emailDomain: userData.email.split('@')[1],
+            duration,
+          }),
+        });
+      }
+      
       // Start reset timer
       if (resetTimerRef.current) {
         clearTimeout(resetTimerRef.current);
@@ -100,6 +225,15 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       return data;
     } catch (error) {
       console.error('Error sending email:', error);
+      
+      // Track error
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'error', {
+          type: 'email_error',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+      
       setError({
         title: 'Email Error',
         message: error instanceof Error 
@@ -116,6 +250,9 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setUserData(null);
     setSessionId(null);
     setPhotoDataUrl(null);
+    
+    // Don't reset analytics ID to maintain session continuity
+    sessionStartTimeRef.current = Date.now();
     
     if (resetTimerRef.current) {
       clearTimeout(resetTimerRef.current);

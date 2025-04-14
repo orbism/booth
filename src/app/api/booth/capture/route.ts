@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     const photo = formData.get('photo') as File;
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
+    const analyticsId = formData.get('analyticsId') as string;
     
     if (!photo || !name || !email) {
       return NextResponse.json(
@@ -48,6 +49,21 @@ export async function POST(request: NextRequest) {
         eventName: 'Photo Booth Session',
       },
     });
+
+    if (analyticsId) {
+      try {
+        await prisma.boothAnalytics.update({
+          where: { id: analyticsId },
+          data: {
+            boothSessionId: boothSession.id,
+            emailDomain: email.split('@')[1],
+          },
+        });
+      } catch (analyticsError) {
+        // Log but don't fail the whole request
+        console.error('Failed to update analytics:', analyticsError);
+      }
+    }
 
     // Send email with photo
     await sendBoothPhoto(

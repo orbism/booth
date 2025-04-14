@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
+import { getAnalyticsSummary } from '@/lib/analytics';
+import Link from 'next/link';
 
 export const metadata = {
   title: 'Admin Dashboard - BoothBoss',
@@ -34,6 +36,8 @@ export default async function AdminDashboard() {
     },
     take: 10,
   });
+
+  const analytics = await getAnalyticsSummary(7);
 
   return (
     <div className="p-6">
@@ -74,6 +78,37 @@ export default async function AdminDashboard() {
           </div>
         )}
       </section>
+
+      <section className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Analytics Overview</h2>
+          <Link href="/admin/analytics" className="text-blue-600 hover:underline text-sm">
+            View Full Analytics →
+          </Link>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <p className="text-gray-500 text-sm">Total Sessions</p>
+            <p className="text-2xl font-semibold">{analytics?.totalSessions || 0}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <p className="text-gray-500 text-sm">Completed</p>
+            <p className="text-2xl font-semibold">{analytics?.completedSessions || 0}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <p className="text-gray-500 text-sm">Completion Rate</p>
+            <p className="text-2xl font-semibold">{analytics?.completionRate || 0}%</p>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <p className="text-gray-500 text-sm">Avg. Time</p>
+            <p className="text-2xl font-semibold">
+              {((analytics?.averageCompletionTimeMs || 0) / 1000).toFixed(1)}s
+            </p>
+          </div>
+        </div>
+      </section>
+      
     </div>
   );
 }

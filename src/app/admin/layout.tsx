@@ -30,6 +30,9 @@ export default async function AdminLayout({
           <Link href="/admin" className="block py-2 px-4 rounded hover:bg-blue-700">
             Dashboard
           </Link>
+          <Link href="/admin/analytics" className="block py-2 px-4 rounded hover:bg-blue-700">
+            Analytics
+          </Link>
           <Link href="/admin/settings" className="block py-2 px-4 rounded hover:bg-blue-700">
             Settings
           </Link>
@@ -41,7 +44,7 @@ export default async function AdminLayout({
               Sign Out
             </Link>
           </div>
-        </nav>
+      </nav>
       </div>
       
       {/* Main content */}
