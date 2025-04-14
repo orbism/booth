@@ -26,20 +26,40 @@ booth-boss/
 │   │   │   ├── layout.tsx            # Admin layout with sidebar
 │   │   │   ├── sessions/             # Sessions management
 │   │   │   │   └── page.tsx          # All sessions list with pagination
-│   │   │   └── settings/             # Settings management
-│   │   │       └── page.tsx          # Settings view page
+│   │   │   ├── settings/             # Settings management
+│   │   │   │   └── page.tsx          # Settings view page
+│   │   │   └── setup/                # Admin setup management 
+│   │   │       └── page.tsx          # Admin first-time setup page (deprecated - moved to app/setup/page.tsx)
 │   │   ├── (auth)/                   # Authentication routes
 │   │   │   └── login/                # Login page
 │   │   │       └── page.tsx          # Login page component
 │   │   ├── (booth)/                  # Photo/video booth routes
 │   │   ├── api/                      # API routes
-│   │   │   ├── auth/                 # Authentication endpoints
-│   │   │   │   └── [...nextauth]/    # NextAuth.js API route
-│   │   │   │       └── route.ts      # NextAuth.js route handler
+│   │   │   ├── admin/                # Admin-related API endpoints
+│   │   │   │   ├── check/            # API to check admin user status
+│   │   │   │   │   └── route.ts      # Handler for checking if admin needs setup
+│   │   │   │   └── setup/            # API for admin account creation
+│   │   │   │       └── route.ts      # Handler for setting admin password
+│   │   │   ├── auth/                 # Authentication API endpoints
+│   │   │   │   ├── route.ts          # General auth API handler
+│   │   │   │   ├── [...nextauth]/    # NextAuth.js dynamic route
+│   │   │   │   │   └── route.ts      # NextAuth.js handler
+│   │   │   │   └── error/            # Auth error handling
+│   │   │   │       └── route.ts      # Handler for auth error redirects
 │   │   │   ├── booth/                # Booth endpoints
 │   │   │   │   └── capture/          # Photo capture endpoint
 │   │   │   │       └── route.ts      # Photo capture API handler
-│   │   │   └── ...                   # Other API endpoints
+│   │   │   ├── media/                # not in use
+│   │   │   └── users/                # not in use
+│   │   ├── components/               # not in use
+│   │   ├── hooks/                    # not in use
+│   │   ├── lib/                      # not in use
+│   │   ├── login/                    # Admin login
+│   │   │   └── page.tsx              # Admin login page
+│   │   ├── setup/                    # Admin setup management 
+│   │   │   └── page.tsx              # Admin first-time setup page
+│   │   └── state/                    # not in use
+│   │   └── utils/                    # not in use
 │   │   ├── error.tsx                 # Error page
 │   │   ├── layout.tsx                # Root layout
 │   │   ├── loading.tsx               # Loading state component
@@ -62,6 +82,7 @@ booth-boss/
 │   ├── hooks/                        # Custom React hooks
 │   │   └── useCamera.ts              # Camera access hook
 │   ├── lib/                          # Utility functions and libraries
+│   │   ├── admin.ts                  # Admin user utility functions
 │   │   ├── db-url.ts                 # Database URL constructor
 │   │   ├── email.ts                  # Email sending utilities
 │   │   └── prisma.ts                 # Prisma client setup

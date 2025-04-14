@@ -109,6 +109,19 @@ Follow these steps to deploy the application:
 2. Start the production server:
 `npm start`
 
+## Admin Setup
+
+The application includes functionality for secure admin account setup:
+
+1. Set `ADMIN_EMAIL` in your `.env` file to specify an administrator account
+2. Optionally set `ADMIN_PASSWORD` for immediate access, or leave blank to trigger setup flow
+3. When no password is set, administrators will be prompted to create one on first login
+4. The setup page can only be accessed by users whose email matches the `ADMIN_EMAIL` value
+
+To manually trigger admin setup:
+# Add an admin user directly
+`npm run db:seed`
+
 ## Admin Dashboard
 
 The application includes an admin dashboard for managing booth sessions and settings:
