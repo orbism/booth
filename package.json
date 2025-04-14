@@ -9,6 +9,7 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "setup": "node scripts/setup-env.js && prisma generate",
+    "migrate-theme": "node scripts/migrate-theme-fields.js",
     "db:push": "node scripts/setup-env.js && prisma db push",
     "db:seed": "node scripts/setup-env.js && node scripts/seed.js"
   },

@@ -22,7 +22,9 @@ export const THEME_PRESETS: Record<ThemeOption, ThemeColors> = {
     backgroundColor: '#0f172a', // slate-900
     borderColor: '#c026d3', // fuchsia-600
     buttonColor: '#fbbf24', // amber-400
-    textColor: '#f8fafc' // slate-50
+    textColor: '#f8fafc', // slate-50
+    companyName: undefined,
+    companyLogo: null
   },
   pastel: {
     primaryColor: '#60a5fa', // blue-400
@@ -30,7 +32,9 @@ export const THEME_PRESETS: Record<ThemeOption, ThemeColors> = {
     backgroundColor: '#f0f9ff', // sky-50
     borderColor: '#f9a8d4', // pink-300
     buttonColor: '#34d399', // emerald-400
-    textColor: '#1e293b' // slate-800
+    textColor: '#1e293b', // slate-800
+    companyName: undefined,
+    companyLogo: null
   },
   bw: {
     primaryColor: '#000000',
@@ -38,7 +42,9 @@ export const THEME_PRESETS: Record<ThemeOption, ThemeColors> = {
     backgroundColor: '#ffffff',
     borderColor: '#d1d5db', // gray-300
     buttonColor: '#111827', // gray-900
-    textColor: '#111827' // gray-900
+    textColor: '#111827', // gray-900
+    companyName: undefined,
+    companyLogo: null
   },
   custom: {
     primaryColor: '#3B82F6', // blue-500
@@ -46,7 +52,9 @@ export const THEME_PRESETS: Record<ThemeOption, ThemeColors> = {
     backgroundColor: '#ffffff',
     borderColor: '#e5e7eb', // gray-200
     buttonColor: '#3B82F6', // blue-500
-    textColor: '#111827' // gray-900
+    textColor: '#111827', // gray-900
+    companyName: undefined,
+    companyLogo: null
   }
 };
 
