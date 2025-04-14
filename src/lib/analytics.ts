@@ -2,18 +2,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
 
-type BoothAnalyticsRecord = {
-  id: string;
-  sessionId: string;
-  boothSessionId?: string;
-  eventType: string;
-  timestamp: Date;
-  completedAt?: Date;
-  userAgent?: string;
-  emailDomain?: string;
-  durationMs?: number;
-};
-
 /**
  * Anonymize email addresses for privacy-conscious analytics
  */
@@ -113,7 +101,7 @@ export async function trackBoothSessionComplete(
 export async function trackBoothEvent(
   analyticsId: string | null,
   eventType: 'view_start' | 'info_submitted' | 'photo_captured' | 'photo_approved' | 'email_sent' | 'retake_photo' | 'error',
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
 ) {
   if (!analyticsId) return null;
   
@@ -145,7 +133,7 @@ export async function trackBoothEvent(
 // Note: getAnalyticsSummary is a server-side function
 // It should be moved to a server component or API route
 // This stub just maintains the function signature but delegates to an API endpoint
-export async function getAnalyticsSummary(days: number = 30) {
+export async function getAnalyticsSummary(_days: number = 30) {
   try {
     // Client-side code should fetch from an API endpoint
     console.warn('getAnalyticsSummary() should only be called from server components');

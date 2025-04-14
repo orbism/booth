@@ -2,9 +2,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ThemeColors as ThemeColorsType } from '@/lib/themes';
+
 type SettingsData = {
     id: string;
     eventName: string;
@@ -27,7 +29,16 @@ type SettingsData = {
     buttonColor: string | null;
     textColor: string | null;
     notes: string | null;
-  };
+};
+
+// type ThemeColors = {
+//     primaryColor: string;
+//     secondaryColor: string;
+//     backgroundColor: string;
+//     borderColor: string;
+//     buttonColor: string;
+//     textColor: string;
+// };
 
 // Define the predefined themes
 const THEMES = {
@@ -98,7 +109,6 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
   const {
     register,
     handleSubmit,
-    control,
     watch,
     setValue,
     reset,
@@ -135,7 +145,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     }
   };
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: SettingsFormValues) => {
     try {
       setIsSubmitting(true);
       setError(null);
@@ -411,12 +421,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
                 borderColor: watchTheme === 'custom' ? watchBorderColor : THEMES[watchTheme].borderColor
             }}>
                 <div className="text-sm font-medium mb-2" style={{ 
-                color: watchTheme === 'custom' ? watchPrimaryColor : THEMES[watchTheme].primaryColor 
-                }}>
-                Subject: {watch('emailSubject')}
-                </div>
-                <div className="p-4 border rounded" style={{
-                borderColor: watchTheme === 'custom' ? watchBorderColor : THEMES[watchTheme].borderColor
+                    backgroundColor: watchTheme === 'custom' 
+                        ? watchBgColor 
+                        : THEMES[watchTheme as keyof typeof THEMES].backgroundColor,
+                    borderColor: watchTheme === 'custom' 
+                        ? watchBorderColor 
+                        : THEMES[watchTheme as keyof typeof THEMES].borderColor,
+                    color: watchTheme === 'custom' 
+                        ? watchTextColor 
+                        : THEMES[watchTheme as keyof typeof THEMES].textColor
                 }}>
                 <div className="text-sm">
                     {watch('emailTemplate')}
@@ -641,10 +654,16 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
               <div 
                 className="border rounded-lg overflow-hidden" 
                 style={{ 
-                      backgroundColor: watchTheme === 'custom' ? watchBgColor : (THEMES as any)[watchTheme].backgroundColor,
-                      borderColor: watchTheme === 'custom' ? watchBorderColor : (THEMES as any)[watchTheme].borderColor,
-                      color: watchTheme === 'custom' ? watchTextColor : (THEMES as any)[watchTheme].textColor
-                }}
+                    backgroundColor: watchTheme === 'custom' 
+                      ? watchBgColor 
+                      : THEMES[watchTheme as keyof typeof THEMES].backgroundColor,
+                    borderColor: watchTheme === 'custom' 
+                      ? watchBorderColor 
+                      : THEMES[watchTheme as keyof typeof THEMES].borderColor,
+                    color: watchTheme === 'custom' 
+                      ? watchTextColor 
+                      : THEMES[watchTheme as keyof typeof THEMES].textColor
+                  }}
               >
                 <div className="p-4 border-b" style={{ borderColor: watchTheme === 'custom' ? watchBorderColor : THEMES[watchTheme].borderColor }}>
                   <h3 className="font-bold" style={{ color: watchTheme === 'custom' ? watchPrimaryColor : THEMES[watchTheme].primaryColor }}>
@@ -657,8 +676,8 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
                     type="button" 
                     className="px-4 py-2 rounded font-medium" 
                     style={{ 
-                        backgroundColor: watchTheme === 'custom' ? watchButtonColor : (THEMES as any)[watchTheme].buttonColor,
-                        color: watchTheme === 'custom' ? watchTextColor : (watchTheme === 'bw' as any ? '#ffffff' : (THEMES as any)[watchTheme].textColor)
+                        backgroundColor: watchTheme === 'custom' ? watchBgColor : THEMES[watchTheme as keyof typeof THEMES].backgroundColor,
+                        color: watchTheme === 'custom' ? watchTextColor : (watchTheme === 'bw' as any ? '#ffffff' : THEMES[watchTheme as keyof typeof THEMES].textColor)
                     }}
                   >
                     Sample Button

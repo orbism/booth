@@ -93,7 +93,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         }).catch(err => console.error('Failed to track session end:', err));
       }
     };
-  }, []);
+  }, [analyticsId]);
   
   
   

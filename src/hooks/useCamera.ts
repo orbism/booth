@@ -106,7 +106,7 @@ export function useCamera({ onPhotoCapture }: UseCameraProps = {}): UseCameraRet
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [isSetupComplete, videoRef.current]);
 
   useEffect(() => {
     // Only proceed if we have both a stream and a video element
