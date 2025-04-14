@@ -13,9 +13,12 @@ booth-boss/
 │   └── uploads/                                # Uploaded photos (local storage)
 ├── prisma/                                     # Database ORM
 │   ├── migrations/                             # Database migrations
+│       └── manual/                             #
+│           └── add_theme_fields.sql            # Theme fields migrations
 │   ├── schema.prisma                           # Prisma schema definition
 │   └── seed.ts                                 # Database seed script
 ├── scripts/                                    # Helper scripts
+│   ├── migrate-theme-fields.js                 # Theme fields migration script
 │   ├── seed.js                                 # Simplified seed script
 │   ├── setup-env.js                            # Database URL generator
 │   └── setupscript.sh                          # Complete setup script
