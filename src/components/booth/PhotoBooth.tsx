@@ -5,6 +5,7 @@ import Webcam from 'react-webcam';
 import UserInfoForm from '@/components/forms/UserInfoForm';
 import CountdownTimer from '@/components/booth/CountdownTimer';
 import PhotoPreview from '@/components/booth/PhotoPreview';
+import ErrorMessage from '@/components/ui/ErrorMessage';
 
 type UserData = {
   name: string;
@@ -29,6 +30,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const [isCameraError, setIsCameraError] = useState<boolean>(false);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
   const webcamRef = useRef<Webcam>(null);
+  const [error, setError] = useState<{ title: string; message: string } | null>(null);
   
   // Handle user info submission
   const handleUserInfoSubmit = (data: UserData) => {
@@ -57,8 +59,10 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   // Send email with photo
   const handleSendEmail = async () => {
     if (!userData || !photoDataUrl) return;
-
+  
     try {
+      setError(null);
+      
       // Convert data URL to blob for upload
       const response = await fetch(photoDataUrl);
       const blob = await response.blob();
@@ -76,7 +80,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       });
       
       if (!result.ok) {
-        throw new Error('Failed to upload photo');
+        const errorData = await result.json();
+        throw new Error(errorData.error?.message || 'Failed to upload photo');
       }
       
       const data = await result.json();
@@ -95,6 +100,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       return data;
     } catch (error) {
       console.error('Error sending email:', error);
+      setError({
+        title: 'Email Error',
+        message: error instanceof Error 
+          ? error.message 
+          : 'Failed to send photo. Please try again.'
+      });
       throw error;
     }
   };
@@ -160,20 +171,39 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
           </div>
         );
         
-      case 'preview':
-        return userData && photoDataUrl ? (
-          <PhotoPreview
-            photoDataUrl={photoDataUrl}
-            userName={userData.name}
-            userEmail={userData.email}
-            onSendEmail={handleSendEmail}
-            onRetake={handleRetake}
-          />
-        ) : (
-          <div className="p-6 text-center text-red-600">
-            Error: Missing photo or user data
-          </div>
-        );
+        case 'preview':
+          return userData && photoDataUrl ? (
+            <>
+              {error && (
+                <ErrorMessage
+                  title={error.title}
+                  message={error.message}
+                  onRetry={() => setError(null)}
+                  className="mb-4"
+                />
+              )}
+              <PhotoPreview
+                photoDataUrl={photoDataUrl}
+                userName={userData.name}
+                userEmail={userData.email}
+                onSendEmail={handleSendEmail}
+                onRetake={handleRetake}
+              />
+            </>
+          ) : (
+            <div className="p-6 text-center">
+              <ErrorMessage
+                title="Missing Data"
+                message="Error: Missing photo or user data"
+              />
+              <button
+                onClick={() => setStage('collect-info')}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Start Over
+              </button>
+            </div>
+          );
         
       case 'complete':
         return (

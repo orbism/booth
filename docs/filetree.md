@@ -69,7 +69,9 @@ booth-boss/
 │   ├── auth.ts                       # NextAuth setup
 │   ├── middleware.ts                 # Next.js middleware for auth protection
 │   ├── components/                   # React components
+│   │   ├── ErrorBoundary.tsx         # Client-side error boundary component
 │   │   ├── ui/                       # Basic UI components (shadcn)
+│   │   │   └── ErrorMessage.tsx      # Reusable error message component
 │   │   ├── booth/                    # Photo booth components
 │   │   │   ├── CountdownTimer.tsx    # Countdown component
 │   │   │   ├── PhotoBooth.tsx        # Main booth component
@@ -85,6 +87,7 @@ booth-boss/
 │   │   ├── admin.ts                  # Admin user utility functions
 │   │   ├── db-url.ts                 # Database URL constructor
 │   │   ├── email.ts                  # Email sending utilities
+│   │   ├── errors.ts                 # Error handling utilities
 │   │   └── prisma.ts                 # Prisma client setup
 │   ├── types/                        # TypeScript type definitions
 │   │   └── next-auth.d.ts            # NextAuth type extensions

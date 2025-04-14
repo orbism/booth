@@ -16,6 +16,22 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+// New component to display error messages more consistently
+const LoginErrorMessage = ({ message }: { message: string }) => (
+  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+    <div className="flex">
+      <div className="py-1">
+        <svg className="fill-current h-5 w-5 text-red-500 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <path d="M10 0a10 10 0 110 20 10 10 0 010-20zm0 18a8 8 0 100-16 8 8 0 000 16zM9 5h2v6H9V5zm0 8h2v2H9v-2z"/>
+        </svg>
+      </div>
+      <div>
+        <p>{message}</p>
+      </div>
+    </div>
+  </div>
+);
+
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [needsSetup, setNeedsSetup] = useState<boolean>(false);
@@ -76,6 +92,8 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
+      setError(null);
+      
       const result = await signIn("credentials", {
         redirect: false,
         email: data.email,
@@ -83,13 +101,25 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        // More detailed error messages based on the error
+        if (result.error.includes('CredentialsSignin')) {
+          setError("Invalid email or password. Please check your credentials and try again.");
+        } else if (result.error.includes('AccessDenied')) {
+          setError("You don't have permission to access this page.");
+        } else {
+          setError(result.error || "Authentication failed");
+        }
       } else {
         router.push("/admin");
         router.refresh();
       }
     } catch (error) {
-      setError("An error occurred during login");
+      console.error("Login error:", error);
+      setError(
+        error instanceof Error 
+          ? `Login error: ${error.message}` 
+          : "An unexpected error occurred during login. Please try again."
+      );
     }
   };
 
@@ -104,11 +134,7 @@ export default function LoginPage() {
           </div>
         )}
         
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
+        {error && <LoginErrorMessage message={error} />}
         
         {needsSetup && (
           <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">

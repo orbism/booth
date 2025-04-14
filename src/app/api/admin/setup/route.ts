@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { handleApiError, forbiddenResponse } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,10 +11,7 @@ export async function POST(request: NextRequest) {
     
     // Verify this is the admin email
     if (email !== adminEmail) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Not the admin email' },
-        { status: 403 }
-      );
+      return forbiddenResponse('Unauthorized: Not the admin email');
     }
     
     // Check if admin user exists
@@ -51,9 +49,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error setting up admin:', error);
-    return NextResponse.json(
-      { error: 'Failed to set up admin account' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'Failed to set up admin account');
   }
 }

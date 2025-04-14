@@ -64,8 +64,30 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error processing photo:', error);
+    
+    // More detailed error messages based on error type
+    if (error instanceof Error) {
+      if (error.message.includes('permission denied') || error.message.includes('EACCES')) {
+        return NextResponse.json(
+          { error: 'Permission error: Unable to save photo file' },
+          { status: 500 }
+        );
+      } else if (error.message.includes('ENOSPC')) {
+        return NextResponse.json(
+          { error: 'Storage error: Not enough disk space' },
+          { status: 500 }
+        );
+      } else if (error.message.includes('not found') || error.message.includes('ENOENT')) {
+        return NextResponse.json(
+          { error: 'File error: Directory not found' },
+          { status: 500 }
+        );
+      }
+    }
+    
+    // Generic error if we can't determine a specific reason
     return NextResponse.json(
-      { error: 'Failed to process photo' },
+      { error: 'Failed to process photo. Please try again.' },
       { status: 500 }
     );
   }
