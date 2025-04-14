@@ -36,6 +36,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [needsSetup, setNeedsSetup] = useState<boolean>(false);
   const [setupSuccess, setSetupSuccess] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const router = useRouter();
   

@@ -148,7 +148,7 @@ export default function SettingsPage() {
         initialSettings={{
           ...settings,
           theme: (settings.theme as ThemeOption) || 'custom'
-        } as any}
+        }}
         onSubmit={handleUpdateSettings}
       />
     </div>

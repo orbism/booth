@@ -28,6 +28,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const [stage, setStage] = useState<BoothStage>('collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isCameraError, setIsCameraError] = useState<boolean>(false);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);

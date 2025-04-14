@@ -106,7 +106,7 @@ export function useCamera({ onPhotoCapture }: UseCameraProps = {}): UseCameraRet
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [isSetupComplete, videoRef.current]);
+  }, [isSetupComplete]);
 
   useEffect(() => {
     // Only proceed if we have both a stream and a video element
@@ -134,7 +134,7 @@ export function useCamera({ onPhotoCapture }: UseCameraProps = {}): UseCameraRet
           });
       };
     }
-  }, [isSetupComplete, videoRef.current]);
+  }, [isSetupComplete]);
 
   // Take photo
   const takePhoto = useCallback(() => {

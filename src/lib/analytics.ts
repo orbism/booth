@@ -130,10 +130,12 @@ export async function trackBoothEvent(
   }
 }
 
+// Intention: get analytics summary for a specified number of days
 // Note: getAnalyticsSummary is a server-side function
 // It should be moved to a server component or API route
 // This stub just maintains the function signature but delegates to an API endpoint
-export async function getAnalyticsSummary(_days: number = 30) {
+// Note: This server-side stub should be replaced with actual implementation
+export async function getAnalyticsSummary(/*_days: number = 30 */) {
   try {
     // Client-side code should fetch from an API endpoint
     console.warn('getAnalyticsSummary() should only be called from server components');

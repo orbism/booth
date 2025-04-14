@@ -3,6 +3,14 @@
 import nodemailer from 'nodemailer';
 import { prisma } from './prisma';
 
+interface EmailAttachment {
+  filename: string;
+  path?: string;
+  content?: Buffer | string;
+  contentType?: string;
+}
+
+
 export async function sendEmail({
   to,
   subject,
@@ -12,7 +20,7 @@ export async function sendEmail({
   to: string;
   subject: string;
   html: string;
-  attachments?: any[];
+  attachments?: EmailAttachment[];
 }) {
   try {
     // Get SMTP settings from database
