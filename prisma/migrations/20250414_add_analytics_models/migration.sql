@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE `Settings` ADD COLUMN `theme` VARCHAR(191) NOT NULL DEFAULT 'custom';
+ALTER TABLE `Settings` ADD COLUMN `backgroundColor` VARCHAR(191) NULL;
+ALTER TABLE `Settings` ADD COLUMN `borderColor` VARCHAR(191) NULL;
+ALTER TABLE `Settings` ADD COLUMN `buttonColor` VARCHAR(191) NULL;
+ALTER TABLE `Settings` ADD COLUMN `textColor` VARCHAR(191) NULL;
+ALTER TABLE `Settings` ADD COLUMN `notes` TEXT NULL;
