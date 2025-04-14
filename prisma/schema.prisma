@@ -61,6 +61,12 @@ model Settings {
   companyLogo     String?
   primaryColor    String @default("#3B82F6")
   secondaryColor  String @default("#1E40AF")
+  theme           String @default("custom")
+  backgroundColor String? 
+  borderColor     String?
+  buttonColor     String?
+  textColor       String?
+  notes           String? @db.Text
 }
 
 // Analytics models start here

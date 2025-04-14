@@ -25,6 +25,12 @@ async function main() {
             companyName: 'BoothBoss',
             primaryColor: '#3B82F6',
             secondaryColor: '#1E40AF',
+            theme: 'custom',
+            backgroundColor: '#ffffff',
+            borderColor: '#e5e7eb',
+            buttonColor: '#3B82F6',
+            textColor: '#111827',
+            notes: 'Default settings created during installation.',
         }
     });
 

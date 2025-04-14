@@ -40,6 +40,8 @@ booth-boss/
 │   │   │   ├── admin/                # Admin-related API endpoints
 │   │   │   │   ├── check/            # API to check admin user status
 │   │   │   │   │   └── route.ts      # Handler for checking if admin needs setup
+│   │   │   │   ├── settings/         # 
+│   │   │   │   │   └── route.ts      # Backend settings management route
 │   │   │   │   └── setup/            # API for admin account creation
 │   │   │   │       └── route.ts      # Handler for setting admin password
 │   │   │   ├── analytics/            # Analytics API routes
@@ -83,6 +85,7 @@ booth-boss/
 │   │   │   ├── PhotoPreview.tsx      # Photo review component
 │   │   │   └── ...                   # Other booth components
 │   │   ├── forms/                    # Form components
+│   │   │   ├── SettingsForm.tsx      # Backend exposed settings form
 │   │   │   └── UserInfoForm.tsx      # User information form
 │   │   └── layouts/                  # Layout components
 │   │       └── BoothLayout.tsx       # Booth layout wrapper
@@ -94,7 +97,9 @@ booth-boss/
 │   │   ├── db-url.ts                 # Database URL constructor
 │   │   ├── email.ts                  # Email sending utilities
 │   │   ├── errors.ts                 # Error handling utilities
-│   │   └── prisma.ts                 # Prisma client setup
+│   │   ├── prisma.ts                 # Prisma client setup
+│   │   ├── themes.ts                 # Theme configuration utility
+│   │   └── theme-loader.ts           # Helper for loading theme settings
 │   ├── types/                        # TypeScript type definitions
 │   │   └── next-auth.d.ts            # NextAuth type extensions
 │   └── middleware.ts                 # Next.js middleware

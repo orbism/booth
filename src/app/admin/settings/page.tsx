@@ -1,26 +1,135 @@
 // src/app/admin/settings/page.tsx
+'use client';
 
-import React from 'react';
-import { getServerSession } from 'next-auth';
-import { redirect } from 'next/navigation';
-import { authOptions } from '@/auth.config';
-import { prisma } from '@/lib/prisma';
-import { Session } from 'next-auth';
+import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import SettingsForm from '@/components/forms/SettingsForm';
 
-export const metadata = {
-  title: 'Settings - BoothBoss Admin',
-  description: 'Configure your photo booth settings',
+type Settings = {
+  id: string;
+  eventName: string;
+  adminEmail: string;
+  countdownTime: number;
+  resetTime: number;
+  emailSubject: string;
+  emailTemplate: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPassword: string;
+  companyName: string;
+  companyLogo: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  theme?: string;
+  backgroundColor?: string | null;
+  borderColor?: string | null;
+  buttonColor?: string | null;
+  textColor?: string | null;
+  notes?: string | null;
 };
 
-export default async function SettingsPage() {
-  const session = await getServerSession(authOptions) as Session | null;
+type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
+
+
+export default function SettingsPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  if (!session) {
-    redirect('/login');
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+      return;
+    }
+    
+    async function fetchSettings() {
+      try {
+        setIsLoading(true);
+        
+        const response = await fetch('/api/admin/settings');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch settings');
+        }
+        
+        const data = await response.json();
+        setSettings(data);
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+        setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchSettings();
+  }, [status, router]);
+  
+  const handleUpdateSettings = async (updatedSettings: any) => {
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedSettings),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update settings');
+      }
+      
+      const data = await response.json();
+      setSettings(data);
+      
+      return data;
+    } catch (err) {
+      console.error('Error updating settings:', err);
+      throw err;
+    }
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-full py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+      </div>
+    );
   }
   
-  // Fetch current settings
-  const settings = await prisma.settings.findFirst();
+  if (error) {
+    return (
+      <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <div className="mt-2 text-sm text-red-700">
+              <p>{error}</p>
+            </div>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   if (!settings) {
     return (
@@ -35,85 +144,13 @@ export default async function SettingsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Booth Settings</h1>
-      
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <p className="text-sm text-gray-500 mb-6">
-          The settings form will be implemented with client-side functionality in the next step.
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h2 className="text-lg font-medium mb-4">Booth Configuration</h2>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Event Name</dt>
-                <dd className="mt-1 text-base text-gray-900">{settings.eventName}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Countdown Time</dt>
-                <dd className="mt-1 text-base text-gray-900">{settings.countdownTime} seconds</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Reset Time</dt>
-                <dd className="mt-1 text-base text-gray-900">{settings.resetTime} seconds</dd>
-              </div>
-            </dl>
-          </div>
-          
-          <div>
-            <h2 className="text-lg font-medium mb-4">Email Configuration</h2>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Admin Email</dt>
-                <dd className="mt-1 text-base text-gray-900">{settings.adminEmail}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Email Subject</dt>
-                <dd className="mt-1 text-base text-gray-900">{settings.emailSubject}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">SMTP Server</dt>
-                <dd className="mt-1 text-base text-gray-900">{settings.smtpHost}:{settings.smtpPort}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-        
-        <div className="mt-8">
-          <h2 className="text-lg font-medium mb-4">Branding</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Company Name</dt>
-              <dd className="mt-1 text-base text-gray-900">{settings.companyName}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Colors</dt>
-              <dd className="mt-1 flex space-x-2">
-                <div className="flex items-center">
-                  <div
-                    className="w-6 h-6 rounded mr-2"
-                    style={{ backgroundColor: settings.primaryColor }}
-                  />
-                  <span className="text-sm">{settings.primaryColor}</span>
-                </div>
-                <div className="flex items-center">
-                  <div
-                    className="w-6 h-6 rounded mr-2"
-                    style={{ backgroundColor: settings.secondaryColor }}
-                  />
-                  <span className="text-sm">{settings.secondaryColor}</span>
-                </div>
-              </dd>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="mt-6 flex justify-end">
-        <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-          Edit Settings
-        </button>
-      </div>
+      <SettingsForm 
+        initialSettings={{
+          ...settings,
+          theme: (settings.theme as ThemeOption) || 'custom'
+        } as any}
+        onSubmit={handleUpdateSettings}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { getThemeSettings } from "@/lib/theme-loader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,13 +18,40 @@ export const metadata: Metadata = {
   description: "Photo Booth Software",
 };
 
-export default function RootLayout({
+ // Dynamically load theme settings
+ export async function generateMetadata(): Promise<Metadata> {
+   const themeSettings = await getThemeSettings();
+   
+   return {
+     title: `${themeSettings?.companyName || 'BoothBoss'} - Photo Booth`,
+     description: "Photo Booth Software",
+   };
+ }
+
+ export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const themeSettings = await getThemeSettings();
   return (
     <html lang="en">
+      <head>
+        {themeSettings && (
+          <style dangerouslySetInnerHTML={{ 
+            __html: `
+              :root {
+                --color-primary: ${themeSettings.primaryColor};
+                --color-secondary: ${themeSettings.secondaryColor};
+                --color-background: ${themeSettings.backgroundColor || '#ffffff'};
+                --color-border: ${themeSettings.borderColor || '#e5e7eb'};
+                --color-button: ${themeSettings.buttonColor || themeSettings.primaryColor};
+                --color-text: ${themeSettings.textColor || '#111827'};
+              }
+            ` 
+          }} />
+        )}
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
