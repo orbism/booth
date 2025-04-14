@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT(_request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
       return unauthorizedResponse();
     }
     
-    const data = await request.json();
+    const data = await _request.json();
     
     // Validate settings data
     const validatedData = settingsSchema.parse(data);

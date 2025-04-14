@@ -34,7 +34,7 @@ type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
 
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,7 +69,7 @@ export default function SettingsPage() {
     fetchSettings();
   }, [status, router]);
   
-  const handleUpdateSettings = async (updatedSettings: any) => {
+  const handleUpdateSettings = async (updatedSettings: Partial<Settings>) => {
     try {
       const response = await fetch('/api/admin/settings', {
         method: 'PUT',
