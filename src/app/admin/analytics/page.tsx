@@ -20,6 +20,15 @@ interface AnalyticsSummary {
   topEmailDomains?: { domain: string; count: number }[];
 }
 
+interface BoothEvent {
+  id: string;
+  timestamp: Date;
+  eventType: string;
+  analytics?: {
+    sessionId: string;
+  } | null;
+}
+
 // Cast getAnalyticsSummary so that it accepts a number argument.
 const getAnalyticsSummaryWithParam = getAnalyticsSummary as (days: number) => Promise<AnalyticsSummary>;
 
@@ -36,17 +45,36 @@ async function getAnalyticsData() {
 
 // Get recent events for tracking.
 async function getRecentEvents() {
-  const events = await prisma.boothEventLog.findMany({
-    take: 20,
-    orderBy: {
-      timestamp: 'desc',
-    },
-    include: {
-      analytics: true,
-    },
-  });
-  
-  return events;
+  try {
+    // First find valid analytics IDs
+    const validAnalytics = await prisma.boothAnalytics.findMany({
+      select: { id: true },
+      take: 50  // Get more than we need to ensure we have valid relations
+    });
+    
+    const validIds = validAnalytics.map((a: { id: string }) => a.id);
+    
+    // Now get events that have valid analytics IDs
+    const events = await prisma.boothEventLog.findMany({
+      where: {
+        analyticsId: {
+          in: validIds
+        }
+      },
+      take: 20,
+      orderBy: {
+        timestamp: 'desc',
+      },
+      include: {
+        analytics: true,
+      },
+    });
+    
+    return events;
+  } catch (error) {
+    console.error('Error fetching recent events:', error);
+    return []; // Return empty array on error
+  }
 }
 
 export default async function AnalyticsPage() {
@@ -120,14 +148,7 @@ export default async function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {recentEvents.map((event: { 
-                      id: string; 
-                      timestamp: Date; 
-                      eventType: string; 
-                      analytics: { 
-                        sessionId: string 
-                      } 
-                  }) => (
+                  {recentEvents.map((event: BoothEvent) => (
                     <tr key={event.id}>
                       <td className="px-2 py-1 text-xs whitespace-nowrap">
                         {new Date(event.timestamp).toLocaleTimeString()}
@@ -136,7 +157,9 @@ export default async function AnalyticsPage() {
                         {formatEventType(event.eventType)}
                       </td>
                       <td className="px-2 py-1 text-xs text-gray-500">
-                        {event.analytics.sessionId.substring(0, 8)}...
+                        {event.analytics?.sessionId 
+                          ? `${event.analytics.sessionId.substring(0, 8)}...` 
+                          : 'Unknown session'}
                       </td>
                     </tr>
                   ))}
