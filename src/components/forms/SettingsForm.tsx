@@ -12,9 +12,10 @@ import GeneralTab from './tabs/GeneralTab';
 import EmailTab from './tabs/EmailTab';
 import AppearanceTab from './tabs/AppearanceTab';
 import TemplatesTab from './tabs/TemplatesTab';
+import CustomJourneyTab from './tabs/CustomJourneyTab';
 import AdvancedTab from './tabs/AdvancedTab';
 
-type SettingsTab = 'general' | 'email' | 'appearance' | 'templates' | 'advanced';
+type SettingsTab = 'general' | 'email' | 'appearance' | 'templates' | 'advanced' | 'journey';
 
 type SettingsData = {
     id: string;
@@ -55,6 +56,17 @@ const settingsSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   companyLogo: z.string().optional().nullable(),
   theme: z.enum(["midnight", "pastel", "bw", "custom"]).default("custom"),
+  customJourneyEnabled: z.boolean().default(false),
+  journeyPages: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      content: z.string(),
+      backgroundImage: z.string().nullable(),
+      buttonText: z.string(),
+      buttonImage: z.string().nullable()
+    })
+  ).default([]),
   templateId: z.string().optional(),
   userJourneySteps: z.array(z.string()).default(['info', 'photo', 'preview', 'complete']),
   primaryColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color"),
@@ -85,6 +97,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     watch,
     setValue,
     reset,
+    control,
     formState: { errors }
   } = useForm<SettingsFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -235,6 +248,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
           </button>
           <button
             type="button"
+            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === 'journey' 
+              ? 'border-b-2 border-blue-500 text-blue-600' 
+              : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab('journey')}
+          >
+            Custom Journey
+          </button>
+          <button
+            type="button"
             className={`px-4 py-2 font-medium text-sm ${activeTab === 'advanced' 
               ? 'border-b-2 border-blue-500 text-blue-600' 
               : 'text-gray-500 hover:text-gray-700'}`}
@@ -298,7 +320,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
 
           {/* Appearance Tab */}
           {activeTab === 'appearance' && (
-            <EmailTab 
+            <AppearanceTab 
               register={register} 
               watch={watch} 
               setValue={setValue} 
@@ -306,12 +328,24 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
             />
           )}
 
+          {/* Templates Tab */}
           {activeTab === 'templates' && (
             <TemplatesTab 
               register={register} 
               watch={watch} 
               setValue={setValue} 
               errors={errors} 
+            />
+          )}
+
+          {/* User Journey Setup Tab */}
+          {activeTab === 'journey' && (
+            <CustomJourneyTab 
+              register={register} 
+              watch={watch} 
+              setValue={setValue} 
+              errors={errors}
+              control={control}
             />
           )}
 

@@ -139,6 +139,30 @@ The application includes an admin dashboard for managing booth sessions and sett
 
 Access to these routes is protected by authentication middleware.
 
+## Custom User Journey
+
+The application includes a powerful Custom User Journey builder for creating personalized photo booth experiences:
+
+### Features
+- Visual journey editor with drag-and-drop organization
+- Custom text, background images, and button styling
+- Up to 8 customizable pages in the journey flow
+- Import/export journey configurations for reuse
+- Preview mode to visualize the complete journey flow
+
+### Configuration
+1. Access the journey builder from the admin dashboard under Settings > Custom Journey
+2. Enable custom journey mode with the toggle switch
+3. Add pages using the "Add Page" button
+4. Customize each page with text, backgrounds, and button properties
+5. Reorder pages using the up/down arrows
+6. Save configuration when complete
+
+### Technical Details
+- Journey configurations are stored as JSON in the database
+- Background images are stored in the public uploads directory
+- Custom buttons support both text and image modes
+
 ## Analytics Features
 
 The application includes comprehensive analytics tracking for booth sessions:

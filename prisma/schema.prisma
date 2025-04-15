@@ -67,6 +67,8 @@ model Settings {
   buttonColor     String?
   textColor       String?
   notes           String? @db.Text
+  customJourneyEnabled Boolean @default(false)
+  journeyConfig        Json?
 }
 
 // Analytics models start here

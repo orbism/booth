@@ -14,7 +14,8 @@ booth-boss/
 ├── prisma/                                     # Database ORM
 │   ├── migrations/                             # Database migrations
 │       └── manual/                             #
-│           └── add_theme_fields.sql            # Theme fields migrations
+│   │       ├── add_theme_fields.sql            # Theme fields migrations
+│   │       └── add_journey_fields.sql          # Custom journey fields migrations
 │   ├── schema.prisma                           # Prisma schema definition
 │   └── seed.ts                                 # Database seed script
 ├── scripts/                                    # Helper scripts
@@ -96,6 +97,7 @@ booth-boss/
 │   │   │   │   ├── EmailTab.tsx                # Email configuration
 │   │   │   │   ├── AppearanceTab.tsx           # Visual customization
 │   │   │   │   ├── TemplatesTab.tsx            # Theme selection and user journey
+│   │   │   │   ├── CustomJourneyTab.tsx        # Custom user journey editor
 │   │   │   │   └── AdvancedTab.tsx             # Advanced settings and utilities
 │   │   │   ├── SettingsForm.tsx                # Backend exposed settings form
 │   │   │   └── UserInfoForm.tsx                # User information form

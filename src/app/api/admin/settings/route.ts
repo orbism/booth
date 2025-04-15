@@ -28,6 +28,17 @@ const settingsSchema = z.object({
   buttonColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional(),
   textColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional(),
   notes: z.string().optional().nullable(),
+  customJourneyEnabled: z.boolean().default(false),
+  journeyPages: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      content: z.string(),
+      backgroundImage: z.string().nullable(),
+      buttonText: z.string(),
+      buttonImage: z.string().nullable()
+    })
+  ).default([])
 });
 
 export async function GET(_request: NextRequest) {
@@ -50,8 +61,16 @@ export async function GET(_request: NextRequest) {
         status: 404 
       });
     }
+
+    // Parse journey config from JSON if it exists
+    const journeyPages = settings.journeyConfig 
+    ? JSON.parse(settings.journeyConfig as string) 
+    : [];
     
-    return NextResponse.json(settings);
+    return NextResponse.json({
+      ...settings,
+      journeyPages
+    });
   } catch (error) {
     return handleApiError(error, 'Failed to fetch settings');
   }
@@ -75,6 +94,12 @@ export async function PUT(_request: NextRequest) {
     
     // Validate settings data
     const validatedData = settingsSchema.parse(data);
+
+    // Transform journey pages to JSON for storage
+    const dataToSave = {
+      ...validatedData,
+      journeyConfig: validatedData.journeyPages ? JSON.stringify(validatedData.journeyPages) : null
+    };
     
     // Find existing settings
     const existingSettings = await prisma.settings.findFirst();
@@ -92,7 +117,11 @@ export async function PUT(_request: NextRequest) {
       where: {
         id: existingSettings.id
       },
-      data: validatedData
+      data: {
+        ...validatedData,
+        journeyConfig: validatedData.journeyPages ? JSON.stringify(validatedData.journeyPages) : null
+      }
+      
     });
     
     return NextResponse.json(updatedSettings);
