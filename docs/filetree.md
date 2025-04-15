@@ -62,7 +62,8 @@ booth-boss/
 │   │   │   │       └── route.ts                # Photo capture API handler
 │   │   │   ├── media/                          # not in use
 │   │   │   └── users/                          # not in use
-│   │   ├── components/                         # not in use
+│   │   ├── context/                            # 
+│   │   │   └── ThemeContext.tsx                # New theme context provider
 │   │   ├── hooks/                              # not in use
 │   │   ├── lib/                                # not in use
 │   │   ├── login/                              # Admin login
@@ -90,6 +91,12 @@ booth-boss/
 │   │   │   ├── PhotoPreview.tsx                # Photo review component
 │   │   │   └── ...                             # Other booth components
 │   │   ├── forms/                              # Form components
+│   │   │   ├── tabs/                           # Tab content
+│   │   │   │   ├── GeneralTab.tsx              # Basic booth settings
+│   │   │   │   ├── EmailTab.tsx                # Email configuration
+│   │   │   │   ├── AppearanceTab.tsx           # Visual customization
+│   │   │   │   ├── TemplatesTab.tsx            # Theme selection and user journey
+│   │   │   │   └── AdvancedTab.tsx             # Advanced settings and utilities
 │   │   │   ├── SettingsForm.tsx                # Backend exposed settings form
 │   │   │   └── UserInfoForm.tsx                # User information form
 │   │   ├── providers/                          # Client component providers
