@@ -188,7 +188,10 @@ const TemplatesTab: React.FC<TemplatesTabProps> = ({
             <input
               type="checkbox"
               id="step-preview"
-              checked={true}
+              defaultChecked={true}
+              onChange={(e) => {
+                // Handle checkbox change if needed
+              }}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label htmlFor="step-preview" className="ml-3 block text-sm font-medium text-gray-700">

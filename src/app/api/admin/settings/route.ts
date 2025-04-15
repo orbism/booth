@@ -66,6 +66,12 @@ export async function PUT(_request: NextRequest) {
     }
     
     const data = await _request.json();
+
+    console.log('Updating settings with:', {
+      theme: data.theme,
+      primaryColor: data.primaryColor,
+      secondaryColor: data.secondaryColor
+    });
     
     // Validate settings data
     const validatedData = settingsSchema.parse(data);

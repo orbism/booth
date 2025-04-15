@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getThemeSettings } from "@/lib/theme-loader";
+import { generateThemeCssOverrides } from "@/lib/theme-css-injector";
+
+export const revalidate = 0; // Disable cachine for this page
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,6 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${themeSettings?.companyName || 'BoothBoss'} - Photo Booth App`,
     description: "Photo Booth Software",
+
   };
 }
 
@@ -28,21 +32,17 @@ export async function generateMetadata(): Promise<Metadata> {
   children: React.ReactNode;
 }>) {
   const themeSettings = await getThemeSettings();
+  
+  // Generate comprehensive CSS overrides
+  const themeStyles = themeSettings ? 
+    generateThemeCssOverrides(themeSettings) : '';
+
   return (
     <html lang="en">
       <head>
         {themeSettings && (
-          <style dangerouslySetInnerHTML={{ 
-            __html: `
-              :root {
-                --color-primary: ${themeSettings.primaryColor};
-                --color-secondary: ${themeSettings.secondaryColor};
-                --color-background: ${themeSettings.backgroundColor || '#ffffff'};
-                --color-border: ${themeSettings.borderColor || '#e5e7eb'};
-                --color-button: ${themeSettings.buttonColor || themeSettings.primaryColor};
-                --color-text: ${themeSettings.textColor || '#111827'};
-              }
-            ` 
+          <style id="theme-overrides" dangerouslySetInnerHTML={{ 
+            __html: themeStyles
           }} />
         )}
       </head>

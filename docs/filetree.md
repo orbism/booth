@@ -113,6 +113,7 @@ booth-boss/
 │   │   ├── errors.ts                           # Error handling utilities
 │   │   ├── prisma.ts                           # Prisma client setup
 │   │   ├── themes.ts                           # Theme configuration utility
+│   │   ├── theme-css-injector.ts               # Theme injector to override Tailwind classes
 │   │   └── theme-loader.ts                     # Helper for loading theme settings
 │   ├── types/                                  # TypeScript type definitions
 │   │   └── next-auth.d.ts                      # NextAuth type extensions

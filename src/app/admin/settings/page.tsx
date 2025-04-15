@@ -1,7 +1,7 @@
 // src/app/admin/settings/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import SettingsForm from '@/components/forms/SettingsForm';
@@ -71,12 +71,24 @@ export default function SettingsPage() {
   
   const handleUpdateSettings = async (updatedSettings: Partial<Settings>) => {
     try {
+      // Show loading UI
+      setIsLoading(true);
+      setError(null);
+      
       const response = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedSettings),
+        body: JSON.stringify({
+          ...updatedSettings,
+          // Ensure theme-related fields are included with defaults if not provided
+          theme: updatedSettings.theme || 'custom',
+          backgroundColor: updatedSettings.backgroundColor || '#ffffff',
+          borderColor: updatedSettings.borderColor || '#e5e7eb',
+          buttonColor: updatedSettings.buttonColor || updatedSettings.primaryColor,
+          textColor: updatedSettings.textColor || '#111827',
+        }),
       });
       
       if (!response.ok) {
@@ -85,14 +97,40 @@ export default function SettingsPage() {
       }
       
       const data = await response.json();
+
+      // Update local state with new settings
       setSettings(data);
+
+      await refreshSettings();
       
       return data;
     } catch (err) {
       console.error('Error updating settings:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const refreshSettings = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/admin/settings');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings');
+      }
+      
+      const data = await response.json();
+      setSettings(data);
+    } catch (err) {
+      console.error('Error refreshing settings:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
   
   if (isLoading) {
     return (

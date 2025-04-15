@@ -136,13 +136,36 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     }
   };
 
+  useEffect(() => {
+    const currentTheme = watch('theme') as ThemeOption;
+    if (currentTheme && currentTheme !== 'custom') {
+      // Apply theme preset values when theme changes
+      const themeColors = THEMES[currentTheme as Exclude<ThemeOption, 'custom'>];
+      setValue('primaryColor', themeColors.primaryColor);
+      setValue('secondaryColor', themeColors.secondaryColor);
+      setValue('backgroundColor', themeColors.backgroundColor);
+      setValue('borderColor', themeColors.borderColor);
+      setValue('buttonColor', themeColors.buttonColor);
+      setValue('textColor', themeColors.textColor);
+    }
+  }, [watch('theme'), setValue]);
+
   const handleFormSubmit = async (data: SettingsFormValues) => {
     try {
       setIsSubmitting(true);
       setError(null);
       setSuccessMessage(null);
       
-      await onSubmit(data);
+      // Make sure no null values are sent for optional fields
+      const formattedData = {
+        ...data,
+        backgroundColor: data.backgroundColor || '#ffffff',
+        borderColor: data.borderColor || '#e5e7eb',
+        buttonColor: data.buttonColor || data.primaryColor,
+        textColor: data.textColor || '#111827',
+      };
+    
+      await onSubmit(formattedData);
       
       setSuccessMessage('Settings saved successfully!');
       
@@ -151,6 +174,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
         setSuccessMessage(null);
       }, 3000);
     } catch (err) {
+      console.error('Settings update error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setIsSubmitting(false);
@@ -304,14 +328,32 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
           )}
 
           {/* Form Actions */}
-          <div className="pt-6 mt-6 border-t border-gray-200 flex justify-end">
-              <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                  {isSubmitting ? 'Saving...' : 'Save Settings'}
-              </button>
+          <div className="pt-6 mt-6 border-t border-gray-200 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => reset()}
+              disabled={isSubmitting}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+            >
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                'Save Settings'
+              )}
+            </button>
           </div>
         </form>
       </ThemeProvider>
