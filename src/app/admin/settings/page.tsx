@@ -146,8 +146,27 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold mb-6">Booth Settings</h1>
       <SettingsForm 
         initialSettings={{
-          ...settings,
-          theme: (settings.theme as ThemeOption) || 'custom'
+          id: settings.id,
+          eventName: settings.eventName,
+          adminEmail: settings.adminEmail,
+          countdownTime: settings.countdownTime,
+          resetTime: settings.resetTime,
+          emailSubject: settings.emailSubject,
+          emailTemplate: settings.emailTemplate,
+          smtpHost: settings.smtpHost,
+          smtpPort: settings.smtpPort,
+          smtpUser: settings.smtpUser,
+          smtpPassword: settings.smtpPassword,
+          companyName: settings.companyName,
+          companyLogo: settings.companyLogo || null,
+          primaryColor: settings.primaryColor,
+          secondaryColor: settings.secondaryColor,
+          theme: (settings.theme as ThemeOption) || 'custom',
+          backgroundColor: settings.backgroundColor ?? null,
+          borderColor: settings.borderColor ?? null,
+          buttonColor: settings.buttonColor ?? null,
+          textColor: settings.textColor ?? null,
+          notes: settings.notes ?? null,
         }}
         onSubmit={handleUpdateSettings}
       />

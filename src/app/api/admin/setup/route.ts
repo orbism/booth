@@ -8,10 +8,8 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
     const adminEmail = process.env.ADMIN_EMAIL;
-    
-    // Verify this is the admin email
-    if (email !== adminEmail) {
-      return forbiddenResponse('Unauthorized: Not the admin email');
+    if (!adminEmail) {
+      throw new Error('The ADMIN_EMAIL environment variable must be set.');
     }
     
     // Check if admin user exists

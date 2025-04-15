@@ -11,18 +11,30 @@ export const metadata = {
   description: 'Analytics dashboard for your photo booth',
 };
 
-// Get analytics data for time periods
+// Define an interface for the summary results.
+interface AnalyticsSummary {
+  totalSessions: number;
+  completedSessions: number;
+  completionRate: string;
+  averageCompletionTimeMs: number;
+  topEmailDomains?: { domain: string; count: number }[];
+}
+
+// Cast getAnalyticsSummary so that it accepts a number argument.
+const getAnalyticsSummaryWithParam = getAnalyticsSummary as (days: number) => Promise<AnalyticsSummary>;
+
+// Get analytics data for different time periods.
 async function getAnalyticsData() {
   const [daily, weekly, monthly] = await Promise.all([
-    getAnalyticsSummary(1),
-    getAnalyticsSummary(7),
-    getAnalyticsSummary(30),
+    getAnalyticsSummaryWithParam(1),
+    getAnalyticsSummaryWithParam(7),
+    getAnalyticsSummaryWithParam(30),
   ]);
   
   return { daily, weekly, monthly };
 }
 
-// Get recent events for tracking
+// Get recent events for tracking.
 async function getRecentEvents() {
   const events = await prisma.boothEventLog.findMany({
     take: 20,
@@ -57,21 +69,21 @@ export default async function AnalyticsPage() {
           title="Today" 
           sessions={daily?.totalSessions || 0}
           completed={daily?.completedSessions || 0}
-          completionRate={daily?.completionRate || '0'}
+          completionRate={daily?.completionRate.toString() || '0'}
           avgTime={(daily?.averageCompletionTimeMs || 0) / 1000}
         />
         <StatCard 
           title="This Week" 
           sessions={weekly?.totalSessions || 0}
           completed={weekly?.completedSessions || 0}
-          completionRate={weekly?.completionRate || '0'}
+          completionRate={weekly?.completionRate.toString() || '0'}
           avgTime={(weekly?.averageCompletionTimeMs || 0) / 1000}
         />
         <StatCard 
           title="This Month" 
           sessions={monthly?.totalSessions || 0}
           completed={monthly?.completedSessions || 0}
-          completionRate={monthly?.completionRate || '0'}
+          completionRate={monthly?.completionRate.toString() || '0'}
           avgTime={(monthly?.averageCompletionTimeMs || 0) / 1000}
         />
       </div>
@@ -82,12 +94,12 @@ export default async function AnalyticsPage() {
           <h2 className="text-lg font-medium mb-4">Top Email Domains</h2>
           {monthly?.topEmailDomains?.length ? (
             <ul className="space-y-2">
-                {monthly.topEmailDomains.map((item: { domain: string; count: number }, index: number) => (
-                    <li key={index} className="flex justify-between">
-                    <span className="text-gray-700">{item.domain}</span>
-                    <span className="font-medium">{item.count}</span>
-                    </li>
-                ))}
+              {monthly.topEmailDomains.map((item: { domain: string; count: number }, index: number) => (
+                <li key={index} className="flex justify-between">
+                  <span className="text-gray-700">{item.domain}</span>
+                  <span className="font-medium">{item.count}</span>
+                </li>
+              ))}
             </ul>
           ) : (
             <p className="text-gray-500">No email domain data available</p>
@@ -108,26 +120,26 @@ export default async function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                    {recentEvents.map((event: { 
-                        id: string; 
-                        timestamp: Date; 
-                        eventType: string; 
-                        analytics: { 
-                            sessionId: string 
-                        } 
-                    }) => (
-                        <tr key={event.id}>
-                        <td className="px-2 py-1 text-xs whitespace-nowrap">
-                            {new Date(event.timestamp).toLocaleTimeString()}
-                        </td>
-                        <td className="px-2 py-1 text-xs">
-                            {formatEventType(event.eventType)}
-                        </td>
-                        <td className="px-2 py-1 text-xs text-gray-500">
-                            {event.analytics.sessionId.substring(0, 8)}...
-                        </td>
-                        </tr>
-                    ))}
+                  {recentEvents.map((event: { 
+                      id: string; 
+                      timestamp: Date; 
+                      eventType: string; 
+                      analytics: { 
+                        sessionId: string 
+                      } 
+                  }) => (
+                    <tr key={event.id}>
+                      <td className="px-2 py-1 text-xs whitespace-nowrap">
+                        {new Date(event.timestamp).toLocaleTimeString()}
+                      </td>
+                      <td className="px-2 py-1 text-xs">
+                        {formatEventType(event.eventType)}
+                      </td>
+                      <td className="px-2 py-1 text-xs text-gray-500">
+                        {event.analytics.sessionId.substring(0, 8)}...
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
