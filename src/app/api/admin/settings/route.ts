@@ -40,7 +40,11 @@ const settingsSchema = z.object({
     })
   ).default([]),
   journeyId: z.string().optional(),
-
+  splashPageEnabled: z.boolean().default(false),
+  splashPageTitle: z.string().optional(),
+  splashPageContent: z.string().optional(),
+  splashPageImage: z.string().optional().nullable(),
+  splashPageButtonText: z.string().optional(),
 });
 
 export async function GET(_request: NextRequest) {
@@ -140,7 +144,12 @@ export async function PUT(_request: NextRequest) {
         activeJourneyId: validatedData.journeyId || null,
         journeyConfig: validatedData.journeyPages?.length 
           ? JSON.stringify(validatedData.journeyPages)
-          : null
+          : null,
+        splashPageEnabled: validatedData.splashPageEnabled,
+        splashPageTitle: validatedData.splashPageTitle,
+        splashPageContent: validatedData.splashPageContent,
+        splashPageImage: validatedData.splashPageImage,
+        splashPageButtonText: validatedData.splashPageButtonText,
       }
     });
     

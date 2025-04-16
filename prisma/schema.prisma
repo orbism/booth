@@ -70,6 +70,11 @@ model Settings {
   customJourneyEnabled Boolean @default(false)
   activeJourneyId     String?  // ID of the currently active journey
   journeyConfig        Json?
+  splashPageEnabled   Boolean @default(false)
+  splashPageTitle     String?
+  splashPageContent   String?
+  splashPageImage     String?
+  splashPageButtonText String? @default("Start")
 }
 
 model Journey {

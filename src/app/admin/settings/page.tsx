@@ -39,6 +39,11 @@ type Settings = {
     buttonText: string;
     buttonImage: string | null;
   }>;
+  splashPageEnabled: boolean;
+  splashPageTitle: string;
+  splashPageContent: string;
+  splashPageImage: string | null;
+  splashPageButtonText: string;
 };
 
 type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
@@ -229,6 +234,11 @@ export default function SettingsPage() {
           customJourneyEnabled: settings.customJourneyEnabled || false,
           activeJourneyId: settings.activeJourneyId || null,
           journeyPages: settings.journeyPages || [],
+          splashPageEnabled: settings.splashPageEnabled || false,
+          splashPageTitle: settings.splashPageTitle || '',
+          splashPageContent: settings.splashPageContent || '',
+          splashPageImage: settings.splashPageImage || null,
+          splashPageButtonText: settings.splashPageButtonText || '',
         }}
         onSubmit={handleUpdateSettings}
       />

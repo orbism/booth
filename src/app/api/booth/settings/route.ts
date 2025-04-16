@@ -36,6 +36,11 @@ export async function GET() {
       theme: settings.theme,
       customJourneyEnabled: settings.customJourneyEnabled,
       journeyPages,
+      splashPageEnabled: settings.splashPageEnabled,
+      splashPageTitle: settings.splashPageTitle,
+      splashPageContent: settings.splashPageContent,
+      splashPageImage: settings.splashPageImage,
+      splashPageButtonText: settings.splashPageButtonText,
     });
   } catch (error) {
     return handleApiError(error, 'Failed to fetch booth settings');

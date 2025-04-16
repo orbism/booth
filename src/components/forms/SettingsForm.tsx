@@ -14,8 +14,9 @@ import AppearanceTab from './tabs/AppearanceTab';
 import TemplatesTab from './tabs/TemplatesTab';
 import CustomJourneyTab from './tabs/CustomJourneyTab';
 import AdvancedTab from './tabs/AdvancedTab';
+import SplashTab from './tabs/SplashTab';
 
-type SettingsTab = 'general' | 'email' | 'appearance' | 'templates' | 'advanced' | 'journey';
+type SettingsTab = 'general' | 'email' | 'splash' | 'appearance' | 'templates' | 'advanced' | 'journey';
 
 type SettingsData = {
   id: string;
@@ -39,7 +40,6 @@ type SettingsData = {
   buttonColor: string | null;
   textColor: string | null;
   notes: string | null;
-  // Add these new fields
   customJourneyEnabled: boolean;
   journeyName?: string;
   activeJourneyId?: string | null;
@@ -51,6 +51,11 @@ type SettingsData = {
     buttonText: string;
     buttonImage: string | null;
   }>;
+  splashPageEnabled: boolean;
+  splashPageTitle: string | null;
+  splashPageContent: string | null;
+  splashPageImage: string | null;
+  splashPageButtonText: string | null;
 };
 
 // Settings schema
@@ -88,6 +93,11 @@ const settingsSchema = z.object({
       buttonImage: z.string().nullable()
     })
   ).optional().default([]),
+  splashPageEnabled: z.boolean().default(false),
+  splashPageTitle: z.string().optional(),
+  splashPageContent: z.string().optional(),
+  splashPageImage: z.string().optional().nullable(),
+  splashPageButtonText: z.string().optional(),
 });
 
 export type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -139,6 +149,11 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       journeyName: initialSettings.journeyName || 'Default Journey',
       journeyId: initialSettings.activeJourneyId || '',
       journeyPages: initialSettings.journeyPages || [],
+      splashPageEnabled: initialSettings.splashPageEnabled || false,
+      splashPageTitle: initialSettings.splashPageTitle || '',
+      splashPageContent: initialSettings.splashPageContent || '',
+      splashPageImage: initialSettings.splashPageImage || null,
+      splashPageButtonText: initialSettings.splashPageButtonText || 'Start',
     }
   });
 
@@ -246,6 +261,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
           </button>
           <button
             type="button"
+            className={`px-4 py-2 font-medium text-sm ${activeTab === 'splash' 
+              ? 'border-b-2 border-blue-500 text-blue-600' 
+              : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab('splash')}
+          >
+            Splash Page
+          </button>
+          <button
+            type="button"
             className={`px-4 py-2 font-medium text-sm ${activeTab === 'appearance' 
               ? 'border-b-2 border-blue-500 text-blue-600' 
               : 'text-gray-500 hover:text-gray-700'}`}
@@ -327,6 +351,16 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
           {/* Email Settings Tab */}
           {activeTab === 'email' && (
             <EmailTab 
+              register={register} 
+              watch={watch} 
+              setValue={setValue} 
+              errors={errors} 
+            />
+          )}
+
+          {/* Splash Tab */}
+          {activeTab === 'splash' && (
+            <SplashTab 
               register={register} 
               watch={watch} 
               setValue={setValue} 

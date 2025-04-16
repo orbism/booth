@@ -53,6 +53,11 @@ export default async function Home() {
           }}
           customJourneyEnabled={settings.customJourneyEnabled || false}
           journeyPages={journeyPages}
+          splashPageEnabled={settings.splashPageEnabled || false}
+          splashPageTitle={settings.splashPageTitle || 'Welcome to Our Photo Booth'}
+          splashPageContent={settings.splashPageContent || 'Get ready for a fun photo experience!'}
+          splashPageImage={settings.splashPageImage}
+          splashPageButtonText={settings.splashPageButtonText || 'Start'}
         />
       </div>
     </BoothLayout>

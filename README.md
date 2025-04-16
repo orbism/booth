@@ -151,6 +151,36 @@ The application includes a powerful Custom User Journey builder for creating per
 - Preview mode to visualize the complete journey flow
 
 ### Configuration
+All user journey elements can be configured through the admin dashboard:
+1. General settings for basic booth configuration
+2. Splash Page tab for welcome screen setup
+3. Templates tab for theme selection
+4. Custom Journey tab for multi-step experiences
+5. Email tab for delivery settings
+6. Advanced tab for system configuration
+
+### Technical Details
+- Journey configurations are stored as JSON in the database
+- Background images are stored in the public uploads directory
+- Custom buttons support both text and image modes
+
+### Splash Page
+- Optional welcome screen with customizable title, content, background image and button
+- Can be enabled/disabled through admin settings
+- Provides a branded introduction to the photo booth experience
+
+### User Data Collection
+- Customizable form for collecting user name and email
+- Required for photo delivery
+- Always appears after splash page (if enabled) or as the first screen (if no splash)
+
+### Custom Journey
+- Optional multi-step experience between data collection and photo capture
+- Create up to 8 custom pages with unique content and styling
+- Each page can have custom background images and button designs
+- Perfect for event instructions, sponsorship acknowledgments, or thematic content
+
+### Custom Journey Configuration
 1. Access the journey builder from the admin dashboard under Settings > Custom Journey
 2. Enable custom journey mode with the toggle switch
 3. Add pages using the "Add Page" button
@@ -158,10 +188,11 @@ The application includes a powerful Custom User Journey builder for creating per
 5. Reorder pages using the up/down arrows
 6. Save configuration when complete
 
-### Technical Details
-- Journey configurations are stored as JSON in the database
-- Background images are stored in the public uploads directory
-- Custom buttons support both text and image modes
+### Photo Capture
+- Professional countdown timer with sound effects
+- Live preview with optional filters and effects
+- Review and retake capabilities
+- Automated delivery to user's email
 
 ## Analytics Features
 

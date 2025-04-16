@@ -8,6 +8,7 @@ import PhotoPreview from '@/components/booth/PhotoPreview';
 import ErrorMessage from '@/components/ui/ErrorMessage';
 import JourneyContainer from '@/components/journey/JourneyContainer';
 import { JourneyPage } from '@/types/journey';
+import SplashPage from './SplashPage';
 
 import { v4 as uuidv4 } from 'uuid';
 import { trackBoothEvent } from '@/lib/analytics';
@@ -17,7 +18,7 @@ type UserData = {
   email: string;
 };
 
-type BoothStage = 'collect-info' | 'countdown' | 'preview' | 'complete';
+type BoothStage = 'splash' | 'collect-info' | 'countdown' | 'preview' | 'complete';
 
 interface ThemeSettings {
   primaryColor: string;
@@ -34,6 +35,11 @@ interface PhotoBoothProps {
   themeSettings?: ThemeSettings;
   customJourneyEnabled?: boolean;
   journeyPages?: JourneyPage[];
+  splashPageEnabled?: boolean;
+  splashPageTitle?: string;
+  splashPageContent?: string;
+  splashPageImage?: string | null;
+  splashPageButtonText?: string;
 }
 
 const PhotoBooth: React.FC<PhotoBoothProps> = ({
@@ -49,8 +55,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   },
   customJourneyEnabled = false,
   journeyPages = [],
+  splashPageEnabled = false,
+  splashPageTitle = 'Welcome to Our Photo Booth',
+  splashPageContent = 'Get ready for a fun photo experience!',
+  splashPageImage = null,
+  splashPageButtonText = 'Start',
 }) => {
-  const [stage, setStage] = useState<BoothStage>('collect-info');
+  const [stage, setStage] = useState<BoothStage>(splashPageEnabled ? 'splash' : 'collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -124,12 +135,19 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     };
   }, []);
   
-  
+  // Handle splash page completion
+  const handleSplashComplete = () => {
+    setStage('collect-info');
+    
+    // Track event if analytics is enabled
+    if (analyticsId) {
+      trackBoothEvent(analyticsId, 'splash_complete');
+    }
+  };
   
   // Handle user info submission
   const handleUserInfoSubmit = async (data: UserData) => {
     setUserData(data);
-    setStage('countdown');
     
     // Track info submission
     if (analyticsId) {
@@ -138,7 +156,24 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         emailDomain: data.email.split('@')[1],
       });
     }
+
+    if (!customJourneyEnabled) {
+      // Only advance to countdown if there's no custom journey
+      setStage('countdown');
+    }
   };
+
+  // Handle journey completion
+  const handleJourneyComplete = () => {
+    setJourneyCompleted(true);
+    setStage('countdown');
+    
+    // Track journey completion
+    if (analyticsId) {
+      trackBoothEvent(analyticsId, 'journey_complete');
+    }
+  };
+  
 
   // Handle countdown completion
   const handleCountdownComplete = async () => {
@@ -275,10 +310,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Reset the booth to initial state
   const resetBooth = () => {
-    setStage('collect-info');
+    setStage(splashPageEnabled ? 'splash' : 'collect-info');
+    
+    // Reset user data and other state
     setUserData(null);
     setSessionId(null);
     setPhotoDataUrl(null);
+    setJourneyCompleted(false); // Also reset journey completed state
     
     // Don't reset analytics ID to maintain session continuity
     sessionStartTimeRef.current = Date.now();
@@ -307,23 +345,41 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Render different stages
   const renderStage = () => {
-    if (customJourneyEnabled && !journeyCompleted) {
-      return (
-        <JourneyContainer
-          pages={journeyPages}
-          primaryColor={themeSettings.primaryColor}
-          buttonColor={themeSettings.buttonColor}
-          onComplete={() => setJourneyCompleted(true)}
-          analyticsId={analyticsId}
-        />
-      );
-    }
 
     switch (stage) {
-      case 'collect-info':
+      case 'splash':
         return (
-          <UserInfoForm onSubmit={handleUserInfoSubmit} />
+          <SplashPage
+            title={splashPageTitle}
+            content={splashPageContent}
+            backgroundImage={splashPageImage}
+            buttonText={splashPageButtonText}
+            onNext={handleSplashComplete}
+          />
         );
+
+        case 'collect-info':
+          // First show user info form
+          if (!userData) {
+            return <UserInfoForm onSubmit={handleUserInfoSubmit} />;
+          }
+          
+          // After user info is collected, show custom journey if enabled and not completed
+          if (customJourneyEnabled && !journeyCompleted) {
+            return (
+              <JourneyContainer
+                pages={journeyPages}
+                primaryColor={themeSettings.primaryColor}
+                buttonColor={themeSettings.buttonColor}
+                onComplete={handleJourneyComplete}
+                analyticsId={analyticsId}
+              />
+            );
+          }
+          
+          // If no journey or journey completed, advance to countdown
+          setStage('countdown');
+          return null;
         
       case 'countdown':
         return (

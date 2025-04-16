@@ -15,6 +15,7 @@ booth-boss/
 ├── prisma/                                     # Database ORM
 │   ├── migrations/                             # Database migrations
 │       └── manual/                             #
+│   │       ├── add_splash_page_fields.sql      # Database migration for splash fields
 │   │       ├── add_theme_fields.sql            # Theme fields migrations
 │   │       └── add_journey_fields.sql          # Custom journey fields migrations
 │   ├── schema.prisma                           # Prisma schema definition
@@ -98,6 +99,7 @@ booth-boss/
 │   │   │   └── JourneyContainer.tsx            # Journey flow manager
 │   │   ├── booth/                              # Photo booth components
 │   │   │   ├── CountdownTimer.tsx              # Countdown component
+│   │   │   ├── SplashPage.tsx                  # New splash page component
 │   │   │   ├── PhotoBooth.tsx                  # Main booth component
 │   │   │   ├── PhotoPreview.tsx                # Photo review component
 │   │   │   └── ...                             # Other booth components
@@ -109,6 +111,7 @@ booth-boss/
 │   │   │   │   ├── TemplatesTab.tsx            # Theme selection and user journey
 │   │   │   │   ├── CustomJourneyTab.tsx        # Custom user journey editor
 │   │   │   │   ├── AdvancedTab.tsx             # Advanced settings and utilities
+│   │   │   │   └── SplashTab.tsx               # New admin settings tab
 │   │   │   ├── FileUploadField.tsx             # Reusable file upload component
 │   │   │   ├── SettingsForm.tsx                # Backend exposed settings form
 │   │   │   └── UserInfoForm.tsx                # User information form
