@@ -118,10 +118,29 @@ export async function PUT(_request: NextRequest) {
         id: existingSettings.id
       },
       data: {
-        ...validatedData,
+        eventName: validatedData.eventName,
+        adminEmail: validatedData.adminEmail,
+        countdownTime: validatedData.countdownTime,
+        resetTime: validatedData.resetTime,
+        emailSubject: validatedData.emailSubject,
+        emailTemplate: validatedData.emailTemplate,
+        smtpHost: validatedData.smtpHost,
+        smtpPort: validatedData.smtpPort,
+        smtpUser: validatedData.smtpUser,
+        smtpPassword: validatedData.smtpPassword,
+        companyName: validatedData.companyName,
+        companyLogo: validatedData.companyLogo,
+        primaryColor: validatedData.primaryColor,
+        secondaryColor: validatedData.secondaryColor,
+        theme: validatedData.theme,
+        backgroundColor: validatedData.backgroundColor,
+        borderColor: validatedData.borderColor,
+        buttonColor: validatedData.buttonColor,
+        textColor: validatedData.textColor,
+        notes: validatedData.notes,
+        customJourneyEnabled: validatedData.customJourneyEnabled,
         journeyConfig: validatedData.journeyPages ? JSON.stringify(validatedData.journeyPages) : null
       }
-      
     });
     
     return NextResponse.json(updatedSettings);

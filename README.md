@@ -1,6 +1,6 @@
 # BoothBoss Photo Booth Application
 
-A modern, AI-powered photo booth application built with Next.js, TypeScript, and Prisma.
+A modern, AI-powered photo booth application built with Next.js TypeScript, and Prisma
 
 ## Features
 

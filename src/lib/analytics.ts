@@ -130,6 +130,86 @@ export async function trackBoothEvent(
   }
 }
 
+// src/lib/analytics.ts (additions)
+
+/**
+ * Track journey page view events
+ */
+export async function trackJourneyPageView(
+  analyticsId: string | null,
+  pageId: string,
+  pageIndex: number,
+  pageTitle: string,
+) {
+  if (!analyticsId) return null;
+  
+  try {
+    const response = await fetch('/api/analytics/track', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        event: 'event',
+        analyticsId,
+        eventType: 'journey_page_view',
+        metadata: {
+          pageId,
+          pageIndex,
+          pageTitle,
+        },
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to track journey page view');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to track journey page view:', error);
+    return null;
+  }
+}
+
+/**
+ * Track journey completion event
+ */
+export async function trackJourneyComplete(
+  analyticsId: string | null,
+  totalPages: number,
+  timeSpentMs: number,
+) {
+  if (!analyticsId) return null;
+  
+  try {
+    const response = await fetch('/api/analytics/track', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        event: 'event',
+        analyticsId,
+        eventType: 'journey_complete',
+        metadata: {
+          totalPages,
+          timeSpentMs,
+        },
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to track journey completion');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to track journey completion:', error);
+    return null;
+  }
+}
+
 // Intention: get analytics summary for a specified number of days
 // Note: getAnalyticsSummary is a server-side function
 // It should be moved to a server component or API route

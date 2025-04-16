@@ -49,6 +49,8 @@ booth-boss/
 │   │   │   │   │   └── route.ts                # Backend settings management route
 │   │   │   │   └── setup/                      # API for admin account creation
 │   │   │   │       └── route.ts                # Handler for setting admin password
+│   │   │   │   └── upload/                     # 
+│   │   │   │       └── route.ts                # File upload API endpoint
 │   │   │   ├── analytics/                      # Analytics API routes
 │   │   │   │   └── track/                      # Analytics tracking endpoint
 │   │   │   │       └── route.ts                # Handler for client-side analytics
@@ -59,6 +61,8 @@ booth-boss/
 │   │   │   │   └── error/                      # Auth error handling
 │   │   │   │       └── route.ts                # Handler for auth error redirects
 │   │   │   ├── booth/                          # Booth endpoints
+│   │   │   │   ├── settings/                   #
+│   │   │   │   │   └── route.ts                # Public booth settings API
 │   │   │   │   └── capture/                    # Photo capture endpoint
 │   │   │   │       └── route.ts                # Photo capture API handler
 │   │   │   ├── media/                          # not in use
@@ -86,6 +90,9 @@ booth-boss/
 │   │   ├── ui/                                 # Basic UI components (shadcn)
 │   │   │   ├── ErrorMessage.tsx                # Reusable error message component
 │   │   │   └── OptimizedImage.tsx              # Reusable data URL handler for images
+│   │   ├── journey/                            # Basic UI components (shadcn)
+│   │   │   ├── JourneyPageView.tsx             # Individual journey page component
+│   │   │   └── JourneyContainer.tsx            # Journey flow manager
 │   │   ├── booth/                              # Photo booth components
 │   │   │   ├── CountdownTimer.tsx              # Countdown component
 │   │   │   ├── PhotoBooth.tsx                  # Main booth component
@@ -98,7 +105,8 @@ booth-boss/
 │   │   │   │   ├── AppearanceTab.tsx           # Visual customization
 │   │   │   │   ├── TemplatesTab.tsx            # Theme selection and user journey
 │   │   │   │   ├── CustomJourneyTab.tsx        # Custom user journey editor
-│   │   │   │   └── AdvancedTab.tsx             # Advanced settings and utilities
+│   │   │   │   ├── AdvancedTab.tsx             # Advanced settings and utilities
+│   │   │   │   └── FileUploadField.tsx         # Reusable file upload component
 │   │   │   ├── SettingsForm.tsx                # Backend exposed settings form
 │   │   │   └── UserInfoForm.tsx                # User information form
 │   │   ├── providers/                          # Client component providers
@@ -118,6 +126,7 @@ booth-boss/
 │   │   ├── theme-css-injector.ts               # Theme injector to override Tailwind classes
 │   │   └── theme-loader.ts                     # Helper for loading theme settings
 │   ├── types/                                  # TypeScript type definitions
+│   │   ├── journey.ts                          # Journey type definitions
 │   │   └── next-auth.d.ts                      # NextAuth type extensions
 │   └── middleware.ts                           # Next.js middleware
 ├── .env.local                                  # Environment variables for Prisma (git-ignored)

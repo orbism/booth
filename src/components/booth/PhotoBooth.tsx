@@ -6,6 +6,9 @@ import UserInfoForm from '@/components/forms/UserInfoForm';
 import CountdownTimer from '@/components/booth/CountdownTimer';
 import PhotoPreview from '@/components/booth/PhotoPreview';
 import ErrorMessage from '@/components/ui/ErrorMessage';
+import JourneyContainer from '@/components/journey/JourneyContainer';
+import { JourneyPage } from '@/types/journey';
+
 import { v4 as uuidv4 } from 'uuid';
 import { trackBoothEvent } from '@/lib/analytics';
 
@@ -16,14 +19,36 @@ type UserData = {
 
 type BoothStage = 'collect-info' | 'countdown' | 'preview' | 'complete';
 
+interface ThemeSettings {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  borderColor: string;
+  buttonColor: string;
+  textColor: string;
+}
+
 interface PhotoBoothProps {
   countdownSeconds?: number;
   resetTimeSeconds?: number;
+  themeSettings?: ThemeSettings;
+  customJourneyEnabled?: boolean;
+  journeyPages?: JourneyPage[];
 }
 
 const PhotoBooth: React.FC<PhotoBoothProps> = ({
   countdownSeconds = 3,
-  resetTimeSeconds = 60
+  resetTimeSeconds = 60,
+  themeSettings = {
+    primaryColor: '#3B82F6',
+    secondaryColor: '#1E40AF',
+    backgroundColor: '#ffffff',
+    borderColor: '#e5e7eb',
+    buttonColor: '#3B82F6',
+    textColor: '#111827',
+  },
+  customJourneyEnabled = false,
+  journeyPages = [],
 }) => {
   const [stage, setStage] = useState<BoothStage>('collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -34,6 +59,9 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const [error, setError] = useState<{ title: string; message: string } | null>(null);
+
+  // User journey
+  const [journeyCompleted, setJourneyCompleted] = useState(false);
 
   // Analytics tracking
   const [analyticsId, setAnalyticsId] = useState<string | null>(null);
@@ -279,6 +307,18 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Render different stages
   const renderStage = () => {
+    if (customJourneyEnabled && !journeyCompleted) {
+      return (
+        <JourneyContainer
+          pages={journeyPages}
+          primaryColor={themeSettings.primaryColor}
+          buttonColor={themeSettings.buttonColor}
+          onComplete={() => setJourneyCompleted(true)}
+          analyticsId={analyticsId}
+        />
+      );
+    }
+
     switch (stage) {
       case 'collect-info':
         return (
