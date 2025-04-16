@@ -28,6 +28,8 @@ const TemplatesTab: React.FC<TemplatesTabProps> = ({
     handleThemeChange
   } = useTheme();
 
+  const customJourneyEnabled = watch('customJourneyEnabled') || false;
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-medium text-gray-900">Template Selection</h3>
@@ -37,8 +39,8 @@ const TemplatesTab: React.FC<TemplatesTabProps> = ({
         <div 
           className={`border-2 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
             currentTheme === 'midnight' ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'
-          }`}
-          onClick={() => handleThemeChange('midnight')}
+          } ${customJourneyEnabled ? 'opacity-50 pointer-events-none' : ''}`}
+          onClick={() => !customJourneyEnabled && handleThemeChange('midnight')}
         >
           <div className="p-4" style={{ 
             backgroundColor: THEMES.midnight.backgroundColor,
@@ -67,7 +69,7 @@ const TemplatesTab: React.FC<TemplatesTabProps> = ({
           className={`border-2 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
             currentTheme === 'pastel' ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'
           }`}
-          onClick={() => handleThemeChange('pastel')}
+          onClick={() => !customJourneyEnabled && handleThemeChange('pastel')}
         >
           <div className="p-4" style={{ 
             backgroundColor: THEMES.pastel.backgroundColor,
@@ -96,7 +98,7 @@ const TemplatesTab: React.FC<TemplatesTabProps> = ({
           className={`border-2 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
             currentTheme === 'bw' ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'
           }`}
-          onClick={() => handleThemeChange('bw')}
+          onClick={() => !customJourneyEnabled && handleThemeChange('bw')}
         >
           <div className="p-4" style={{ 
             backgroundColor: THEMES.bw.backgroundColor,
@@ -125,7 +127,7 @@ const TemplatesTab: React.FC<TemplatesTabProps> = ({
           className={`border-2 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${
             currentTheme === 'custom' ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200'
           }`}
-          onClick={() => handleThemeChange('custom')}
+          onClick={() => !customJourneyEnabled && handleThemeChange('custom')}
         >
           <div className="p-4" style={{ 
             backgroundColor,
@@ -149,6 +151,15 @@ const TemplatesTab: React.FC<TemplatesTabProps> = ({
           </div>
         </div>
       </div>
+
+      {customJourneyEnabled && (
+        <div className="col-span-full bg-yellow-50 border border-yellow-200 p-4 rounded-md">
+          <p className="text-sm text-yellow-700">
+            <strong>Note:</strong> Template selection is disabled while Custom Journey is enabled. 
+            Please disable Custom Journey in the "Custom Journey" tab to select a theme template.
+          </p>
+        </div>
+      )}
 
       {/* User Journey Configuration Section */}
       <div className="mt-8 border-t pt-6">

@@ -45,6 +45,8 @@ booth-boss/
 │   │   │   ├── admin/                          # Admin-related API endpoints
 │   │   │   │   ├── check/                      # API to check admin user status
 │   │   │   │   │   └── route.ts                # Handler for checking if admin needs setup
+│   │   │   │   ├── journeys/                   # 
+│   │   │   │   │   └── route.ts                # Journey management endpoint
 │   │   │   │   ├── settings/                   # 
 │   │   │   │   │   └── route.ts                # Backend settings management route
 │   │   │   │   └── setup/                      # API for admin account creation
@@ -106,7 +108,7 @@ booth-boss/
 │   │   │   │   ├── TemplatesTab.tsx            # Theme selection and user journey
 │   │   │   │   ├── CustomJourneyTab.tsx        # Custom user journey editor
 │   │   │   │   ├── AdvancedTab.tsx             # Advanced settings and utilities
-│   │   │   │   └── FileUploadField.tsx         # Reusable file upload component
+│   │   │   ├── FileUploadField.tsx             # Reusable file upload component
 │   │   │   ├── SettingsForm.tsx                # Backend exposed settings form
 │   │   │   └── UserInfoForm.tsx                # User information form
 │   │   ├── providers/                          # Client component providers

@@ -1,8 +1,9 @@
 // src/components/forms/tabs/CustomJourneyTab.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UseFormWatch, UseFormSetValue, UseFormRegister, FieldErrors, useFieldArray, Control } from 'react-hook-form';
 import { SettingsFormValues } from '../SettingsForm';
 import { useTheme } from '@/context/ThemeContext';
+import FileUploadField from '../FileUploadField';
 
 interface CustomJourneyTabProps {
   register: UseFormRegister<SettingsFormValues>;
@@ -12,13 +13,10 @@ interface CustomJourneyTabProps {
   control: Control<SettingsFormValues>;
 }
 
-interface JourneyPage {
+interface SavedJourney {
   id: string;
-  title: string;
-  content: string;
-  backgroundImage: string | null;
-  buttonText: string;
-  buttonImage: string | null;
+  name: string;
+  pages: any[];
 }
 
 const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
@@ -28,10 +26,14 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
   errors,
   control
 }) => {
-  const [isCustomJourneyEnabled, setIsCustomJourneyEnabled] = useState<boolean>(
-    watch('customJourneyEnabled') || false
-  );
+  // Use the actual form values for state to ensure persistence
+  const customJourneyEnabled = watch('customJourneyEnabled') || false;
+  const journeyName = watch('journeyName') || 'Default Journey';
+  
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
+  const [savedJourneys, setSavedJourneys] = useState<SavedJourney[]>([]);
+  const [showCreateNewModal, setShowCreateNewModal] = useState<boolean>(false);
+  const [newJourneyName, setNewJourneyName] = useState<string>('');
   
   // Use useFieldArray for managing journey pages
   const { fields, append, remove, move } = useFieldArray({
@@ -39,10 +41,26 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
     name: "journeyPages"
   });
   
+  // Fetch saved journeys on component mount
+  useEffect(() => {
+    const fetchSavedJourneys = async () => {
+      try {
+        const response = await fetch('/api/admin/journeys');
+        if (response.ok) {
+          const data = await response.json();
+          setSavedJourneys(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch saved journeys:', error);
+      }
+    };
+    
+    fetchSavedJourneys();
+  }, []);
+  
   // Handle toggling custom journey mode
   const handleToggleCustomJourney = () => {
-    const newValue = !isCustomJourneyEnabled;
-    setIsCustomJourneyEnabled(newValue);
+    const newValue = !customJourneyEnabled;
     setValue('customJourneyEnabled', newValue);
     
     // Initialize with a default page if enabling and no pages exist
@@ -84,12 +102,58 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
     }
   };
   
+  // Handle journey selection
+  const handleJourneySelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = event.target.value;
+    
+    if (selectedId === 'new') {
+      setShowCreateNewModal(true);
+      return;
+    }
+    
+    const selectedJourney = savedJourneys.find(journey => journey.id === selectedId);
+    if (selectedJourney) {
+      setValue('journeyName', selectedJourney.name);
+      setValue('journeyId', selectedId);
+      
+      // Clear existing pages and add selected journey pages
+      setValue('journeyPages', []);
+      selectedJourney.pages.forEach(page => {
+        append(page);
+      });
+    }
+  };
+  
+  // Handle creating a new journey
+  const handleCreateNewJourney = () => {
+    if (!newJourneyName.trim()) {
+      alert('Please enter a journey name');
+      return;
+    }
+    
+    setValue('journeyName', newJourneyName);
+    setValue('journeyId', `journey-${Date.now()}`);
+    setValue('journeyPages', []);
+    
+    // Add default first page
+    append({
+      id: `page-${Date.now()}`,
+      title: 'Welcome',
+      content: 'Welcome to our photo booth!',
+      backgroundImage: null,
+      buttonText: 'Start',
+      buttonImage: null
+    });
+    
+    setShowCreateNewModal(false);
+    setNewJourneyName('');
+  };
+  
   // Handle reset confirmation
   const handleReset = () => {
     setShowResetModal(false);
     setValue('customJourneyEnabled', false);
     setValue('journeyPages', []);
-    setIsCustomJourneyEnabled(false);
   };
 
   return (
@@ -108,24 +172,54 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
             type="button"
             onClick={handleToggleCustomJourney}
             className={`relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none ${
-              isCustomJourneyEnabled ? 'bg-blue-600' : 'bg-gray-200'
+              customJourneyEnabled ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span className="sr-only">Use custom journey</span>
             <span
               className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 ${
-                isCustomJourneyEnabled ? 'translate-x-5' : 'translate-x-0'
+                customJourneyEnabled ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
           <span className="ml-3 text-sm font-medium text-gray-900">
-            {isCustomJourneyEnabled ? 'Custom Journey Enabled' : 'Use Default Journey'}
+            {customJourneyEnabled ? 'Custom Journey Enabled' : 'Use Default Journey'}
           </span>
         </div>
       </div>
       
-      {isCustomJourneyEnabled && (
+      {customJourneyEnabled && (
         <div className="space-y-6">
+          {/* Journey Selection */}
+          <div className="bg-white border rounded-md p-4">
+            <label htmlFor="journeySelect" className="block text-sm font-medium text-gray-700 mb-2">
+              Select Journey
+            </label>
+            <div className="flex space-x-4">
+              <select
+                id="journeySelect"
+                value={watch('journeyId') || ''}
+                onChange={handleJourneySelect}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">-- Select a journey --</option>
+                {savedJourneys.map(journey => (
+                  <option key={journey.id} value={journey.id}>{journey.name}</option>
+                ))}
+                <option value="new">➕ Create New Journey</option>
+              </select>
+              
+              <div>
+                <input
+                  type="text"
+                  {...register('journeyName')}
+                  placeholder="Journey Name"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+          
           <div className="flex justify-between items-center">
             <h4 className="text-base font-medium text-gray-900">Journey Pages</h4>
             <div className="space-x-3">
@@ -208,25 +302,16 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Background Image
-                        </label>
-                        <div className="flex">
-                          <input
-                            type="text"
-                            {...register(`journeyPages.${index}.backgroundImage` as const)}
-                            placeholder="Upload or enter URL"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <button
-                            type="button"
-                            className="px-3 py-2 bg-gray-200 text-gray-700 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-300"
-                          >
-                            Browse
-                          </button>
-                        </div>
-                      </div>
+                      <FileUploadField
+                        id={`background-image-${index}`}
+                        name={`journeyPages.${index}.backgroundImage`}
+                        label="Background Image"
+                        accept="image/*"
+                        helpText="Recommended size: 1920x1080px"
+                        register={register}
+                        setValue={setValue}
+                        watch={watch}
+                      />
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -240,28 +325,16 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                       </div>
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Custom Button Image (optional)
-                      </label>
-                      <div className="flex">
-                        <input
-                          type="text"
-                          {...register(`journeyPages.${index}.buttonImage` as const)}
-                          placeholder="Upload or enter URL"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <button
-                          type="button"
-                          className="px-3 py-2 bg-gray-200 text-gray-700 border border-gray-300 border-l-0 rounded-r-md hover:bg-gray-300"
-                        >
-                          Browse
-                        </button>
-                      </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        This will replace the text button with your custom image
-                      </p>
-                    </div>
+                    <FileUploadField
+                      id={`button-image-${index}`}
+                      name={`journeyPages.${index}.buttonImage`}
+                      label="Custom Button Image (optional)"
+                      accept="image/*"
+                      helpText="This will replace the text button with your custom image"
+                      register={register}
+                      setValue={setValue}
+                      watch={watch}
+                    />
                   </div>
                 </div>
               ))}
@@ -295,22 +368,41 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
               )}
             </div>
           </div>
-          
-          <div className="pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
+        </div>
+      )}
+      
+      {/* Create New Journey Modal */}
+      {showCreateNewModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-auto">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Create New Journey</h3>
+            <div className="mb-4">
+              <label htmlFor="newJourneyName" className="block text-sm font-medium text-gray-700 mb-1">
+                Journey Name
+              </label>
+              <input
+                id="newJourneyName"
+                type="text"
+                value={newJourneyName}
+                onChange={(e) => setNewJourneyName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="My Custom Journey"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={handleToggleCustomJourney}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                onClick={() => setShowCreateNewModal(false)}
+                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
               >
-                Revert to Default Journey
+                Cancel
               </button>
-              
               <button
                 type="button"
-                className="px-3 py-1 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+                onClick={handleCreateNewJourney}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700"
               >
-                Import Previous Setup
+                Create
               </button>
             </div>
           </div>

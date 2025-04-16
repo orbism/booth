@@ -56,6 +56,8 @@ const settingsSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   companyLogo: z.string().optional().nullable(),
   theme: z.enum(["midnight", "pastel", "bw", "custom"]).default("custom"),
+  journeyName: z.string().default('Default Journey'),
+  journeyId: z.string().optional(),
   customJourneyEnabled: z.boolean().default(false),
   journeyPages: z.array(
     z.object({

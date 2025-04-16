@@ -1,6 +1,6 @@
 // src/components/forms/FileUploadField.tsx
 import React, { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
+import { UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 
 interface FileUploadFieldProps {
   id: string;
@@ -10,6 +10,9 @@ interface FileUploadFieldProps {
   helpText?: string;
   placeholder?: string;
   onUploadComplete?: (url: string) => void;
+  register: UseFormRegister<any>;
+  setValue: UseFormSetValue<any>;
+  watch: UseFormWatch<any>;
 }
 
 const FileUploadField: React.FC<FileUploadFieldProps> = ({
@@ -20,8 +23,10 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
   helpText,
   placeholder = 'Upload or enter URL',
   onUploadComplete,
+  register,
+  setValue,
+  watch
 }) => {
-  const { register, setValue, watch } = useFormContext();
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
