@@ -68,6 +68,7 @@ model Settings {
   textColor       String?
   notes           String? @db.Text
   customJourneyEnabled Boolean @default(false)
+  activeJourneyId     String?  // ID of the currently active journey
   journeyConfig        Json?
 }
 

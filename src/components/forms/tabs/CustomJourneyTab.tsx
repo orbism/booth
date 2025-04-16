@@ -27,13 +27,14 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
   control
 }) => {
   // Use the actual form values for state to ensure persistence
-  const customJourneyEnabled = watch('customJourneyEnabled') || false;
+  const customJourneyEnabled = watch('customJourneyEnabled');
   const journeyName = watch('journeyName') || 'Default Journey';
   
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
   const [savedJourneys, setSavedJourneys] = useState<SavedJourney[]>([]);
   const [showCreateNewModal, setShowCreateNewModal] = useState<boolean>(false);
   const [newJourneyName, setNewJourneyName] = useState<string>('');
+  
   
   // Use useFieldArray for managing journey pages
   const { fields, append, remove, move } = useFieldArray({

@@ -38,7 +38,9 @@ const settingsSchema = z.object({
       buttonText: z.string(),
       buttonImage: z.string().nullable()
     })
-  ).default([])
+  ).default([]),
+  journeyId: z.string().optional(),
+
 });
 
 export async function GET(_request: NextRequest) {
@@ -69,6 +71,8 @@ export async function GET(_request: NextRequest) {
     
     return NextResponse.json({
       ...settings,
+      customJourneyEnabled: settings.customJourneyEnabled || false,
+      activeJourneyId: settings.activeJourneyId || null,
       journeyPages
     });
   } catch (error) {
@@ -139,6 +143,7 @@ export async function PUT(_request: NextRequest) {
         textColor: validatedData.textColor,
         notes: validatedData.notes,
         customJourneyEnabled: validatedData.customJourneyEnabled,
+        activeJourneyId: validatedData.journeyId || null,
         journeyConfig: validatedData.journeyPages ? JSON.stringify(validatedData.journeyPages) : null
       }
     });

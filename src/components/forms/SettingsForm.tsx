@@ -18,27 +18,39 @@ import AdvancedTab from './tabs/AdvancedTab';
 type SettingsTab = 'general' | 'email' | 'appearance' | 'templates' | 'advanced' | 'journey';
 
 type SettingsData = {
-    id: string;
-    eventName: string;
-    adminEmail: string;
-    countdownTime: number;
-    resetTime: number;
-    emailSubject: string;
-    emailTemplate: string;
-    smtpHost: string;
-    smtpPort: number;
-    smtpUser: string;
-    smtpPassword: string;
-    companyName: string;
-    companyLogo: string | null;
-    primaryColor: string;
-    secondaryColor: string;
-    theme: "midnight" | "pastel" | "bw" | "custom";
-    backgroundColor: string | null;
-    borderColor: string | null; 
-    buttonColor: string | null;
-    textColor: string | null;
-    notes: string | null;
+  id: string;
+  eventName: string;
+  adminEmail: string;
+  countdownTime: number;
+  resetTime: number;
+  emailSubject: string;
+  emailTemplate: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPassword: string;
+  companyName: string;
+  companyLogo: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  theme: "midnight" | "pastel" | "bw" | "custom";
+  backgroundColor: string | null;
+  borderColor: string | null; 
+  buttonColor: string | null;
+  textColor: string | null;
+  notes: string | null;
+  // Add these new fields
+  customJourneyEnabled?: boolean;
+  journeyName?: string;
+  activeJourneyId?: string;
+  journeyPages?: Array<{
+      id: string;
+      title: string;
+      content: string;
+      backgroundImage: string | null;
+      buttonText: string;
+      buttonImage: string | null;
+  }>;
 };
 
 // Settings schema
@@ -124,7 +136,11 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       borderColor: initialSettings.borderColor || '#e5e7eb',
       buttonColor: initialSettings.buttonColor || initialSettings.primaryColor,
       textColor: initialSettings.textColor || '#111827',
-      notes: initialSettings.notes || ''
+      notes: initialSettings.notes || '',
+      customJourneyEnabled: initialSettings.customJourneyEnabled || false,
+      journeyName: initialSettings.journeyName || 'Default Journey',
+      journeyId: initialSettings.activeJourneyId || '',
+      journeyPages: initialSettings.journeyPages || [],
     }
   });
 
