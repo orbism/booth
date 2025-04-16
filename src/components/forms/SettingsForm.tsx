@@ -33,23 +33,23 @@ type SettingsData = {
   companyLogo: string | null;
   primaryColor: string;
   secondaryColor: string;
-  theme: "midnight" | "pastel" | "bw" | "custom";
+  theme: ThemeOption;
   backgroundColor: string | null;
   borderColor: string | null; 
   buttonColor: string | null;
   textColor: string | null;
   notes: string | null;
   // Add these new fields
-  customJourneyEnabled?: boolean;
+  customJourneyEnabled: boolean;
   journeyName?: string;
-  activeJourneyId?: string;
+  activeJourneyId?: string | null;
   journeyPages?: Array<{
-      id: string;
-      title: string;
-      content: string;
-      backgroundImage: string | null;
-      buttonText: string;
-      buttonImage: string | null;
+    id: string;
+    title: string;
+    content: string;
+    backgroundImage: string | null;
+    buttonText: string;
+    buttonImage: string | null;
   }>;
 };
 
@@ -68,9 +68,16 @@ const settingsSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   companyLogo: z.string().optional().nullable(),
   theme: z.enum(["midnight", "pastel", "bw", "custom"]).default("custom"),
-  journeyName: z.string().default('Default Journey'),
-  journeyId: z.string().optional(),
+  primaryColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color"),
+  secondaryColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color"),
+  backgroundColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
+  borderColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
+  buttonColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
+  textColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
+  notes: z.string().optional().nullable(),
   customJourneyEnabled: z.boolean().default(false),
+  journeyName: z.string().optional(),
+  journeyId: z.string().optional(),
   journeyPages: z.array(
     z.object({
       id: z.string(),
@@ -80,16 +87,7 @@ const settingsSchema = z.object({
       buttonText: z.string(),
       buttonImage: z.string().nullable()
     })
-  ).default([]),
-  templateId: z.string().optional(),
-  userJourneySteps: z.array(z.string()).default(['info', 'photo', 'preview', 'complete']),
-  primaryColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color"),
-  secondaryColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color"),
-  backgroundColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional(),
-  borderColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional(),
-  buttonColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional(),
-  textColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional(),
-  notes: z.string().optional().nullable(),
+  ).optional().default([]),
 });
 
 export type SettingsFormValues = z.infer<typeof settingsSchema>;

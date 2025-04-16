@@ -98,12 +98,6 @@ export async function PUT(_request: NextRequest) {
     
     // Validate settings data
     const validatedData = settingsSchema.parse(data);
-
-    // Transform journey pages to JSON for storage
-    const dataToSave = {
-      ...validatedData,
-      journeyConfig: validatedData.journeyPages ? JSON.stringify(validatedData.journeyPages) : null
-    };
     
     // Find existing settings
     const existingSettings = await prisma.settings.findFirst();
@@ -144,7 +138,9 @@ export async function PUT(_request: NextRequest) {
         notes: validatedData.notes,
         customJourneyEnabled: validatedData.customJourneyEnabled,
         activeJourneyId: validatedData.journeyId || null,
-        journeyConfig: validatedData.journeyPages ? JSON.stringify(validatedData.journeyPages) : null
+        journeyConfig: validatedData.journeyPages?.length 
+          ? JSON.stringify(validatedData.journeyPages)
+          : null
       }
     });
     

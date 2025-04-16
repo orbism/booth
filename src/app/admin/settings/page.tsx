@@ -28,6 +28,17 @@ type Settings = {
   buttonColor?: string | null;
   textColor?: string | null;
   notes?: string | null;
+  // Add these new fields
+  customJourneyEnabled: boolean;
+  activeJourneyId?: string | null;
+  journeyPages?: Array<{
+    id: string;
+    title: string;
+    content: string;
+    backgroundImage: string | null;
+    buttonText: string;
+    buttonImage: string | null;
+  }>;
 };
 
 type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
@@ -57,6 +68,15 @@ export default function SettingsPage() {
         }
         
         const data = await response.json();
+        
+        // Log the journey-related settings to debug
+        console.log('Fetched settings:', {
+          customJourneyEnabled: data.customJourneyEnabled,
+          activeJourneyId: data.activeJourneyId,
+          journeyPagesCount: data.journeyPages?.length || 0
+        });
+        
+        // Make sure we're properly setting the initial values
         setSettings(data);
       } catch (err) {
         console.error('Error fetching settings:', err);
@@ -205,6 +225,10 @@ export default function SettingsPage() {
           buttonColor: settings.buttonColor ?? null,
           textColor: settings.textColor ?? null,
           notes: settings.notes ?? null,
+          // Add the custom journey properties
+          customJourneyEnabled: settings.customJourneyEnabled || false,
+          activeJourneyId: settings.activeJourneyId || null,
+          journeyPages: settings.journeyPages || [],
         }}
         onSubmit={handleUpdateSettings}
       />

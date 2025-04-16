@@ -11,6 +11,7 @@ booth-boss/
 │   │   ├── beep.mp3                            # Countdown beep
 │   │   └── camera-shutter.mp3                  # Camera shutter sound
 │   └── uploads/                                # Uploaded photos (local storage)
+│       └── journey/                            # Journey image assets
 ├── prisma/                                     # Database ORM
 │   ├── migrations/                             # Database migrations
 │       └── manual/                             #
