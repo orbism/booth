@@ -80,7 +80,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
           id={id}
           {...register(name)}
           placeholder={placeholder}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
         <label className={`
           px-3 py-2 
@@ -92,7 +92,7 @@ const FileUploadField: React.FC<FileUploadFieldProps> = ({
             type="file"
             accept={accept}
             onChange={handleFileChange}
-            className="sr-only"
+            className="sr-only bg-gray-50"
             disabled={isUploading}
           />
         </label>

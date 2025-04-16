@@ -214,13 +214,34 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
       return;
     }
     
+    if (fields.length === 0) {
+      alert('Please add at least one page to your journey');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       
+      // Generate an ID if this is a new journey
+      const currentJourneyId = journeyId || `journey-${Date.now()}`;
+      
+      // Update the form with the current ID to ensure it's saved in settings
+      setValue('journeyId', currentJourneyId);
+      
+      // Collect all field data from the form
+      const journeyPages = fields.map((field, index) => ({
+        id: field.id,
+        title: watch(`journeyPages.${index}.title`),
+        content: watch(`journeyPages.${index}.content`),
+        backgroundImage: watch(`journeyPages.${index}.backgroundImage`),
+        buttonText: watch(`journeyPages.${index}.buttonText`),
+        buttonImage: watch(`journeyPages.${index}.buttonImage`),
+      }));
+      
       const journeyData = {
-        id: journeyId || `journey-${Date.now()}`,
+        id: currentJourneyId,
         name: journeyName,
-        pages: fields
+        pages: journeyPages
       };
       
       const response = await fetch('/api/admin/journeys', {
@@ -233,11 +254,6 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
       
       if (response.ok) {
         const savedJourney = await response.json();
-        
-        // Update the journeyId if it's a new journey
-        if (!journeyId) {
-          setValue('journeyId', savedJourney.id);
-        }
         
         // Update the saved journeys list
         setSavedJourneys(prev => {
@@ -253,7 +269,9 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
           }
         });
         
-        alert('Journey saved successfully!');
+        // Show success message
+        alert(`Journey "${savedJourney.name}" saved successfully.`);
+        
       } else {
         throw new Error('Failed to save journey');
       }
@@ -300,7 +318,9 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
           </button>
           <span className="ml-3 text-sm font-medium text-gray-900">
             {!!customJourneyEnabled 
-              ? `Custom Journey Enabled: ${journeyName || 'Default Journey'}` 
+              ? `Custom Journey Enabled: ${journeyId ? 
+                  (savedJourneys.find(j => j.id === journeyId)?.name || journeyName) 
+                  : (journeyName || 'Default Journey')}` 
               : 'Use Default Journey'}
           </span>
         </div>
@@ -309,12 +329,12 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
       {customJourneyEnabled && (
         <div className="space-y-6">
           {/* Journey Selection */}
-          <div className="bg-white border rounded-md p-4">
+          <div className="bg-blue-50 border rounded-md p-4">
             <label htmlFor="journeySelect" className="block text-sm font-medium text-gray-700 mb-2">
               Select Journey
             </label>
 
-            {/* Show saved journeys with delete options */}
+            {/* Show saved journeys with select options */}
             {savedJourneys.length > 0 ? (
               <div className="space-y-3 mb-4">
                 <p className="text-sm text-gray-500">Saved Journeys:</p>
@@ -361,7 +381,7 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                 id="journeySelect"
                 value={journeyId || ''}
                 onChange={handleJourneySelect}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 disabled={isLoading}
               >
                 <option value="">-- Select a journey --</option>
@@ -369,7 +389,6 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                   <option 
                     key={journey.id} 
                     value={journey.id}
-                    // Add this to highlight the selected option in some browsers
                     selected={journey.id === journeyId}
                   >
                     {journey.name}
@@ -383,16 +402,8 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                   type="text"
                   {...register('journeyName')}
                   placeholder="Journey Name"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
-                <button
-                  type="button"
-                  onClick={handleSaveJourney}
-                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-                  disabled={isLoading || !journeyName.trim()}
-                >
-                  {isLoading ? 'Saving...' : 'Save'}
-                </button>
               </div>
             </div>
           </div>
@@ -419,14 +430,14 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
           </div>
           
           {fields.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-300 rounded-md">
-              <p className="text-gray-500">No pages added yet. Click "Add Page" to get started.</p>
+            <div className="text-center py-12 bg-indigo-600 text-white border border-dashed border-indigo-400 rounded-md">
+              <p>No pages added yet. Click "Add Page" to get started.</p>
             </div>
           ) : (
             <div className="space-y-6">
               {fields.map((field, index) => (
-                <div key={field.id} className="bg-white border rounded-md shadow-sm overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
+                <div key={field.id} className="bg-blue-50 border rounded-md shadow-sm overflow-hidden">
+                  <div className="bg-indigo-600 text-white px-4 py-2 border-b flex justify-between items-center">
                     <h5 className="font-medium">Page {index + 1}</h5>
                     <div className="flex space-x-2">
                       <button
@@ -463,7 +474,7 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                       <input
                         type="text"
                         {...register(`journeyPages.${index}.title` as const)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     
@@ -474,7 +485,7 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                       <textarea
                         rows={3}
                         {...register(`journeyPages.${index}.content` as const)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>
                     
@@ -497,7 +508,7 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                         <input
                           type="text"
                           {...register(`journeyPages.${index}.buttonText` as const)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -518,27 +529,27 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
             </div>
           )}
           
-          <div className="bg-gray-50 border rounded-md p-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Preview</h4>
-            <p className="text-xs text-gray-500 mb-4">
+          <div className="bg-blue-50 border rounded-md p-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Preview</h4>
+            <p className="text-sm text-gray-600 mb-4">
               This is a simplified preview of your custom journey flow:
             </p>
             
             <div className="flex flex-wrap items-center">
               {fields.map((field, index) => (
                 <React.Fragment key={field.id}>
-                  <div className="bg-white border rounded px-3 py-2 text-sm">
+                  <div className="bg-white border rounded px-3 py-2 text-sm text-gray-900">
                     {watch(`journeyPages.${index}.title` as const) || `Page ${index + 1}`}
                   </div>
                   {index < fields.length - 1 && (
-                    <div className="mx-2 text-gray-400">→</div>
+                    <div className="mx-2 text-gray-600">→</div>
                   )}
                 </React.Fragment>
               ))}
               {fields.length > 0 && (
                 <>
-                  <div className="mx-2 text-gray-400">→</div>
-                  <div className="bg-blue-100 border border-blue-200 rounded px-3 py-2 text-sm text-blue-800">
+                  <div className="mx-2 text-gray-600">→</div>
+                  <div className="bg-indigo-100 border border-indigo-200 rounded px-3 py-2 text-sm text-indigo-900">
                     Photo Capture
                   </div>
                 </>
@@ -583,6 +594,45 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Dedicated journey settings save button */}
+      {customJourneyEnabled && (
+        <div className="pt-6 mt-6 border-t border-gray-200 flex flex-col space-y-3">
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => {
+                // Reset form to last saved state
+                if (journeyId) {
+                  const selectedJourney = savedJourneys.find(journey => journey.id === journeyId);
+                  if (selectedJourney) {
+                    setValue('journeyName', selectedJourney.name);
+                    setValue('journeyPages', []);
+                    selectedJourney.pages.forEach(page => {
+                      append(page);
+                    });
+                  }
+                }
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              disabled={isLoading}
+            >
+              Cancel Changes
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveJourney}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50"
+              disabled={isLoading || !journeyName.trim() || fields.length === 0}
+            >
+              {isLoading ? 'Saving...' : 'Save Journey'}
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 text-right">
+            Please tap "Save Settings" below to apply your changes to the frontend.
+          </p>
         </div>
       )}
       
