@@ -5,6 +5,7 @@ import { UseFormWatch, UseFormSetValue, UseFormRegister, FieldErrors, useFieldAr
 import { SettingsFormValues } from '../SettingsForm';
 import { useTheme } from '@/context/ThemeContext';
 import FileUploadField from '../FileUploadField';
+import { useToast } from '@/context/ToastContext';
 
 interface CustomJourneyTabProps {
   register: UseFormRegister<SettingsFormValues>;
@@ -52,6 +53,8 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
     name: "journeyPages"
   });
 
+  const { showToast } = useToast();
+
   // Journey deletion handler
   const handleDeleteJourney = async (journeyId: string) => {
     // Set the journey to delete and show confirmation modal
@@ -86,10 +89,13 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
       
       setShowDeleteModal(false);
       setJourneyToDelete(null);
+
+      showToast('Journey deleted successfully', 'success');
       
     } catch (error) {
       console.error('Error deleting journey:', error);
-      alert('Failed to delete journey. Please try again.');
+      showToast('Failed to delete journey. Please try again.', 'error');
+      // alert('Failed to delete journey. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -210,12 +216,14 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
   // Handle saving a journey
   const handleSaveJourney = async () => {
     if (!journeyName.trim()) {
-      alert('Please enter a journey name');
+      showToast('Please enter a journey name', 'error');
+      // alert('Please enter a journey name');
       return;
     }
     
     if (fields.length === 0) {
-      alert('Please add at least one page to your journey');
+      showToast('Please add at least one page to your journey', 'error');
+      //alert('Please add at least one page to your journey');
       return;
     }
     
@@ -270,14 +278,16 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
         });
         
         // Show success message
-        alert(`Journey "${savedJourney.name}" saved successfully.`);
+        showToast(`Journey "${savedJourney.name}" saved successfully`, 'success');
+        // alert(`Journey "${savedJourney.name}" saved successfully.`);
         
       } else {
         throw new Error('Failed to save journey');
       }
     } catch (error) {
       console.error('Error saving journey:', error);
-      alert('Failed to save journey. Please try again.');
+      showToast('Failed to save journey. Please try again.', 'error');
+      // alert('Failed to save journey. Please try again.');
     } finally {
       setIsLoading(false);
     }

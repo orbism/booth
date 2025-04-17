@@ -72,7 +72,8 @@ booth-boss/
 │   │   │   ├── media/                          # not in use
 │   │   │   └── users/                          # not in use
 │   │   ├── context/                            # 
-│   │   │   └── ThemeContext.tsx                # New theme context provider
+│   │   │   ├── ThemeContext.tsx                # Theme context provider
+│   │   │   └── ToastContext.tsx                # Toast notifications context provider
 │   │   ├── hooks/                              # not in use
 │   │   ├── lib/                                # not in use
 │   │   ├── login/                              # Admin login
@@ -93,7 +94,8 @@ booth-boss/
 │   │   ├── ErrorBoundary.tsx                   # Client-side error boundary component
 │   │   ├── ui/                                 # Basic UI components (shadcn)
 │   │   │   ├── ErrorMessage.tsx                # Reusable error message component
-│   │   │   └── OptimizedImage.tsx              # Reusable data URL handler for images
+│   │   │   ├── OptimizedImage.tsx              # Reusable data URL handler for images
+│   │   │   └── Toast.tsx                       # Toastified notifications
 │   │   ├── journey/                            # Basic UI components (shadcn)
 │   │   │   ├── JourneyPageView.tsx             # Individual journey page component
 │   │   │   └── JourneyContainer.tsx            # Journey flow manager

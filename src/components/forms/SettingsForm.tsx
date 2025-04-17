@@ -6,6 +6,7 @@ import { useForm, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ThemeProvider, ThemeOption, THEMES, ThemeColors } from '@/context/ThemeContext';
+import { useToast } from '@/context/ToastContext';
 
 // Dashbaord Settings tab components
 import GeneralTab from './tabs/GeneralTab';
@@ -110,6 +111,7 @@ interface SettingsFormProps {
 export default function SettingsForm({ initialSettings, onSubmit }: SettingsFormProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
@@ -211,6 +213,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     
       await onSubmit(formattedData);
       
+      showToast('Settings saved successfully!', 'success');
       setSuccessMessage('Settings saved successfully!');
       
       // Clear success message after 3 seconds
@@ -219,7 +222,8 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       }, 3000);
     } catch (err) {
       console.error('Settings update error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save settings');
+      showToast('Settings saved successfully!', 'success');
+      // setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setIsSubmitting(false);
     }

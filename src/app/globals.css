@@ -43,3 +43,51 @@ body {
 .text-primary {
   color: var(--color-primary);
 }
+
+/* Journey content container styling */
+.content-container {
+  color: inherit;
+}
+
+.content-container img {
+  max-width: 100%;
+  height: auto;
+  margin: 1rem auto;
+  border-radius: 0.25rem;
+}
+
+.content-container iframe {
+  max-width: 100%;
+  margin: 1rem auto;
+  border-radius: 0.25rem;
+  border: none;
+}
+
+.content-container ul, 
+.content-container ol {
+  text-align: left;
+  margin-left: 2rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.content-container a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.content-container blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 1rem;
+  margin-left: 0;
+  font-style: italic;
+}
+
+.content-container h1, 
+.content-container h2, 
+.content-container h3, 
+.content-container h4 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-primary);
+}

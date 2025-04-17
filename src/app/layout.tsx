@@ -1,10 +1,10 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getThemeSettings } from "@/lib/theme-loader";
 import { generateThemeCssOverrides } from "@/lib/theme-css-injector";
-
-export const revalidate = 0; // Disable cachine for this page
+import { ToastProvider } from "@/context/ToastContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,11 +22,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${themeSettings?.companyName || 'BoothBoss'} - Photo Booth App`,
     description: "Photo Booth Software",
-
   };
 }
 
- export default async function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -49,7 +48,9 @@ export async function generateMetadata(): Promise<Metadata> {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

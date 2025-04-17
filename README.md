@@ -9,6 +9,9 @@ A modern, AI-powered photo booth application built with Next.js TypeScript, and 
 - Email sharing with captured photos
 - Admin dashboard for managing settings
 - Responsive design for various devices
+- Interactive custom user journeys with smooth transitions and animations
+- Toast notifications for system feedback
+- Support for embedded content in journey pages
 
 ## Tech Stack
 
@@ -17,6 +20,7 @@ A modern, AI-powered photo booth application built with Next.js TypeScript, and 
 - **Database**: MySQL
 - **Authentication**: NextAuth.js
 - **Email**: Nodemailer with DreamHost SMTP
+- **Animation**: Framer Motion for smooth transitions
 
 ## Prerequisites
 
@@ -146,9 +150,13 @@ The application includes a powerful Custom User Journey builder for creating per
 ### Features
 - Visual journey editor with drag-and-drop organization
 - Custom text, background images, and button styling
+- Support for embedded HTML content including images, videos, and formatted text
+- Smooth animated transitions between journey pages
 - Up to 8 customizable pages in the journey flow
 - Import/export journey configurations for reuse
+- Comprehensive navigation with back button support
 - Preview mode to visualize the complete journey flow
+- Visual feedback with loading indicators and toast notifications
 
 ### Configuration
 All user journey elements can be configured through the admin dashboard:
