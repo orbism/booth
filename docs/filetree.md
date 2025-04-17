@@ -45,6 +45,9 @@ booth-boss/
 │   │   ├── (booth)/                            # Photo/video booth routes
 │   │   ├── api/                                # API routes
 │   │   │   ├── admin/                          # Admin-related API endpoints
+│   │   │   │   ├── analytics/                  #
+│   │   │   │   │   └── dashboard/              #
+│   │   │   │   │       └── route.ts            # API endpoint for real-time 
 │   │   │   │   ├── check/                      # API to check admin user status
 │   │   │   │   │   └── route.ts                # Handler for checking if admin needs setup
 │   │   │   │   ├── journeys/                   # 
@@ -92,6 +95,8 @@ booth-boss/
 │   ├── middleware.ts                           # Next.js middleware for auth protection
 │   ├── components/                             # React components
 │   │   ├── ErrorBoundary.tsx                   # Client-side error boundary component
+│   │   ├── analytics/                          # 
+│   │   │   ├── AnalyticsDashboard.tsx          # Enhanced analytics dashboard with charts and filters
 │   │   ├── ui/                                 # Basic UI components (shadcn)
 │   │   │   ├── ErrorMessage.tsx                # Reusable error message component
 │   │   │   ├── OptimizedImage.tsx              # Reusable data URL handler for images

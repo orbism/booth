@@ -224,5 +224,30 @@ The application includes comprehensive analytics tracking for booth sessions:
 - Session data is separated from personally identifiable information
 - GDPR-compliant data collection with consent mechanisms
 
+## Analytics Dashboard
+
+The application includes a comprehensive analytics dashboard with real-time data visualization:
+
+### Features
+- **Real-time data refresh** with auto-refresh capability
+- **Interactive charts** showing session completion, event types, and email domains
+- **Filtering and search** for event logs
+- **Data export** to CSV for further analysis
+- **Time period selection** (daily, weekly, monthly) for analytics overview
+
+### Technical Details
+- Built with Chart.js for data visualization
+- Uses React state for real-time updates
+- Server-rendered initial state for fast loading
+- Optimized database queries for performance
+- Responsive design for all device sizes
+
+### Usage
+Access the analytics dashboard from the admin section at `/admin/analytics`. The dashboard provides:
+1. Overview metrics for sessions and completion rates
+2. Visual charts for key performance indicators
+3. Detailed event logs with search and filter capabilities
+4. Export functionality for offline analysis
+
 ## License
 TBD
