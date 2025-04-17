@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
     
     const eventTypes = eventTypesResult.map((item: { eventType: string }) => item.eventType);
 
+    console.log('Fetching journey funnel data...');
     const journeyFunnel = await getJourneyFunnelData(30); // Get 30-day funnel by default
+    console.log('Journey funnel data received:', journeyFunnel);
 
     let customJourneyFunnel = null;
     if (startDateParam && endDateParam) {
@@ -76,7 +78,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get conversion trend data
+    console.log('Fetching conversion trend data...');
     const conversionTrend = await getConversionTrend(30);
+    console.log('Conversion trend data received:', conversionTrend);
     
     // Custom date range conversion trend if requested
     let customConversionTrend = null;

@@ -333,7 +333,7 @@ export async function getJourneyFunnelData(days: number = 30) {
     // Define the journey steps we want to track
     const journeySteps = [
       'view_start',
-      'splash_complete',
+      'splash_complete', 
       'info_submitted',
       'journey_complete',
       'photo_captured',
@@ -373,6 +373,9 @@ export async function getJourneyFunnelData(days: number = 30) {
         return { step, count };
       })
     );
+    
+    // Make sure we log what we're returning
+    console.log('Journey funnel data:', stepCounts);
     
     return stepCounts;
   } catch (error) {

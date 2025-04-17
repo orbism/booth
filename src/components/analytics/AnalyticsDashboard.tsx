@@ -89,7 +89,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const [customPeriodActive, setCustomPeriodActive] = useState(false);
     const [customData, setCustomData] = useState<AnalyticsSummary | null>(null);
     const [showDateRangePicker, setShowDateRangePicker] = useState(false);
-    const [journeyFunnelData, setJourneyFunnelData] = useState<JourneyStep[]>([]);
+    const [journeyFunnelData, setJourneyFunnelData] = useState<{step: string; count: number}[]>([]);
     const [conversionTrendData, setConversionTrendData] = useState<DailyMetric[]>([]);
     const [customJourneyFunnelData, setCustomJourneyFunnelData] = useState<JourneyStep[]>([]);
     const [customConversionTrendData, setCustomConversionTrendData] = useState<DailyMetric[]>([]);
@@ -232,6 +232,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         }
         
         const data = await response.json();
+        console.log('Dashboard data received:', data);
         
         setDaily(data.daily);
         setWeekly(data.weekly);
@@ -243,10 +244,12 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         
         if (customPeriodActive) {
           if (data.customJourneyFunnel) {
+            console.log('Setting journey funnel data:', data.journeyFunnel);
             setCustomJourneyFunnelData(data.customJourneyFunnel);
           }
           
           if (data.customConversionTrend) {
+            console.log('Setting conversion trend data:', data.conversionTrend);
             setCustomConversionTrendData(data.customConversionTrend);
           }
         }
@@ -758,7 +761,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                             </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {event.analytics?.sessionId ? event.analytics.sessionId.substring(0, 8) + '...' : '-'}
+                                {event.analytics?.sessionId 
+                                    ? event.analytics.sessionId.substring(0, 8) + '...' 
+                                    : '-'}                            
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                             {event.metadata ? event.metadata : '-'}

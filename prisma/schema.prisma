@@ -106,7 +106,7 @@ model BoothEventLog {
   eventType   String
   metadata    String?        // JSON string
   timestamp   DateTime       @default(now())
-  analytics   BoothAnalytics @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
+  analytics   BoothAnalytics? @relation(fields: [analyticsId], references: [id], onDelete: SetNull)
 
   @@index([analyticsId])
 }
