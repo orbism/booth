@@ -98,7 +98,9 @@ booth-boss/
 │   │   │   └── Toast.tsx                       # Toastified notifications
 │   │   ├── journey/                            # Basic UI components (shadcn)
 │   │   │   ├── JourneyPageView.tsx             # Individual journey page component
-│   │   │   └── JourneyContainer.tsx            # Journey flow manager
+│   │   │   ├── JourneyContainer.tsx            # Journey flow manager
+│   │   │   ├── JourneyPreview.tsx              # Interactive journey preview
+│   │   │   └── PreviewDeviceFrame.tsx          # Device frame for responsive previews
 │   │   ├── booth/                              # Photo booth components
 │   │   │   ├── CountdownTimer.tsx              # Countdown component
 │   │   │   ├── SplashPage.tsx                  # New splash page component
@@ -125,7 +127,8 @@ booth-boss/
 │   │   └── useCamera.ts                        # Camera access hook
 │   ├── lib/                                    # Utility functions and libraries
 │   │   ├── admin.ts                            # Admin user utility functions
-│   │   ├── analytics.ts                        # Analytics utility functions
+│   │   ├── analytics.ts                        # Analytics utility functions (deprecated)
+│   │   ├── analytics-server.ts                 # Analytics utility functions
 │   │   ├── db-url.ts                           # Database URL constructor
 │   │   ├── email.ts                            # Email sending utilities
 │   │   ├── errors.ts                           # Error handling utilities

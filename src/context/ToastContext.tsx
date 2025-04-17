@@ -5,6 +5,8 @@ import Toast, { ToastType } from '@/components/ui/Toast';
 
 interface ToastContextProps {
   showToast: (message: string, type: ToastType, duration?: number) => void;
+  showSuccessToast: (message: string) => void;
+  showErrorToast: (message: string) => void;
 }
 
 const ToastContext = createContext<ToastContextProps | undefined>(undefined);
@@ -35,13 +37,21 @@ export function ToastProvider({ children }: ToastProviderProps) {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts(prev => [...prev, { id, message, type, duration }]);
   };
+
+  const showSuccessToast = (message: string) => {
+    showToast(message, 'success');
+  };
+  
+  const showErrorToast = (message: string) => {
+    showToast(message, 'error');
+  };
   
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
   
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, showSuccessToast, showErrorToast }}>
       {children}
       {toasts.map(toast => (
         <Toast

@@ -4,7 +4,8 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
-import { getAnalyticsSummary } from '@/lib/analytics';
+import { getAnalyticsSummary, getRecentEvents } from '@/lib/analytics-server';
+
 
 export const metadata = {
   title: 'Analytics - BoothBoss Admin',
@@ -35,47 +36,47 @@ const getAnalyticsSummaryWithParam = getAnalyticsSummary as (days: number) => Pr
 // Get analytics data for different time periods.
 async function getAnalyticsData() {
   const [daily, weekly, monthly] = await Promise.all([
-    getAnalyticsSummaryWithParam(1),
-    getAnalyticsSummaryWithParam(7),
-    getAnalyticsSummaryWithParam(30),
+    getAnalyticsSummary(1),
+    getAnalyticsSummary(7),
+    getAnalyticsSummary(30),
   ]);
   
   return { daily, weekly, monthly };
 }
 
-// Get recent events for tracking.
-async function getRecentEvents() {
-  try {
-    // First find valid analytics IDs
-    const validAnalytics = await prisma.boothAnalytics.findMany({
-      select: { id: true },
-      take: 50  // Get more than we need to ensure we have valid relations
-    });
+// Get recent events for tracking. -- works with old lib/analytics.ts
+// async function getRecentEvents() {
+//   try {
+//     // First find valid analytics IDs
+//     const validAnalytics = await prisma.boothAnalytics.findMany({
+//       select: { id: true },
+//       take: 50  // Get more than we need to ensure we have valid relations
+//     });
     
-    const validIds = validAnalytics.map((a: { id: string }) => a.id);
+//     const validIds = validAnalytics.map((a: { id: string }) => a.id);
     
-    // Now get events that have valid analytics IDs
-    const events = await prisma.boothEventLog.findMany({
-      where: {
-        analyticsId: {
-          in: validIds
-        }
-      },
-      take: 20,
-      orderBy: {
-        timestamp: 'desc',
-      },
-      include: {
-        analytics: true,
-      },
-    });
+//     // Now get events that have valid analytics IDs
+//     const events = await prisma.boothEventLog.findMany({
+//       where: {
+//         analyticsId: {
+//           in: validIds
+//         }
+//       },
+//       take: 20,
+//       orderBy: {
+//         timestamp: 'desc',
+//       },
+//       include: {
+//         analytics: true,
+//       },
+//     });
     
-    return events;
-  } catch (error) {
-    console.error('Error fetching recent events:', error);
-    return []; // Return empty array on error
-  }
-}
+//     return events;
+//   } catch (error) {
+//     console.error('Error fetching recent events:', error);
+//     return []; // Return empty array on error
+//   }
+// }
 
 export default async function AnalyticsPage() {
   const session = await getServerSession(authOptions);

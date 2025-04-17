@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { UseFormWatch, UseFormSetValue, UseFormRegister, FieldErrors, useFieldArray, Control } from 'react-hook-form';
 import { SettingsFormValues } from '../SettingsForm';
 import { useTheme } from '@/context/ThemeContext';
+import JourneyPreview from '@/components/journey/JourneyPreview';
 import FileUploadField from '../FileUploadField';
 import { useToast } from '@/context/ToastContext';
 
@@ -33,6 +34,7 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
   const journeyId = watch('journeyId');
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [journeyToDelete, setJourneyToDelete] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
 
   console.log('Journey state:', { 
     customJourneyEnabled, 
@@ -54,6 +56,7 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
   });
 
   const { showToast } = useToast();
+  const { showSuccessToast } = useToast();
 
   // Journey deletion handler
   const handleDeleteJourney = async (journeyId: string) => {
@@ -120,6 +123,16 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
     
     fetchSavedJourneys();
   }, []);
+
+  // Close journey preview
+  useEffect(() => {
+    const handleClosePreview = () => setShowPreview(false);
+    document.addEventListener('closeJourneyPreview', handleClosePreview);
+    
+    return () => {
+      document.removeEventListener('closeJourneyPreview', handleClosePreview);
+    };
+  }, []);  
   
   // Handle toggling custom journey mode
   const handleToggleCustomJourney = () => {
@@ -278,7 +291,7 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
         });
         
         // Show success message
-        showToast(`Journey "${savedJourney.name}" saved successfully`, 'success');
+        showSuccessToast(`Journey "${savedJourney.name}" saved successfully`);
         // alert(`Journey "${savedJourney.name}" saved successfully.`);
         
       } else {
@@ -605,6 +618,35 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Preview components */}
+      {customJourneyEnabled && fields.length > 0 && (
+        <div className="flex justify-center mt-4">
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition-colors"
+          >
+            Preview Journey Experience
+          </button>
+        </div>
+      )}
+      {showPreview && (
+        <JourneyPreview
+          pages={fields.map((field, index) => ({
+            id: field.id,
+            title: watch(`journeyPages.${index}.title`) || `Page ${index + 1}`,
+            content: watch(`journeyPages.${index}.content`) || '',
+            backgroundImage: watch(`journeyPages.${index}.backgroundImage`),
+            buttonText: watch(`journeyPages.${index}.buttonText`) || 'Next',
+            buttonImage: watch(`journeyPages.${index}.buttonImage`)
+          }))}
+          primaryColor={watch('primaryColor')}
+          buttonColor={watch('buttonColor') || watch('primaryColor')}
+          backgroundColor={watch('backgroundColor') || '#ffffff'}
+          isVisible={showPreview}
+        />
       )}
 
       {/* Dedicated journey settings save button */}

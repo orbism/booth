@@ -8,6 +8,8 @@ export async function POST(request: NextRequest) {
     const data = await request.json();
     const { event, sessionId, analyticsId, boothSessionId, duration, emailDomain, userAgent, eventType, metadata } = data;
     
+    console.log('Analytics tracking:', { event, sessionId, analyticsId });
+    
     // Track different event types
     switch (event) {
       case 'session_start': {
@@ -21,11 +23,13 @@ export async function POST(request: NextRequest) {
           },
         });
         
+        console.log('Created analytics session:', analytics.id);
         return NextResponse.json({ id: analytics.id });
       }
       
       case 'session_complete': {
         if (!analyticsId) {
+          console.error('Missing analyticsId parameter');
           return NextResponse.json(
             { error: 'Missing analyticsId parameter' },
             { status: 400 }
@@ -33,7 +37,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Update existing analytics entry with completion data
-        await prisma.boothAnalytics.update({
+        const updated = await prisma.boothAnalytics.update({
           where: { id: analyticsId },
           data: {
             eventType: 'session_complete',
@@ -44,11 +48,13 @@ export async function POST(request: NextRequest) {
           },
         });
         
+        console.log('Updated analytics session:', updated.id);
         return NextResponse.json({ success: true });
       }
       
       case 'event': {
         if (!analyticsId || !eventType) {
+          console.error('Missing required parameters', { analyticsId, eventType });
           return NextResponse.json(
             { error: 'Missing required parameters' },
             { status: 400 }
@@ -65,16 +71,19 @@ export async function POST(request: NextRequest) {
           },
         });
         
+        console.log('Logged event:', eventLog.id, eventType);
         return NextResponse.json({ id: eventLog.id });
       }
       
       default:
+        console.error('Unknown event type:', event);
         return NextResponse.json(
           { error: 'Unknown event type' },
           { status: 400 }
         );
     }
   } catch (error) {
+    console.error('Analytics tracking error:', error);
     return handleApiError(error, 'Failed to track analytics event');
   }
 }

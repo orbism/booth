@@ -82,6 +82,9 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   useEffect(() => {
     const initializeAnalytics = async () => {
       try {
+
+        console.log('Initializing analytics session');
+        
         // Generate a local tracking session ID
         const localAnalyticsId = uuidv4();
         setAnalyticsId(localAnalyticsId);
@@ -102,12 +105,16 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         if (response.ok) {
           const data = await response.json();
           if (data.id) {
+            console.log('Analytics session started with ID:', data.id);
             setAnalyticsId(data.id);
           }
+        } else {
+          console.error('Failed to start analytics session:', await response.text());
         }
         
         // Track view start event
-        trackBoothEvent(localAnalyticsId, 'view_start');
+        await trackBoothEvent(localAnalyticsId, 'view_start');
+        console.log('Tracked view_start event');
       } catch (error) {
         console.error('Failed to initialize analytics:', error);
       }
@@ -120,6 +127,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       // Track session end if component unmounts
       const duration = Date.now() - sessionStartTimeRef.current;
       if (analyticsId) {
+        console.log('Tracking session end on unmount, duration:', duration);
         fetch('/api/analytics/track', {
           method: 'POST',
           headers: {

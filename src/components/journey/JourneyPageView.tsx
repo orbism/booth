@@ -14,6 +14,8 @@ interface JourneyPageViewProps {
   onNext: () => void;
   onPrevious?: () => void;
   isLoading?: boolean;
+  isPreview?: boolean;
+  previewMode?: 'mobile' | 'tablet' | 'desktop';
 }
 
 const JourneyPageView: React.FC<JourneyPageViewProps> = ({
@@ -27,6 +29,8 @@ const JourneyPageView: React.FC<JourneyPageViewProps> = ({
   onNext,
   onPrevious,
   isLoading = false,
+  isPreview = false,
+  previewMode = 'mobile'
 }) => {
   // Function to render HTML content safely with support for embedded content
   const renderContent = () => {
@@ -47,7 +51,9 @@ const JourneyPageView: React.FC<JourneyPageViewProps> = ({
   };
   
   return (
-    <div className="relative min-h-[60vh] flex flex-col justify-between p-6">
+    <div className={`relative flex flex-col justify-between ${
+      isPreview ? 'h-full' : 'min-h-[60vh]'
+    } p-6`}>
       {backgroundImage && (
         <div className="absolute inset-0 z-0">
           <OptimizedImage 
