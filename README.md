@@ -233,14 +233,11 @@ The application includes a comprehensive analytics dashboard with real-time data
 - **Interactive charts** showing session completion, event types, and email domains
 - **Filtering and search** for event logs
 - **Data export** to CSV for further analysis
-- **Time period selection** (daily, weekly, monthly) for analytics overview
-
-### Technical Details
-- Built with Chart.js for data visualization
-- Uses React state for real-time updates
-- Server-rendered initial state for fast loading
-- Optimized database queries for performance
-- Responsive design for all device sizes
+- **Time period selection** (daily, weekly, monthly, custom date range) for analytics overview
+- **User journey funnel visualization** to identify dropout points
+- **Conversion trend tracking** to monitor performance over time
+- **Contextual help tooltips** for metrics interpretation
+- **Automatic improvement suggestions** based on analytics data
 
 ### Usage
 Access the analytics dashboard from the admin section at `/admin/analytics`. The dashboard provides:

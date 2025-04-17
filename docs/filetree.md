@@ -47,7 +47,7 @@ booth-boss/
 │   │   │   ├── admin/                          # Admin-related API endpoints
 │   │   │   │   ├── analytics/                  #
 │   │   │   │   │   └── dashboard/              #
-│   │   │   │   │       └── route.ts            # API endpoint for real-time 
+│   │   │   │   │       └── route.ts            # API endpoint for real-time analytics dashboard
 │   │   │   │   ├── check/                      # API to check admin user status
 │   │   │   │   │   └── route.ts                # Handler for checking if admin needs setup
 │   │   │   │   ├── journeys/                   # 
@@ -97,10 +97,15 @@ booth-boss/
 │   │   ├── ErrorBoundary.tsx                   # Client-side error boundary component
 │   │   ├── analytics/                          # 
 │   │   │   ├── AnalyticsDashboard.tsx          # Enhanced analytics dashboard with charts and filters
+│   │   │   ├── UserJourneyFunnel.tsx           # Funnel visualization for user journey
+│   │   │   ├── ConversionTrendChart.tsx        # Chart for tracking conversion trends
+│   │   │   └── ImprovementSuggestions.tsx      # Suggestions based on analytics 
 │   │   ├── ui/                                 # Basic UI components (shadcn)
 │   │   │   ├── ErrorMessage.tsx                # Reusable error message component
 │   │   │   ├── OptimizedImage.tsx              # Reusable data URL handler for images
-│   │   │   └── Toast.tsx                       # Toastified notifications
+│   │   │   ├── Toast.tsx                       # Toastified notifications
+│   │   │   ├── DateRangePicker.tsx             # Date range selection component
+│   │   │   └── Tooltip.tsx                     # Contextual help tooltip component
 │   │   ├── journey/                            # Basic UI components (shadcn)
 │   │   │   ├── JourneyPageView.tsx             # Individual journey page component
 │   │   │   ├── JourneyContainer.tsx            # Journey flow manager
