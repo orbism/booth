@@ -9,11 +9,11 @@ export async function getThemeSettings(): Promise<ThemeColors | null> {
     try {
       const settings = await prisma.settings.findFirst();
 
-      console.log('Theme settings loaded from DB:', {
-        theme: settings?.theme,
-        primaryColor: settings?.primaryColor,
-        secondaryColor: settings?.secondaryColor
-      });
+      // console.log('Theme settings loaded from DB:', {
+      //   theme: settings?.theme,
+      //   primaryColor: settings?.primaryColor,
+      //   secondaryColor: settings?.secondaryColor
+      // });
       
       if (!settings) {
         return {
