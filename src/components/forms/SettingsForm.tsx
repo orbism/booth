@@ -16,8 +16,9 @@ import TemplatesTab from './tabs/TemplatesTab';
 import CustomJourneyTab from './tabs/CustomJourneyTab';
 import AdvancedTab from './tabs/AdvancedTab';
 import SplashTab from './tabs/SplashTab';
+import CaptureModeTab from './tabs/CaptureModeTab';
 
-type SettingsTab = 'general' | 'email' | 'splash' | 'appearance' | 'templates' | 'advanced' | 'journey';
+type SettingsTab = 'general' | 'email' | 'splash' | 'appearance' | 'templates' | 'advanced' | 'journey' | 'capture';
 
 type SettingsData = {
   id: string;
@@ -57,22 +58,45 @@ type SettingsData = {
   splashPageContent: string | null;
   splashPageImage: string | null;
   splashPageButtonText: string | null;
+  captureMode: 'photo' | 'video';
+  photoOrientation: string | null;
+  photoDevice: string | null;
+  photoResolution: string | null;
+  photoEffect: string | null;
+  printerEnabled: boolean;
+  aiImageCorrection: boolean;
+  videoOrientation: string | null;
+  videoDevice:string | null;
+  videoResolution: string | null;
+  videoEffect: string | null;
+  videoDuration: number;
 };
 
 // Settings schema
 const settingsSchema = z.object({
+
+  // General Settings
   eventName: z.string().min(1, "Event name is required"),
   adminEmail: z.string().email("Invalid email address"),
   countdownTime: z.coerce.number().int().min(1).max(10),
   resetTime: z.coerce.number().int().min(10).max(300),
+
+  // Email Setup Settings
   emailSubject: z.string().min(1, "Email subject is required"),
   emailTemplate: z.string().min(1, "Email template is required"),
   smtpHost: z.string().min(1, "SMTP host is required"),
   smtpPort: z.coerce.number().int().min(1).max(65535),
   smtpUser: z.string().min(1, "SMTP username is required"),
   smtpPassword: z.string().min(1, "SMTP password is required"),
+
+  // Brand Personalization Settings
   companyName: z.string().min(1, "Company name is required"),
   companyLogo: z.string().optional().nullable(),
+
+  // Advanced Settings
+  notes: z.string().optional().nullable(),
+
+  // Generic Theme Settings
   theme: z.enum(["midnight", "pastel", "bw", "custom"]).default("custom"),
   primaryColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color"),
   secondaryColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color"),
@@ -80,7 +104,9 @@ const settingsSchema = z.object({
   borderColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
   buttonColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
   textColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
-  notes: z.string().optional().nullable(),
+
+
+  // Custom Journey Settings
   customJourneyEnabled: z.boolean().default(false),
   journeyName: z.string().optional(),
   journeyId: z.string().optional(),
@@ -94,11 +120,31 @@ const settingsSchema = z.object({
       buttonImage: z.string().nullable()
     })
   ).optional().default([]),
+
+  // Splash Page settings
   splashPageEnabled: z.boolean().default(false),
   splashPageTitle: z.string().optional(),
   splashPageContent: z.string().optional(),
   splashPageImage: z.string().optional().nullable(),
   splashPageButtonText: z.string().optional(),
+
+  // Capture Mode Settings
+  captureMode: z.enum(["photo", "video"]).default("photo"),
+
+  // Photo Mode Settings
+  photoOrientation: z.string().default("portrait-standard"),
+  photoDevice: z.string().default("ipad"),
+  photoResolution: z.string().default("medium"),
+  photoEffect: z.string().default("none"),
+  printerEnabled: z.boolean().default(false),
+  aiImageCorrection: z.boolean().default(false),
+  
+  // Video Mode Settings
+  videoOrientation: z.string().default("portrait-standard"),
+  videoDevice: z.string().default("ipad"),
+  videoResolution: z.string().default("medium"),
+  videoEffect: z.string().default("none"),
+  videoDuration: z.coerce.number().int().min(5).max(60).default(10),
 });
 
 export type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -156,6 +202,18 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       splashPageContent: initialSettings.splashPageContent || '',
       splashPageImage: initialSettings.splashPageImage || null,
       splashPageButtonText: initialSettings.splashPageButtonText || 'Start',
+      captureMode: (initialSettings.captureMode as 'photo' | 'video') || 'photo',
+      photoOrientation: initialSettings.photoOrientation || 'portrait-standard',
+      photoDevice: initialSettings.photoDevice || 'ipad',
+      photoResolution: initialSettings.photoResolution || 'medium',
+      photoEffect: initialSettings.photoEffect || 'none',
+      printerEnabled: initialSettings.printerEnabled || false,
+      aiImageCorrection: initialSettings.aiImageCorrection || false,
+      videoOrientation: initialSettings.videoOrientation || 'portrait-standard',
+      videoDevice: initialSettings.videoDevice || 'ipad',
+      videoResolution: initialSettings.videoResolution || 'medium',
+      videoEffect: initialSettings.videoEffect || 'none',
+      videoDuration: initialSettings.videoDuration || 10,
     }
   });
 
@@ -301,6 +359,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
           </button>
           <button
             type="button"
+            className={`px-4 py-2 font-medium text-sm ${activeTab === 'capture' 
+              ? 'border-b-2 border-blue-500 text-blue-600' 
+              : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab('capture')}
+          >
+            Capture Mode
+          </button>
+          <button
+            type="button"
             className={`px-4 py-2 font-medium text-sm ${activeTab === 'advanced' 
               ? 'border-b-2 border-blue-500 text-blue-600' 
               : 'text-gray-500 hover:text-gray-700'}`}
@@ -400,6 +467,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
               setValue={setValue} 
               errors={errors}
               control={control}
+            />
+          )}
+
+          {activeTab === 'capture' && (
+            <CaptureModeTab 
+              register={register} 
+              watch={watch} 
+              setValue={setValue} 
+              errors={errors} 
             />
           )}
 

@@ -45,6 +45,18 @@ const settingsSchema = z.object({
   splashPageContent: z.string().optional(),
   splashPageImage: z.string().optional().nullable(),
   splashPageButtonText: z.string().optional(),
+  captureMode: z.enum(["photo", "video"]).default("photo"),
+  photoOrientation: z.string().default("portrait-standard"),
+  photoDevice: z.string().default("ipad"),
+  photoResolution: z.string().default("medium"),
+  photoEffect: z.string().default("none"),
+  printerEnabled: z.boolean().default(false),
+  aiImageCorrection: z.boolean().default(false),
+  videoOrientation: z.string().default("portrait-standard"),
+  videoDevice: z.string().default("ipad"),
+  videoResolution: z.string().default("medium"),
+  videoEffect: z.string().default("none"),
+  videoDuration: z.coerce.number().int().min(5).max(60).default(10),
 });
 
 export async function GET(_request: NextRequest) {
@@ -150,6 +162,18 @@ export async function PUT(_request: NextRequest) {
         splashPageContent: validatedData.splashPageContent,
         splashPageImage: validatedData.splashPageImage,
         splashPageButtonText: validatedData.splashPageButtonText,
+        captureMode: validatedData.captureMode,
+        photoOrientation: validatedData.photoOrientation,
+        photoDevice: validatedData.photoDevice,
+        photoResolution: validatedData.photoResolution,
+        photoEffect: validatedData.photoEffect,
+        printerEnabled: validatedData.printerEnabled,
+        aiImageCorrection: validatedData.aiImageCorrection,
+        videoOrientation: validatedData.videoOrientation,
+        videoDevice: validatedData.videoDevice,
+        videoResolution: validatedData.videoResolution,
+        videoEffect: validatedData.videoEffect,
+        videoDuration: validatedData.videoDuration,
       }
     });
     

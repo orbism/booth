@@ -44,6 +44,18 @@ type Settings = {
   splashPageContent: string;
   splashPageImage: string | null;
   splashPageButtonText: string;
+  captureMode?: string;
+  photoOrientation?: string;
+  photoDevice?: string;
+  photoResolution?: string;
+  photoEffect?: string;
+  printerEnabled?: boolean;
+  aiImageCorrection?: boolean;
+  videoOrientation?: string;
+  videoDevice?: string;
+  videoResolution?: string;
+  videoEffect?: string;
+  videoDuration?: number;
 };
 
 type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';

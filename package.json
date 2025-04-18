@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "setup": "node scripts/setup-env.js && prisma generate",
     "migrate-theme": "node scripts/migrate-theme-fields.js",
+    "migrate-capture": "node scripts/migrate-capture-mode.js",
     "db:push": "node scripts/setup-env.js && prisma db push",
     "db:seed": "node scripts/setup-env.js && node scripts/seed.js"
   },

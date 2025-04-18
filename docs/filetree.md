@@ -21,6 +21,7 @@ booth-boss/
 │   ├── schema.prisma                           # Prisma schema definition
 │   └── seed.ts                                 # Database seed script
 ├── scripts/                                    # Helper scripts
+│   ├── migrate-capture-mode.js                 # Script to add capture mode fields to database
 │   ├── migrate-theme-fields.js                 # Theme fields migration script
 │   ├── seed.js                                 # Simplified seed script
 │   ├── setup-env.js                            # Database URL generator
@@ -116,7 +117,7 @@ booth-boss/
 │   │   │   ├── SplashPage.tsx                  # New splash page component
 │   │   │   ├── PhotoBooth.tsx                  # Main booth component
 │   │   │   ├── PhotoPreview.tsx                # Photo review component
-│   │   │   └── ...                             # Other booth components
+│   │   │   └── VideoPreview.tsx                # Component for video preview and sending
 │   │   ├── forms/                              # Form components
 │   │   │   ├── tabs/                           # Tab content
 │   │   │   │   ├── GeneralTab.tsx              # Basic booth settings

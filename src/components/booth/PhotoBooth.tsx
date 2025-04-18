@@ -40,6 +40,16 @@ interface PhotoBoothProps {
   splashPageContent?: string;
   splashPageImage?: string | null;
   splashPageButtonText?: string;
+  captureMode?: 'photo' | 'video';
+  photoOrientation?: string;
+  photoResolution?: string;
+  photoEffect?: string;
+  printerEnabled?: boolean;
+  aiImageCorrection?: boolean;
+  videoOrientation?: string;
+  videoResolution?: string;
+  videoEffect?: string;
+  videoDuration?: number;
 }
 
 const PhotoBooth: React.FC<PhotoBoothProps> = ({
@@ -77,6 +87,31 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   // Analytics tracking
   const [analyticsId, setAnalyticsId] = useState<string | null>(null);
   const sessionStartTimeRef = useRef<number>(Date.now());
+
+  // Video related variables
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  // Extract captureMode from props with default value -- TODO: pass these all through props.
+  // const {
+  //   captureMode = 'photo',
+  //   videoDuration = 10,
+  //   photoOrientation = 'portrait-standard',
+  //   photoResolution = 'medium',
+  //   photoEffect = 'none',
+  //   videoOrientation = 'portrait-standard',
+  //   videoResolution = 'medium',
+  //   videoEffect = 'none',
+  //   printerEnabled = false,
+  //   aiImageCorrection = false,
+  // } = props;
+
+  const captureMode = 'photo'; // Default values since they're not passed through props yet
+  const videoDuration = 10;
 
   // Initialize tracking session
   useEffect(() => {
@@ -142,6 +177,48 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       }
     };
   }, []);
+
+  // Add this useEffect after the initial useEffect blocks
+  useEffect(() => {
+    // Setup media recorder when webcam reference is available and in video mode
+    if (webcamRef.current && captureMode === 'video' && stage === 'countdown') {
+      const videoElement = webcamRef.current.video;
+      if (videoElement && videoElement.srcObject) {
+        // Clear any old recorded chunks
+        recordedChunksRef.current = [];
+        
+        // Create media recorder
+        const mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream);
+        mediaRecorderRef.current = mediaRecorder;
+        
+        // Set up event handlers
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          const videoBlob = new Blob(recordedChunksRef.current, {
+            type: 'video/webm'
+          });
+          const url = URL.createObjectURL(videoBlob);
+          setVideoUrl(url);
+          setStage('preview');
+        };
+      }
+    }
+    
+    // Cleanup function
+    return () => {
+      if (recordingTimerRef.current) {
+        clearTimeout(recordingTimerRef.current);
+      }
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, [webcamRef.current, captureMode, stage]);
   
   // Handle splash page completion
   const handleSplashComplete = () => {
@@ -185,26 +262,50 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Handle countdown completion
   const handleCountdownComplete = async () => {
-    if (webcamRef.current) {
-      const screenshot = webcamRef.current.getScreenshot();
-      setPhotoDataUrl(screenshot);
-      setStage('preview');
-      
-      // Track photo captured
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'photo_captured');
+    if (captureMode === 'photo') {
+      // Existing photo capture logic
+      if (webcamRef.current) {
+        const screenshot = webcamRef.current.getScreenshot();
+        setPhotoDataUrl(screenshot);
+        setStage('preview');
+        
+        // Track photo captured
+        if (analyticsId) {
+          await trackBoothEvent(analyticsId, 'photo_captured');
+        }
+      } else {
+        console.error('Webcam reference not available');
       }
     } else {
-      console.error('Webcam reference not available');
-      setIsCameraError(true);
+      // Start video recording
+      setIsRecording(true);
+      setRecordingStartTime(Date.now());
       
-      // Track error
+      // Set up recording timer
+      recordingTimerRef.current = setTimeout(() => {
+        stopVideoRecording();
+      }, videoDuration * 1000);
+      
+      // Track video recording started
       if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'error', {
-          type: 'camera_error',
-          message: 'Webcam reference not available',
-        });
+        // await trackBoothEvent(analyticsId, 'video_recording_started'); //TODO: set this up
+        await trackBoothEvent(analyticsId, 'photo_captured'); // Reusing existing event type for now
       }
+    }
+  };
+
+  // Stop video recording
+  const stopVideoRecording = async () => {
+    if (!mediaRecorderRef.current) return;
+    
+    mediaRecorderRef.current.stop();
+    setIsRecording(false);
+    
+    // Track video recording completed
+    if (analyticsId) {
+      // await trackBoothEvent(analyticsId, 'video_captured'); // TODO: set this up
+      await trackBoothEvent(analyticsId, 'photo_captured'); // Reusing existing event type for now
+
     }
   };
 
@@ -316,6 +417,104 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     }
   };
 
+  const handleSendVideoEmail = async () => {
+    if (!userData || !videoUrl) return;
+  
+    try {
+      setError(null);
+      
+      // Convert video URL to blob for upload
+      const response = await fetch(videoUrl);
+      const blob = await response.blob();
+      
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append('video', blob, 'video.mp4');
+      formData.append('name', userData.name);
+      formData.append('email', userData.email);
+      formData.append('mediaType', 'video');
+      
+      // Add analytics ID if available
+      if (analyticsId) {
+        formData.append('analyticsId', analyticsId);
+      }
+      
+      // Track video approved
+      if (analyticsId) {
+        //await trackBoothEvent(analyticsId, 'video_approved'); // TODO: set this up
+        await trackBoothEvent(analyticsId, 'photo_approved'); // Reusing existing event type for now
+      }
+      
+      // Send to API endpoint
+      const result = await fetch('/api/booth/capture', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!result.ok) {
+        const errorData = await result.json();
+        throw new Error(errorData.error?.message || 'Failed to upload video');
+      }
+      
+      const data = await result.json();
+      setSessionId(data.sessionId);
+      setStage('complete');
+      
+      // Track completion
+      if (analyticsId) {
+        const duration = Date.now() - sessionStartTimeRef.current;
+        await trackBoothEvent(analyticsId, 'email_sent', {
+          duration,
+          boothSessionId: data.sessionId,
+        });
+        
+        // Record session completion
+        await fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            event: 'session_complete',
+            analyticsId,
+            boothSessionId: data.sessionId,
+            emailDomain: userData.email.split('@')[1],
+            duration,
+          }),
+        });
+      }
+      
+      // Start reset timer
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+      
+      resetTimerRef.current = setTimeout(() => {
+        resetBooth();
+      }, resetTimeSeconds * 1000);
+      
+      return data;
+    } catch (error) {
+      console.error('Error sending email:', error);
+      
+      // Track error
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'error', {
+          type: 'email_error',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+      
+      setError({
+        title: 'Email Error',
+        message: error instanceof Error 
+          ? error.message 
+          : 'Failed to send video. Please try again.'
+      });
+      throw error;
+    }
+  };
+
   // Reset the booth to initial state
   const resetBooth = () => {
     setStage(splashPageEnabled ? 'splash' : 'collect-info');
@@ -414,7 +613,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         );
         
         case 'preview':
-          return userData && photoDataUrl ? (
+          return userData && (captureMode === 'photo' ? photoDataUrl : videoUrl) ? (
             <>
               {error && (
                 <ErrorMessage
@@ -424,13 +623,23 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   className="mb-4"
                 />
               )}
-              <PhotoPreview
-                photoDataUrl={photoDataUrl}
-                userName={userData.name}
-                userEmail={userData.email}
-                onSendEmail={handleSendEmail}
-                onRetake={handleRetake}
-              />
+              {captureMode === 'photo' ? (
+                <PhotoPreview
+                  photoDataUrl={photoDataUrl as string}
+                  userName={userData.name}
+                  userEmail={userData.email}
+                  onSendEmail={handleSendEmail}
+                  onRetake={handleRetake}
+                />
+              ) : (
+                <VideoPreview
+                  videoUrl={videoUrl as string}
+                  userName={userData.name}
+                  userEmail={userData.email}
+                  onSendEmail={handleSendVideoEmail}
+                  onRetake={handleRetake}
+                />
+              )}
             </>
           ) : (
             <div className="p-6 text-center">

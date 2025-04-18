@@ -67,14 +67,36 @@ model Settings {
   buttonColor     String?
   textColor       String?
   notes           String? @db.Text
+
+  // Custom Journey Settings
   customJourneyEnabled Boolean @default(false)
   activeJourneyId     String?  // ID of the currently active journey
   journeyConfig        Json?
+  
+  // Splash Page Settings
   splashPageEnabled   Boolean @default(false)
   splashPageTitle     String?
   splashPageContent   String?
   splashPageImage     String?
   splashPageButtonText String? @default("Start")
+
+  // Capture Mode Settings
+  captureMode            String  @default("photo") // "photo" or "video"
+  
+  // Photo Mode Settings
+  photoOrientation       String  @default("portrait-standard") // portrait-standard, portrait-story, square, landscape-standard, landscape-cinematic
+  photoDevice            String  @default("ipad") // ipad, iphone, android, mac, pc
+  photoResolution        String  @default("medium") // low, medium, high
+  photoEffect            String  @default("none") // none, sepia, black-white, etc.
+  printerEnabled         Boolean @default(false)
+  aiImageCorrection      Boolean @default(false)
+  
+  // Video Mode Settings
+  videoOrientation       String  @default("portrait-standard") // portrait-standard, portrait-story, square, landscape-standard, landscape-cinematic
+  videoDevice            String  @default("ipad") // ipad, iphone, android, mac, pc 
+  videoResolution        String  @default("medium") // low, medium, high
+  videoEffect            String  @default("none") // none, sepia, black-white, etc.
+  videoDuration          Int     @default(10) // in seconds
 }
 
 model Journey {
@@ -106,7 +128,7 @@ model BoothEventLog {
   eventType   String
   metadata    String?        // JSON string
   timestamp   DateTime       @default(now())
-  analytics   BoothAnalytics? @relation(fields: [analyticsId], references: [id], onDelete: SetNull)
+  analytics   BoothAnalytics? @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
 
   @@index([analyticsId])
 }
