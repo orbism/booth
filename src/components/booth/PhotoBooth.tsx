@@ -9,6 +9,7 @@ import ErrorMessage from '@/components/ui/ErrorMessage';
 import JourneyContainer from '@/components/journey/JourneyContainer';
 import { JourneyPage } from '@/types/journey';
 import SplashPage from './SplashPage';
+import VideoPreview from './VideoPreview';
 
 import { v4 as uuidv4 } from 'uuid';
 import { trackBoothEvent } from '@/lib/analytics';
@@ -70,6 +71,16 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   splashPageContent = 'Get ready for a fun photo experience!',
   splashPageImage = null,
   splashPageButtonText = 'Start',
+  captureMode = 'photo', 
+  photoOrientation = 'portrait-standard',
+  photoResolution = 'medium',
+  photoEffect = 'none',
+  videoOrientation = 'portrait-standard',
+  videoResolution = 'medium',
+  videoEffect = 'none',
+  videoDuration = 10,
+  printerEnabled = false,
+  aiImageCorrection = false,
 }) => {
   const [stage, setStage] = useState<BoothStage>(splashPageEnabled ? 'splash' : 'collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -109,9 +120,6 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   //   printerEnabled = false,
   //   aiImageCorrection = false,
   // } = props;
-
-  const captureMode = 'photo'; // Default values since they're not passed through props yet
-  const videoDuration = 10;
 
   // Initialize tracking session
   useEffect(() => {
@@ -178,7 +186,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     };
   }, []);
 
-  // Add this useEffect after the initial useEffect blocks
+  // Enhanced video state handling
   useEffect(() => {
     // Setup media recorder when webcam reference is available and in video mode
     if (webcamRef.current && captureMode === 'video' && stage === 'countdown') {
@@ -276,10 +284,18 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       } else {
         console.error('Webcam reference not available');
       }
-    } else {
+    } else if (captureMode === 'video') {
       // Start video recording
       setIsRecording(true);
       setRecordingStartTime(Date.now());
+      
+      // Start media recorder if available
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.start();
+      } else {
+        console.error('Media recorder not initialized');
+        return;
+      }
       
       // Set up recording timer
       recordingTimerRef.current = setTimeout(() => {
@@ -288,26 +304,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       // Track video recording started
       if (analyticsId) {
-        // await trackBoothEvent(analyticsId, 'video_recording_started'); //TODO: set this up
-        await trackBoothEvent(analyticsId, 'photo_captured'); // Reusing existing event type for now
+        await trackBoothEvent(analyticsId, 'photo_captured'); // Using existing event for now
       }
     }
   };
 
-  // Stop video recording
-  const stopVideoRecording = async () => {
-    if (!mediaRecorderRef.current) return;
-    
-    mediaRecorderRef.current.stop();
-    setIsRecording(false);
-    
-    // Track video recording completed
-    if (analyticsId) {
-      // await trackBoothEvent(analyticsId, 'video_captured'); // TODO: set this up
-      await trackBoothEvent(analyticsId, 'photo_captured'); // Reusing existing event type for now
 
-    }
-  };
 
   // Handle photo retake
   const handleRetake = async () => {
@@ -417,9 +419,10 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     }
   };
 
+  // Video sending via email handler
   const handleSendVideoEmail = async () => {
     if (!userData || !videoUrl) return;
-  
+
     try {
       setError(null);
       
@@ -429,7 +432,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       // Create form data for upload
       const formData = new FormData();
-      formData.append('video', blob, 'video.mp4');
+      formData.append('video', blob, 'video.webm'); // Changed extension to webm
       formData.append('name', userData.name);
       formData.append('email', userData.email);
       formData.append('mediaType', 'video');
@@ -441,11 +444,11 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       // Track video approved
       if (analyticsId) {
-        //await trackBoothEvent(analyticsId, 'video_approved'); // TODO: set this up
         await trackBoothEvent(analyticsId, 'photo_approved'); // Reusing existing event type for now
       }
       
-      // Send to API endpoint
+      // TODO: Update the API endpoint to handle video uploads
+      // For now, we'll use the same endpoint as photos
       const result = await fetch('/api/booth/capture', {
         method: 'POST',
         body: formData,
@@ -495,7 +498,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       return data;
     } catch (error) {
-      console.error('Error sending email:', error);
+      console.error('Error sending video email:', error);
       
       // Track error
       if (analyticsId) {
@@ -543,10 +546,72 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     };
   }, []);
 
+  // Live remaining time counter during video recording
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isRecording && recordingStartTime) {
+      // Update the UI every second to show remaining time
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        
+        // If we've reached the duration, stop recording
+        if (elapsed >= videoDuration) {
+          stopVideoRecording();
+        } else {
+          // Force a re-render to update the timer
+          setRecordingStartTime(recordingStartTime);
+        }
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording, recordingStartTime, videoDuration]);
+  
+  // Stop video recording
+  const stopVideoRecording = async () => {
+    if (!mediaRecorderRef.current || !isRecording) return;
+    
+    // Clear the recording timeout if it exists
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    
+    try {
+      // Stop recording
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      
+      // Track video recording completed
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'photo_captured'); // Using existing event for now
+      }
+    } catch (error) {
+      console.error('Error stopping video recording:', error);
+      // Track error
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'error', {
+          type: 'video_error',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+      
+      // Handle error - maybe reset to collect-info stage
+      setStage('collect-info');
+      setError({
+        title: 'Recording Error',
+        message: 'Failed to process video recording. Please try again.'
+      });
+    }
+  };
+  
   // Video constraints
   const videoConstraints = {
-    width: 1280,
-    height: 720,
+    width: videoResolution === 'high' ? 1920 : videoResolution === 'medium' ? 1280 : 640,
+    height: videoResolution === 'high' ? 1080 : videoResolution === 'medium' ? 720 : 360,
     facingMode: "user"
   };
 
@@ -588,29 +653,55 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
           setStage('countdown');
           return null;
         
-      case 'countdown':
-        return (
-          <div className="relative">
-            <div className="aspect-video bg-black rounded overflow-hidden">
-              <Webcam
-                audio={false}
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                videoConstraints={videoConstraints}
-                className="w-full h-full object-cover"
-                mirrored={true}
-                onUserMediaError={() => setIsCameraError(true)}
-              />
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <CountdownTimer
-                seconds={countdownSeconds}
-                onComplete={handleCountdownComplete}
-                onCancel={() => setStage('collect-info')}
-              />
-            </div>
-          </div>
-        );
+          case 'countdown':
+            return (
+              <div className="relative">
+                <div className="aspect-video bg-black rounded overflow-hidden">
+                  <Webcam
+                    audio={captureMode === 'video'} // Enable audio for video recording
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={videoConstraints}
+                    className="w-full h-full object-cover"
+                    mirrored={true}
+                    onUserMediaError={() => setIsCameraError(true)}
+                  />
+                  
+                  {/* Recording indicator - only shown when video is recording */}
+                  {captureMode === 'video' && isRecording && (
+                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white">
+                      <div className="w-3 h-3 rounded-full bg-red-600 animate-pulse"></div>
+                      <span className="font-medium">REC</span>
+                      <span className="ml-2">
+                        {videoDuration - Math.floor((Date.now() - (recordingStartTime || 0)) / 1000)}s
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Stop recording button */}
+                  {captureMode === 'video' && isRecording && (
+                    <div className="absolute bottom-4 left-4">
+                      <button
+                        onClick={stopVideoRecording}
+                        className="bg-red-600 text-white font-medium px-4 py-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                      >
+                        Stop Recording
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {/* Only show countdown if we're not recording yet */}
+                  {!(captureMode === 'video' && isRecording) && (
+                    <CountdownTimer
+                      seconds={countdownSeconds}
+                      onComplete={handleCountdownComplete}
+                      onCancel={() => setStage('collect-info')}
+                    />
+                  )}
+                </div>
+              </div>
+            );
         
         case 'preview':
           return userData && (captureMode === 'photo' ? photoDataUrl : videoUrl) ? (

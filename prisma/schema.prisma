@@ -37,6 +37,7 @@ model BoothSession {
   userName     String
   userEmail    String
   photoPath    String
+  mediaType    String   @default("photo")
   createdAt    DateTime @default(now())
   shared       Boolean  @default(false)
   emailSent    Boolean  @default(false)

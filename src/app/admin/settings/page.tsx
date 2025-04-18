@@ -242,7 +242,6 @@ export default function SettingsPage() {
           buttonColor: settings.buttonColor ?? null,
           textColor: settings.textColor ?? null,
           notes: settings.notes ?? null,
-          // Add the custom journey properties
           customJourneyEnabled: settings.customJourneyEnabled || false,
           activeJourneyId: settings.activeJourneyId || null,
           journeyPages: settings.journeyPages || [],
@@ -251,6 +250,18 @@ export default function SettingsPage() {
           splashPageContent: settings.splashPageContent || '',
           splashPageImage: settings.splashPageImage || null,
           splashPageButtonText: settings.splashPageButtonText || '',
+          captureMode: (settings.captureMode as 'photo' | 'video') || 'photo',
+          photoOrientation: settings.photoOrientation || 'portrait-standard',
+          photoDevice: settings.photoDevice || 'ipad',
+          photoResolution: settings.photoResolution || 'medium',
+          photoEffect: settings.photoEffect || 'none',
+          printerEnabled: settings.printerEnabled || false,
+          aiImageCorrection: settings.aiImageCorrection || false,
+          videoOrientation: settings.videoOrientation || 'portrait-standard',
+          videoDevice: settings.videoDevice || 'ipad',
+          videoResolution: settings.videoResolution || 'medium',
+          videoEffect: settings.videoEffect || 'none',
+          videoDuration: settings.videoDuration || 10,
         }}
         onSubmit={handleUpdateSettings}
       />

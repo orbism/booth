@@ -58,8 +58,19 @@ export default async function Home() {
           splashPageContent={settings.splashPageContent || 'Get ready for a fun photo experience!'}
           splashPageImage={settings.splashPageImage}
           splashPageButtonText={settings.splashPageButtonText || 'Start'}
+          captureMode={settings.captureMode as 'photo' | 'video'}
+          photoOrientation={settings.photoOrientation}
+          photoResolution={settings.photoResolution}
+          photoEffect={settings.photoEffect}
+          printerEnabled={settings.printerEnabled}
+          aiImageCorrection={settings.aiImageCorrection}
+          videoOrientation={settings.videoOrientation}
+          videoResolution={settings.videoResolution}
+          videoEffect={settings.videoEffect}
+          videoDuration={settings.videoDuration}
         />
       </div>
     </BoothLayout>
+
   );
 }
