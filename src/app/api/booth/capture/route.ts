@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         userEmail: email,
         photoPath: publicPath, // Store the path regardless of media type for now
         eventName: 'Photo Booth Session',
-        mediaType: mediaType, // Add this field to your database schema
+        // mediaType: mediaType, // Add this field to your database schema
       },
     });
 

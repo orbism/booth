@@ -106,20 +106,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-
-  // Extract captureMode from props with default value -- TODO: pass these all through props.
-  // const {
-  //   captureMode = 'photo',
-  //   videoDuration = 10,
-  //   photoOrientation = 'portrait-standard',
-  //   photoResolution = 'medium',
-  //   photoEffect = 'none',
-  //   videoOrientation = 'portrait-standard',
-  //   videoResolution = 'medium',
-  //   videoEffect = 'none',
-  //   printerEnabled = false,
-  //   aiImageCorrection = false,
-  // } = props;
+  const [remainingTime, setRemainingTime] = useState<number>(videoDuration);
+  const [recordingSegments, setRecordingSegments] = useState<Blob[]>([]);
 
   // Initialize tracking session
   useEffect(() => {
@@ -227,6 +215,32 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       }
     };
   }, [webcamRef.current, captureMode, stage]);
+
+  // Handle the recording timer countdown
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (isRecording && recordingStartTime) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const remaining = Math.max(0, videoDuration - elapsed);
+        setRemainingTime(remaining);
+        
+        // If time is up, stop recording
+        // (The stopVideoRecording function will handle the transition to preview)
+        if (remaining <= 0) {
+          stopVideoRecording();
+        }
+      }, 200); // Update more frequently for smoother countdown
+    } else {
+      // Reset the timer when not recording
+      setRemainingTime(videoDuration);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording, recordingStartTime, videoDuration]);
   
   // Handle splash page completion
   const handleSplashComplete = () => {
@@ -269,6 +283,45 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   
 
   // Handle countdown completion
+  // const handleCountdownComplete = async () => {
+  //   if (captureMode === 'photo') {
+
+  //     if (webcamRef.current) {
+  //       const screenshot = webcamRef.current.getScreenshot();
+  //       setPhotoDataUrl(screenshot);
+  //       setStage('preview');
+        
+  //       // Track photo captured
+  //       if (analyticsId) {
+  //         await trackBoothEvent(analyticsId, 'photo_captured');
+  //       }
+  //     } else {
+  //       console.error('Webcam reference not available');
+  //     }
+  //   } else if (captureMode === 'video') {
+  //     // Start video recording
+  //     setIsRecording(true);
+  //     setRecordingStartTime(Date.now());
+      
+  //     // Start media recorder if available
+  //     if (mediaRecorderRef.current) {
+  //       mediaRecorderRef.current.start();
+  //     } else {
+  //       console.error('Media recorder not initialized');
+  //       return;
+  //     }
+      
+  //     // Set up recording timer
+  //     recordingTimerRef.current = setTimeout(() => {
+  //       stopVideoRecording();
+  //     }, videoDuration * 1000);
+      
+  //     // Track video recording started
+  //     if (analyticsId) {
+  //       await trackBoothEvent(analyticsId, 'photo_captured'); // Using existing event for now
+  //     }
+  //   }
+  // };
   const handleCountdownComplete = async () => {
     if (captureMode === 'photo') {
       // Existing photo capture logic
@@ -284,36 +337,118 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       } else {
         console.error('Webcam reference not available');
       }
-    } else if (captureMode === 'video') {
-      // Start video recording
+    } else {
+      // Start video recording immediately after countdown
+      startVideoRecording();
+    }
+  };
+
+  // Start video recording handler
+  const startVideoRecording = () => {
+    if (!webcamRef.current) {
+      console.error('Webcam reference not available');
+      return;
+    }
+    
+    const videoElement = webcamRef.current.video;
+    if (!videoElement || !videoElement.srcObject) {
+      console.error('Video stream not available');
+      return;
+    }
+    
+    // Clear any old recorded chunks
+    recordedChunksRef.current = [];
+    
+    // Create media recorder
+    try {
+      const mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream);
+      mediaRecorderRef.current = mediaRecorder;
+      
+      // Set up event handlers
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        // Create video blob and transition to preview
+        const videoBlob = new Blob(recordedChunksRef.current, {
+          type: 'video/webm'
+        });
+        const url = URL.createObjectURL(videoBlob);
+        setVideoUrl(url);
+        setStage('preview');
+      };
+      
+      // Start recording
       setIsRecording(true);
       setRecordingStartTime(Date.now());
       
-      // Start media recorder if available
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.start();
-      } else {
-        console.error('Media recorder not initialized');
-        return;
-      }
+      mediaRecorder.start();
+      console.log('Started video recording');
       
       // Set up recording timer
+      if (recordingTimerRef.current) {
+        clearTimeout(recordingTimerRef.current);
+      }
+      
       recordingTimerRef.current = setTimeout(() => {
         stopVideoRecording();
       }, videoDuration * 1000);
       
-      // Track video recording started
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'photo_captured'); // Using existing event for now
-      }
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      setIsRecording(false);
     }
   };
 
+  // Stop video recording (with resume support)
+  const stopVideoRecording = async () => {
+    if (!mediaRecorderRef.current || !isRecording) return;
+    
+    // Clear the recording timeout
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    
+    try {
+      // Only stop the recorder if it's in the "recording" state
+      if (mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+        console.log('Successfully stopped media recorder');
+      } else {
+        console.log('Media recorder already stopped');
+      }
+      
+      setIsRecording(false);
+      
+      // Force transition to preview if we have recorded chunks
+      if (recordedChunksRef.current.length > 0) {
+        const videoBlob = new Blob(recordedChunksRef.current, {
+          type: 'video/webm'
+        });
+        const url = URL.createObjectURL(videoBlob);
+        setVideoUrl(url);
+        setStage('preview');
+        console.log('Created video URL and moved to preview stage');
+      }
+      
+      // Track video recording completed
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'photo_captured');
+      }
+    } catch (error) {
+      console.error('Error stopping video recording:', error);
+      setIsRecording(false);
+    }
+  };
 
-
-  // Handle photo retake
+  // Handle photo or video retake
   const handleRetake = async () => {
     setPhotoDataUrl(null);
+    setVideoUrl(null); // Reset video URL
     setStage('countdown');
     
     // Track retake
@@ -570,44 +705,6 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     };
   }, [isRecording, recordingStartTime, videoDuration]);
   
-  // Stop video recording
-  const stopVideoRecording = async () => {
-    if (!mediaRecorderRef.current || !isRecording) return;
-    
-    // Clear the recording timeout if it exists
-    if (recordingTimerRef.current) {
-      clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-    }
-    
-    try {
-      // Stop recording
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      
-      // Track video recording completed
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'photo_captured'); // Using existing event for now
-      }
-    } catch (error) {
-      console.error('Error stopping video recording:', error);
-      // Track error
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'error', {
-          type: 'video_error',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-      
-      // Handle error - maybe reset to collect-info stage
-      setStage('collect-info');
-      setError({
-        title: 'Recording Error',
-        message: 'Failed to process video recording. Please try again.'
-      });
-    }
-  };
-  
   // Video constraints
   const videoConstraints = {
     width: videoResolution === 'high' ? 1920 : videoResolution === 'medium' ? 1280 : 640,
@@ -669,30 +766,32 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   
                   {/* Recording indicator - only shown when video is recording */}
                   {captureMode === 'video' && isRecording && (
-                    <div className="absolute top-4 left-4 flex items-center gap-2 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white">
+                    <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white">
                       <div className="w-3 h-3 rounded-full bg-red-600 animate-pulse"></div>
                       <span className="font-medium">REC</span>
-                      <span className="ml-2">
-                        {videoDuration - Math.floor((Date.now() - (recordingStartTime || 0)) / 1000)}s
-                      </span>
+                      <span className="ml-2">{remainingTime}s</span>
                     </div>
                   )}
                   
-                  {/* Stop recording button */}
-                  {captureMode === 'video' && isRecording && (
-                    <div className="absolute bottom-4 left-4">
+                  {/* Control buttons */}
+                  <div className="absolute bottom-4 left-4 z-10">
+                    {/* "I'm Done" button - only shown when recording */}
+                    {captureMode === 'video' && isRecording && (
                       <button
                         onClick={stopVideoRecording}
-                        className="bg-red-600 text-white font-medium px-4 py-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
+                        className="bg-blue-600 text-white font-medium px-4 py-2 rounded-full 
+                                  hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-lg
+                                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                        type="button"
                       >
-                        Stop Recording
+                        I'm Done
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   {/* Only show countdown if we're not recording yet */}
-                  {!(captureMode === 'video' && isRecording) && (
+                  {!(captureMode === 'video' && isRecording) && !videoUrl && (
                     <CountdownTimer
                       seconds={countdownSeconds}
                       onComplete={handleCountdownComplete}
