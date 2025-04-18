@@ -10,6 +10,7 @@ import UserJourneyFunnel from './UserJourneyFunnel';
 import ConversionTrendChart from './ConversionTrendChart';
 import Tooltip from '../ui/Tooltip';
 import ImprovementSuggestions from './ImprovementSuggestions';
+import MediaTypeChart from './MediaTypeChart';
 
 // Register ChartJS components
 ChartJS.register(
@@ -311,6 +312,14 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
 
     // Format event type for display
     const formatEventType = (type: string): string => {
+        const formattedTypes: Record<string, string> = {
+            'photo_captured': 'Photo Captured',
+            'photo_approved': 'Photo Approved',
+            'video_captured': 'Video Captured',
+            'video_approved': 'Video Approved',
+            'retake_photo': 'Photo Retaken',
+            'retake_video': 'Video Retaken',
+          };
         return type
         .replace(/_/g, ' ')
         .split(' ')
@@ -667,6 +676,26 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                     This chart shows session counts and completion rates over time.
                     Monitor this to identify trends or issues affecting user engagement.
                 </p>
+            </div>
+            
+            {/* Media Types Chart */}
+            <div className="bg-white p-4 rounded-lg shadow mb-6">
+                <h3 className="text-lg font-medium mb-4">Media Type Distribution</h3>
+                <MediaTypeChart 
+                    photoCount={mediaTypeStats?.photoEvents || 0}
+                    videoCount={mediaTypeStats?.videoEvents || 0}
+                />
+                
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-3 bg-blue-50 rounded border border-blue-100">
+                    <p className="text-sm font-medium text-blue-800">Photo Approval Rate</p>
+                    <p className="text-2xl">{(mediaTypeStats?.photoApprovalRate || 0).toFixed(1)}%</p>
+                    </div>
+                    <div className="p-3 bg-orange-50 rounded border border-orange-100">
+                    <p className="text-sm font-medium text-orange-800">Video Approval Rate</p>
+                    <p className="text-2xl">{(mediaTypeStats?.videoApprovalRate || 0).toFixed(1)}%</p>
+                    </div>
+                </div>
             </div>
             
             {/* Event log */}

@@ -100,6 +100,7 @@ booth-boss/
 │   │   │   ├── AnalyticsDashboard.tsx          # Enhanced analytics dashboard with charts and filters
 │   │   │   ├── UserJourneyFunnel.tsx           # Funnel visualization for user journey
 │   │   │   ├── ConversionTrendChart.tsx        # Chart for tracking conversion trends
+│   │   │   ├── MediaTypeChart.tsx              # Chart for tracking media types (photo || video)
 │   │   │   └── ImprovementSuggestions.tsx      # Suggestions based on analytics 
 │   │   ├── ui/                                 # Basic UI components (shadcn)
 │   │   │   ├── ErrorMessage.tsx                # Reusable error message component
@@ -126,7 +127,9 @@ booth-boss/
 │   │   │   │   ├── TemplatesTab.tsx            # Theme selection and user journey
 │   │   │   │   ├── CustomJourneyTab.tsx        # Custom user journey editor
 │   │   │   │   ├── AdvancedTab.tsx             # Advanced settings and utilities
-│   │   │   │   └── SplashTab.tsx               # New admin settings tab
+│   │   │   │   ├── SplashTab.tsx               # Splash page setup
+│   │   │   │   ├── PhotoModeSettings.tsx       # Settings for photo mode
+│   │   │   │   └── VideoModeSettings.tsx       # Settings for video mode
 │   │   │   ├── FileUploadField.tsx             # Reusable file upload component
 │   │   │   ├── SettingsForm.tsx                # Backend exposed settings form
 │   │   │   └── UserInfoForm.tsx                # User information form

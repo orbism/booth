@@ -107,7 +107,6 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const [remainingTime, setRemainingTime] = useState<number>(videoDuration);
-  const [recordingSegments, setRecordingSegments] = useState<Blob[]>([]);
 
   // Initialize tracking session
   useEffect(() => {
@@ -283,45 +282,6 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   
 
   // Handle countdown completion
-  // const handleCountdownComplete = async () => {
-  //   if (captureMode === 'photo') {
-
-  //     if (webcamRef.current) {
-  //       const screenshot = webcamRef.current.getScreenshot();
-  //       setPhotoDataUrl(screenshot);
-  //       setStage('preview');
-        
-  //       // Track photo captured
-  //       if (analyticsId) {
-  //         await trackBoothEvent(analyticsId, 'photo_captured');
-  //       }
-  //     } else {
-  //       console.error('Webcam reference not available');
-  //     }
-  //   } else if (captureMode === 'video') {
-  //     // Start video recording
-  //     setIsRecording(true);
-  //     setRecordingStartTime(Date.now());
-      
-  //     // Start media recorder if available
-  //     if (mediaRecorderRef.current) {
-  //       mediaRecorderRef.current.start();
-  //     } else {
-  //       console.error('Media recorder not initialized');
-  //       return;
-  //     }
-      
-  //     // Set up recording timer
-  //     recordingTimerRef.current = setTimeout(() => {
-  //       stopVideoRecording();
-  //     }, videoDuration * 1000);
-      
-  //     // Track video recording started
-  //     if (analyticsId) {
-  //       await trackBoothEvent(analyticsId, 'photo_captured'); // Using existing event for now
-  //     }
-  //   }
-  // };
   const handleCountdownComplete = async () => {
     if (captureMode === 'photo') {
       // Existing photo capture logic
@@ -361,34 +321,28 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     
     // Create media recorder
     try {
-      const mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream);
+      const mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream, {
+        mimeType: 'video/webm;codecs=vp9' // Specify codec for better compatibility
+      });
       mediaRecorderRef.current = mediaRecorder;
       
       // Set up event handlers
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
+          console.log('Data available event, size:', event.data.size);
           recordedChunksRef.current.push(event.data);
         }
-      };
-      
-      mediaRecorder.onstop = () => {
-        // Create video blob and transition to preview
-        const videoBlob = new Blob(recordedChunksRef.current, {
-          type: 'video/webm'
-        });
-        const url = URL.createObjectURL(videoBlob);
-        setVideoUrl(url);
-        setStage('preview');
       };
       
       // Start recording
       setIsRecording(true);
       setRecordingStartTime(Date.now());
       
-      mediaRecorder.start();
-      console.log('Started video recording');
+      // Request data periodically to ensure we don't lose anything
+      mediaRecorder.start(1000); // Request data every second
+      console.log('Started video recording with 1s intervals');
       
-      // Set up recording timer
+      // Set up recording timer for max duration
       if (recordingTimerRef.current) {
         clearTimeout(recordingTimerRef.current);
       }
@@ -405,7 +359,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Stop video recording (with resume support)
   const stopVideoRecording = async () => {
-    if (!mediaRecorderRef.current || !isRecording) return;
+    if (!mediaRecorderRef.current) {
+      console.error('No media recorder available');
+      return;
+    }
+    
+    console.log('Stop video recording called, recorder state:', mediaRecorderRef.current.state);
     
     // Clear the recording timeout
     if (recordingTimerRef.current) {
@@ -413,18 +372,49 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       recordingTimerRef.current = null;
     }
     
+    // Immediately set recording state to false
+    setIsRecording(false);
+    
     try {
-      // Only stop the recorder if it's in the "recording" state
+      // Request the final chunk of data
       if (mediaRecorderRef.current.state === "recording") {
+        // Request data so far
+        mediaRecorderRef.current.requestData();
+        
+        // Stop the recorder
         mediaRecorderRef.current.stop();
-        console.log('Successfully stopped media recorder');
-      } else {
-        console.log('Media recorder already stopped');
+        console.log('Media recorder stopped');
       }
       
-      setIsRecording(false);
+      // Create video from chunks without waiting for onstop event
+      // This ensures we move to preview regardless of event firing
+      if (recordedChunksRef.current.length > 0) {
+        console.log('Creating video blob from', recordedChunksRef.current.length, 'chunks');
+        const videoBlob = new Blob(recordedChunksRef.current, {
+          type: 'video/webm'
+        });
+        const url = URL.createObjectURL(videoBlob);
+        setVideoUrl(url);
+        
+        // Force immediate stage transition regardless of onstop event
+        setStage('preview');
+      } else {
+        console.error('No recorded chunks available');
+      }
       
-      // Force transition to preview if we have recorded chunks
+      // Track video recording completed
+      if (analyticsId) {
+        await trackBoothEvent(analyticsId, 'video_captured', {
+          duration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0,
+          resolution: videoResolution,
+          manualStop: true, // Indicates user manually stopped the recording
+          captureMode: captureMode
+        });
+      }
+    } catch (error) {
+      console.error('Error stopping video recording:', error);
+      
+      // Still try to create video from any chunks we have
       if (recordedChunksRef.current.length > 0) {
         const videoBlob = new Blob(recordedChunksRef.current, {
           type: 'video/webm'
@@ -432,16 +422,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         const url = URL.createObjectURL(videoBlob);
         setVideoUrl(url);
         setStage('preview');
-        console.log('Created video URL and moved to preview stage');
       }
-      
-      // Track video recording completed
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'photo_captured');
-      }
-    } catch (error) {
-      console.error('Error stopping video recording:', error);
-      setIsRecording(false);
     }
   };
 
@@ -451,9 +432,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setVideoUrl(null); // Reset video URL
     setStage('countdown');
     
-    // Track retake
+    // Track retake with media type info
     if (analyticsId) {
-      await trackBoothEvent(analyticsId, 'retake_photo');
+      await trackBoothEvent(analyticsId, captureMode === 'photo' ? 'retake_photo' : 'retake_video', {
+        mediaType: captureMode,
+        captureMode: captureMode
+      });
     }
   };
 
@@ -479,9 +463,15 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         formData.append('analyticsId', analyticsId);
       }
       
-      // Track photo approved
+      // Track media approved
       if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'photo_approved');
+        await trackBoothEvent(analyticsId, captureMode === 'photo' ? 'photo_approved' : 'video_approved', {
+          ...(captureMode === 'video' ? {
+            duration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0,
+            resolution: videoResolution,
+          } : {}),
+          captureMode: captureMode
+        });
       }
       
       // Send to API endpoint
@@ -519,6 +509,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
             boothSessionId: data.sessionId,
             emailDomain: userData.email.split('@')[1],
             duration,
+            mediaType: captureMode
           }),
         });
       }

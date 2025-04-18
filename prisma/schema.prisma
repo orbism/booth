@@ -120,6 +120,7 @@ model BoothAnalytics {
   userAgent      String?
   emailDomain    String?
   durationMs     Int?
+  mediaType      String?         // 'photo' or 'video'
   events         BoothEventLog[]
 }
 

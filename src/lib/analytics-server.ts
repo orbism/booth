@@ -350,7 +350,9 @@ export async function getJourneyFunnelData(days: number = 30) {
       'info_submitted',
       'journey_complete',
       'photo_captured',
+      'video_captured',
       'photo_approved',
+      'video_approved',
       'email_sent'
     ];
     
@@ -489,5 +491,75 @@ export async function getConversionTrend(days: number = 30) {
     }
     
     return fakeData;
+  }
+}
+
+/**
+ * Get media-specific data
+ */
+export async function getMediaTypeStats(days: number = 30) {
+  try {
+    // Calculate date range
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    // Get total photo events
+    const photoEvents = await prisma.boothEventLog.count({
+      where: {
+        timestamp: {
+          gte: startDate,
+          lte: endDate
+        },
+        eventType: 'photo_captured'
+      }
+    });
+    
+    // Get total video events
+    const videoEvents = await prisma.boothEventLog.count({
+      where: {
+        timestamp: {
+          gte: startDate,
+          lte: endDate
+        },
+        eventType: 'video_captured'
+      }
+    });
+    
+    // Get completion rates
+    const photoApproved = await prisma.boothEventLog.count({
+      where: {
+        timestamp: {
+          gte: startDate,
+          lte: endDate
+        },
+        eventType: 'photo_approved'
+      }
+    });
+    
+    const videoApproved = await prisma.boothEventLog.count({
+      where: {
+        timestamp: {
+          gte: startDate,
+          lte: endDate
+        },
+        eventType: 'video_approved'
+      }
+    });
+    
+    return {
+      photoEvents,
+      videoEvents,
+      photoApprovalRate: photoEvents > 0 ? (photoApproved / photoEvents) * 100 : 0,
+      videoApprovalRate: videoEvents > 0 ? (videoApproved / videoEvents) * 100 : 0
+    };
+  } catch (error) {
+    console.error('Failed to get media type stats:', error);
+    return {
+      photoEvents: 0,
+      videoEvents: 0,
+      photoApprovalRate: 0,
+      videoApprovalRate: 0
+    };
   }
 }

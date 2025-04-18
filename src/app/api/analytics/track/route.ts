@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
+
+        // Get the media type from the request data
+        const mediaType = data.mediaType || 'photo';
         
         // Update existing analytics entry with completion data
         const updated = await prisma.boothAnalytics.update({
@@ -45,6 +48,7 @@ export async function POST(request: NextRequest) {
             emailDomain,
             durationMs: duration,
             completedAt: new Date(),
+            mediaType: mediaType,
           },
         });
         
