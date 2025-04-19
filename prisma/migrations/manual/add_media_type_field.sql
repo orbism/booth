@@ -1,4 +1,4 @@
--- Add mediaType field to BoothSession table
+-- Add mediaType field to BoothSession table if it doesn't exist
 
 -- Check if mediaType column exists and add it if not
 SELECT COUNT(*) INTO @mediaTypeExists FROM INFORMATION_SCHEMA.COLUMNS 

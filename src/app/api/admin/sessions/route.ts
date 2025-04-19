@@ -27,8 +27,20 @@ export async function GET(request: NextRequest) {
     // Build the where clause
     const where: any = {};
     
-    if (mediaType) {
-      where.mediaType = mediaType;
+    // Only add mediaType if it exists in the schema
+    // Try/catch helps handle schema mismatches gracefully
+    try {
+      if (mediaType) {
+        // Check if the field exists in the schema first
+        const schema = await prisma.$queryRaw`SHOW COLUMNS FROM BoothSession WHERE Field = 'mediaType'`;
+        if (Array.isArray(schema) && schema.length > 0) {
+          where.mediaType = mediaType;
+        } else {
+          console.warn("mediaType field not found in schema, ignoring filter");
+        }
+      }
+    } catch (error) {
+      console.warn("Error checking schema for mediaType:", error);
     }
     
     if (startDate && endDate) {
@@ -46,10 +58,21 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
     
+    // Add mediaType property to each session if it doesn't exist
+    const enhancedSessions = sessions.map((session: { mediaType?: string, photoPath?: string }) => {
+      if (!session.mediaType) {
+        // Simple logic to determine if it's a video by file extension
+        // @ts-ignore - Adding mediaType property
+        session.mediaType = session.photoPath?.endsWith('.webm') || 
+                           session.photoPath?.endsWith('.mp4') ? 'video' : 'photo';
+      }
+      return session;
+    });
+    
     const totalCount = await prisma.boothSession.count({ where });
     
     return NextResponse.json({
-      sessions,
+      sessions: enhancedSessions,
       totalCount,
       page,
       limit,

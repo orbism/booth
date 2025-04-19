@@ -1,29 +1,11 @@
 // src/app/admin/sessions/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
-import { getServerSession } from 'next-auth';
 import { useSession } from 'next-auth/react';
 import { redirect, useRouter } from 'next/navigation';
-import { authOptions } from '@/auth.config';
-import { prisma } from '@/lib/prisma';
 import SessionsListComponent from './SessionsList';
 
-export const metadata = {
-  title: 'All Sessions - BoothBoss Admin',
-  description: 'View all photo booth sessions',
-};
-
-// Define correct types for your search parameters.
-type SearchParams = { [key: string]: string | string[] | undefined };
-
-// In Next 15.3.0, searchParams is delivered as a Promise. Thus, we type it accordingly.
-export default async function SessionsPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  // Await the promised searchParams
-  const resolvedSearchParams = await searchParams;
+export default function SessionsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
@@ -35,18 +17,7 @@ export default async function SessionsPage({
     mediaType?: string;
     dateRange?: [Date, Date];
   }>({});
-  const [page, setPage] = useState(currentPage);
-  const skip = (currentPage - 1) * limit;
-  
-  // const sessions = await prisma.boothSession.findMany({
-  //   orderBy: { createdAt: 'desc' },
-  //   skip,
-  //   take: limit,
-  // });
-
-  // if (!session) {
-  //   redirect('/login');
-  // }
+  const [isLoading, setIsLoading] = useState(true);
   
   // Check authentication
   useEffect(() => {
@@ -61,11 +32,17 @@ export default async function SessionsPage({
     setCurrentPage(1); // Reset to first page when filters change
   };
 
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   // Fetch data with filters
   useEffect(() => {
     const fetchData = async () => {
       if (status !== 'authenticated') return;
       
+      setIsLoading(true);
       let url = `/api/admin/sessions?page=${currentPage}&limit=${limit}`;
       
       if (filters.mediaType) {
@@ -77,7 +54,6 @@ export default async function SessionsPage({
       }
       
       try {
-        // Fetch data with the constructed URL
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -89,23 +65,29 @@ export default async function SessionsPage({
         setTotalCount(data.totalCount);
       } catch (error) {
         console.error('Error fetching sessions:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     fetchData();
   }, [currentPage, limit, filters, status]);  
   
-  if (status === 'loading') {
-    return <div className="p-6 text-center">Loading sessions...</div>;
+  if (status === 'loading' || isLoading) {
+    return (
+      <div className="flex justify-center items-center p-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
+      </div>
+    );
   }
   
   return (
     <SessionsListComponent 
       sessions={sessions} 
       totalCount={totalCount} 
-      currentPage={page} 
+      currentPage={currentPage} 
       limit={limit}
-      onPageChange={setPage}
+      onPageChange={handlePageChange}
       onFilterChange={handleFilterChange}
     />
   );
