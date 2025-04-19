@@ -21,6 +21,7 @@ interface PhotoSession {
   userEmail: string;
   createdAt: Date;
   emailSent: boolean;
+  mediaType: string;
 }
 
 export default async function AdminDashboard() {
@@ -56,12 +57,22 @@ export default async function AdminDashboard() {
               <div key={item.id} className="border rounded-lg overflow-hidden bg-white shadow-sm">
                 <div className="aspect-video relative">
                   <div className="relative w-full h-full">
-                    <OptimizedImage 
-                      src={item.photoPath} 
-                      alt={`Photo by ${item.userName}`}
-                      fill
-                      className="object-cover"
-                    />
+                    {item.mediaType === 'video' ? (
+                      <video 
+                        src={item.photoPath} 
+                        className="object-cover w-full h-full rounded"
+                        controls
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <OptimizedImage 
+                        src={item.photoPath} 
+                        alt={`Media by ${item.userName}`}
+                        fill
+                        className="object-cover"
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="p-4">

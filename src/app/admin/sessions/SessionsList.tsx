@@ -11,6 +11,7 @@ interface PhotoSession {
   userEmail: string;
   createdAt: Date;
   emailSent: boolean;
+  mediaType: string;
 }
 
 interface SessionsListProps {
@@ -18,13 +19,17 @@ interface SessionsListProps {
   totalCount: number;
   currentPage: number;
   limit: number;
+  onPageChange: (page: number) => void;
+  onFilterChange: (filters: { mediaType?: string; dateRange?: [Date, Date] }) => void;
 }
 
 export default function SessionsListComponent({ 
   sessions, 
   totalCount, 
   currentPage, 
-  limit 
+  limit,
+  onPageChange = () => {}, 
+  onFilterChange = () => {}
 }: SessionsListProps) {
   const totalPages = Math.ceil(totalCount / limit);
   
@@ -35,6 +40,56 @@ export default function SessionsListComponent({
         <span className="text-sm text-gray-500">
           Total: {totalCount} sessions
         </span>
+      </div>
+
+\      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <div>
+          <label htmlFor="mediaTypeFilter" className="block text-sm text-gray-500 mb-1">Media Type</label>
+          <select 
+            id="mediaTypeFilter" 
+            className="px-3 py-2 border border-gray-300 rounded-md"
+            onChange={(e) => onFilterChange({ mediaType: e.target.value || undefined })}
+          >
+            <option value="">All Types</option>
+            <option value="photo">Photos</option>
+            <option value="video">Videos</option>
+          </select>
+        </div>
+        
+        <div>
+          <label htmlFor="startDate" className="block text-sm text-gray-500 mb-1">Date Range</label>
+          <div className="flex gap-2 items-center">
+            <input 
+              type="date" 
+              id="startDate" 
+              className="px-3 py-2 border border-gray-300 rounded-md"
+              onChange={(e) => {
+                const startDate = e.target.value ? new Date(e.target.value) : undefined;
+                const endDate = document.getElementById('endDate') as HTMLInputElement;
+                onFilterChange({ 
+                  dateRange: startDate && endDate.value 
+                    ? [startDate, new Date(endDate.value)] 
+                    : undefined 
+                });
+              }}
+            />
+            <span>to</span>
+            <input 
+              type="date" 
+              id="endDate" 
+              className="px-3 py-2 border border-gray-300 rounded-md"
+              onChange={(e) => {
+                const endDate = e.target.value ? new Date(e.target.value) : undefined;
+                const startDate = document.getElementById('startDate') as HTMLInputElement;
+                onFilterChange({ 
+                  dateRange: endDate && startDate.value 
+                    ? [new Date(startDate.value), endDate] 
+                    : undefined 
+                });
+              }}
+            />
+          </div>
+        </div>
       </div>
       
       {sessions.length === 0 ? (
@@ -66,12 +121,23 @@ export default function SessionsListComponent({
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="w-20 h-20 relative">
                       <div className="relative w-full h-full">
-                        <OptimizedImage
-                          src={item.photoPath}
-                          alt={`Photo by ${item.userName}`}
-                          fill
-                          className="object-cover rounded"
-                        />
+                        {item.mediaType === 'video' ? (
+                          <video
+                            src={item.photoPath}
+                            className="object-cover w-full h-full rounded"
+                            width={80}
+                            height={80}
+                            controls
+                            muted
+                          />
+                        ) : (
+                          <OptimizedImage
+                            src={item.photoPath}
+                            alt={`Media by ${item.userName}`}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        )}
                       </div>
                     </div>
                   </td>
@@ -103,27 +169,47 @@ export default function SessionsListComponent({
           {totalPages > 1 && (
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
               <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage === 1}
                 className={`px-3 py-1 rounded ${
                   currentPage === 1
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
-                disabled={currentPage === 1}
               >
                 Previous
               </button>
               
-              <span className="text-sm text-gray-600">
-                Page {currentPage} of {totalPages}
-              </span>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalPages }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => onPageChange(index + 1)}
+                    className={`w-8 h-8 flex items-center justify-center rounded ${
+                      currentPage === index + 1
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {index + 1}
+                  </button>
+                )).slice(
+                  Math.max(0, Math.min(currentPage - 3, totalPages - 5)),
+                  Math.min(totalPages, Math.max(5, currentPage + 2))
+                )}
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <span className="text-gray-500">...</span>
+                )}
+              </div>
               
               <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
                 className={`px-3 py-1 rounded ${
                   currentPage === totalPages
                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
-                disabled={currentPage === totalPages}
               >
                 Next
               </button>

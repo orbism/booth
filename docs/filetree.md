@@ -53,6 +53,8 @@ booth-boss/
 │   │   │   │   │   └── route.ts                # Handler for checking if admin needs setup
 │   │   │   │   ├── journeys/                   # 
 │   │   │   │   │   └── route.ts                # Journey management endpoint
+│   │   │   │   ├── sessions/                   # 
+│   │   │   │   │   └── route.ts                # Backend sessions management route
 │   │   │   │   ├── settings/                   # 
 │   │   │   │   │   └── route.ts                # Backend settings management route
 │   │   │   │   └── setup/                      # API for admin account creation
