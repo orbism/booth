@@ -62,7 +62,14 @@ interface DailyMetric {
     totalSessions: number;
     completedSessions: number;
     completionRate: number;
-  }
+}
+
+interface MediaTypeStats {
+    photoEvents: number;
+    videoEvents: number;
+    photoApprovalRate: number;
+    videoApprovalRate: number;
+}
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     initialDaily,
@@ -94,6 +101,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const [conversionTrendData, setConversionTrendData] = useState<DailyMetric[]>([]);
     const [customJourneyFunnelData, setCustomJourneyFunnelData] = useState<JourneyStep[]>([]);
     const [customConversionTrendData, setCustomConversionTrendData] = useState<DailyMetric[]>([]);
+    const [mediaTypeStats, setMediaTypeStats] = useState<MediaTypeStats | null>(null);
 
     // Date range change handler
     const handleDateRangeChange = async (start: Date, end: Date) => {
@@ -254,6 +262,13 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
             setCustomConversionTrendData(data.customConversionTrend);
           }
         }
+
+        setMediaTypeStats(data.mediaTypeStats || {
+            photoEvents: 0,
+            videoEvents: 0,
+            photoApprovalRate: 0,
+            videoApprovalRate: 0
+        });
         
         // Update the router to refresh SSR data as well (optional)
         router.refresh();

@@ -31,6 +31,8 @@ interface DailyMetric {
   totalSessions: number;
   completedSessions: number;
   completionRate: number;
+  completedPhotoSessions?: number; 
+  completedVideoSessions?: number;
 }
 
 interface ConversionTrendChartProps {
