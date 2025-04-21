@@ -17,7 +17,8 @@ booth-boss/
 │       └── manual/                             #
 │   │       ├── add_splash_page_fields.sql      # Database migration for splash fields
 │   │       ├── add_theme_fields.sql            # Theme fields migrations
-│   │       └── add_journey_fields.sql          # Custom journey fields migrations
+│   │       ├── add_journey_fields.sql          # Custom journey fields migrations
+│           └── add_filters_fields.sql          # Database migration for photo/video 
 │   ├── schema.prisma                           # Prisma schema definition
 │   └── seed.ts                                 # Database seed script
 ├── scripts/                                    # Helper scripts
@@ -117,6 +118,7 @@ booth-boss/
 │   │   │   └── PreviewDeviceFrame.tsx          # Device frame for responsive previews
 │   │   ├── booth/                              # Photo booth components
 │   │   │   ├── CountdownTimer.tsx              # Countdown component
+│   │   │   ├── FiltersSelector.tsx             # User-facing filters selection UI
 │   │   │   ├── SplashPage.tsx                  # New splash page component
 │   │   │   ├── PhotoBooth.tsx                  # Main booth component
 │   │   │   ├── PhotoPreview.tsx                # Photo review component
@@ -130,6 +132,7 @@ booth-boss/
 │   │   │   │   ├── CustomJourneyTab.tsx        # Custom user journey editor
 │   │   │   │   ├── AdvancedTab.tsx             # Advanced settings and utilities
 │   │   │   │   ├── SplashTab.tsx               # Splash page setup
+│   │   │   │   ├── FiltersTab.tsx              # Admin settings panel for filters
 │   │   │   │   ├── PhotoModeSettings.tsx       # Settings for photo mode
 │   │   │   │   └── VideoModeSettings.tsx       # Settings for video mode
 │   │   │   ├── FileUploadField.tsx             # Reusable file upload component

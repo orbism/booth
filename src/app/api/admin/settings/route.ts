@@ -57,6 +57,8 @@ const settingsSchema = z.object({
   videoResolution: z.string().default("medium"),
   videoEffect: z.string().default("none"),
   videoDuration: z.coerce.number().int().min(5).max(60).default(10),
+  filtersEnabled: z.boolean().default(false),
+  enabledFilters: z.string().optional().nullable(),
 });
 
 export async function GET(_request: NextRequest) {
@@ -174,6 +176,8 @@ export async function PUT(_request: NextRequest) {
         videoResolution: validatedData.videoResolution,
         videoEffect: validatedData.videoEffect,
         videoDuration: validatedData.videoDuration,
+        filtersEnabled: validatedData.filtersEnabled,
+        enabledFilters: validatedData.enabledFilters,
       }
     });
     

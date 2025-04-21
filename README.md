@@ -202,6 +202,13 @@ All user journey elements can be configured through the admin dashboard:
 - Review and retake capabilities
 - Automated delivery to user's email
 
+### Photo/Video Filters**
+- Apple Photobooth-style filters including Sepia, Black & White, Vibrant, High Contrast, and more
+- Live filter preview before capture
+- Admin controls for enabling/disabling specific filters
+- Filter effects for both photo and video modes
+
+
 ## Analytics Features
 
 The application includes comprehensive analytics tracking for booth sessions:

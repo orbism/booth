@@ -17,8 +17,9 @@ import CustomJourneyTab from './tabs/CustomJourneyTab';
 import AdvancedTab from './tabs/AdvancedTab';
 import SplashTab from './tabs/SplashTab';
 import CaptureModeTab from './tabs/CaptureModeTab';
+import FiltersTab from './tabs/FiltersTab';
 
-type SettingsTab = 'general' | 'email' | 'splash' | 'appearance' | 'templates' | 'advanced' | 'journey' | 'capture';
+type SettingsTab = 'general' | 'email' | 'splash' | 'appearance' | 'templates' | 'advanced' | 'journey' | 'capture' | 'filters';
 
 type SettingsData = {
   id: string;
@@ -70,6 +71,8 @@ type SettingsData = {
   videoResolution: string | null;
   videoEffect: string | null;
   videoDuration: number;
+  filtersEnabled: boolean;
+  enabledFilters?: string | null;
 };
 
 // Settings schema
@@ -145,6 +148,10 @@ const settingsSchema = z.object({
   videoResolution: z.string().default("medium"),
   videoEffect: z.string().default("none"),
   videoDuration: z.coerce.number().int().min(5).max(60).default(10),
+
+  // Photo Filters/Effects
+  filtersEnabled: z.boolean().default(false),
+  enabledFilters: z.string().optional().nullable(),
 });
 
 export type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -214,6 +221,8 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       videoResolution: initialSettings.videoResolution || 'medium',
       videoEffect: initialSettings.videoEffect || 'none',
       videoDuration: initialSettings.videoDuration || 10,
+      filtersEnabled: initialSettings.filtersEnabled || false,
+      enabledFilters: initialSettings.enabledFilters || JSON.stringify(['normal']),
     }
   });
 
@@ -368,6 +377,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
           </button>
           <button
             type="button"
+            className={`px-4 py-2 font-medium text-sm ${activeTab === 'filters' 
+              ? 'border-b-2 border-blue-500 text-blue-600' 
+              : 'text-gray-500 hover:text-gray-700'}`}
+            onClick={() => setActiveTab('filters')}
+          >
+            Filters
+          </button>
+          <button
+            type="button"
             className={`px-4 py-2 font-medium text-sm ${activeTab === 'advanced' 
               ? 'border-b-2 border-blue-500 text-blue-600' 
               : 'text-gray-500 hover:text-gray-700'}`}
@@ -478,6 +496,16 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
               errors={errors} 
             />
           )}
+
+          {/* Filters Tab */}
+          {activeTab === 'filters' && (
+            <FiltersTab 
+              register={register} 
+              watch={watch} 
+              setValue={setValue} 
+              errors={errors} 
+            />
+          )}          
 
           {/* Advanced Tab */}
           {activeTab === 'advanced' && (

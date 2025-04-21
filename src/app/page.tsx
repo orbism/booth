@@ -68,6 +68,8 @@ export default async function Home() {
           videoResolution={settings.videoResolution}
           videoEffect={settings.videoEffect}
           videoDuration={settings.videoDuration}
+          filtersEnabled={settings.filtersEnabled || false}
+          enabledFilters={settings.enabledFilters || null}
         />
       </div>
     </BoothLayout>

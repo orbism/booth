@@ -102,7 +102,7 @@ export async function trackBoothEvent(
   analyticsId: string | null,
   eventType: 'view_start' | 'info_submitted' | 'photo_captured' | 'photo_approved' | 
              'video_captured' | 'video_approved' | 'email_sent' | 'retake_photo' | 
-             'retake_video' | 'error' | 'splash_complete' | 'journey_complete',
+             'retake_video' | 'error' | 'splash_complete' | 'journey_complete' | 'filter_selected',
   metadata?: Record<string, unknown>,
 ) {
   if (!analyticsId) return null;

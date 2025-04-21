@@ -98,6 +98,10 @@ model Settings {
   videoResolution        String  @default("medium") // low, medium, high
   videoEffect            String  @default("none") // none, sepia, black-white, etc.
   videoDuration          Int     @default(10) // in seconds
+
+  // Photo Filters/Effects
+  filtersEnabled     Boolean @default(false)
+  enabledFilters     String? // JSON string of enabled filters
 }
 
 model Journey {

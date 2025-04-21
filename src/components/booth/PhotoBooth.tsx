@@ -1,6 +1,6 @@
 // src/components/booth/PhotoBooth.tsx
 "use client";
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, RefObject } from 'react';
 import Webcam from 'react-webcam';
 import UserInfoForm from '@/components/forms/UserInfoForm';
 import CountdownTimer from '@/components/booth/CountdownTimer';
@@ -10,6 +10,8 @@ import JourneyContainer from '@/components/journey/JourneyContainer';
 import { JourneyPage } from '@/types/journey';
 import SplashPage from './SplashPage';
 import VideoPreview from './VideoPreview';
+import FiltersSelector from './FiltersSelector';
+import { AVAILABLE_FILTERS } from '../forms/tabs/FiltersTab';
 
 import { v4 as uuidv4 } from 'uuid';
 import { trackBoothEvent } from '@/lib/analytics';
@@ -19,7 +21,7 @@ type UserData = {
   email: string;
 };
 
-type BoothStage = 'splash' | 'collect-info' | 'countdown' | 'preview' | 'complete';
+type BoothStage = 'splash' | 'collect-info' | 'select-filter' | 'countdown' | 'preview' | 'complete';
 
 interface ThemeSettings {
   primaryColor: string;
@@ -51,6 +53,8 @@ interface PhotoBoothProps {
   videoResolution?: string;
   videoEffect?: string;
   videoDuration?: number;
+  filtersEnabled?: boolean;
+  enabledFilters?: string | null;
 }
 
 const PhotoBooth: React.FC<PhotoBoothProps> = ({
@@ -81,6 +85,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   videoDuration = 10,
   printerEnabled = false,
   aiImageCorrection = false,
+  filtersEnabled = false,
+  enabledFilters = null,
 }) => {
   const [stage, setStage] = useState<BoothStage>(splashPageEnabled ? 'splash' : 'collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -107,6 +113,23 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const [remainingTime, setRemainingTime] = useState<number>(videoDuration);
+  const videoRef = useRef<HTMLVideoElement>(webcamRef.current?.video || null) as RefObject<HTMLVideoElement>;
+  // Filters variables
+  const [selectedFilter, setSelectedFilter] = useState<string>('normal');
+  const [parsedFilters, setParsedFilters] = useState<string[]>(['normal']);
+
+  // Parse the enabledFilters JSON string
+  useEffect(() => {
+    if (enabledFilters) {
+      try {
+        const parsed = JSON.parse(enabledFilters);
+        setParsedFilters(Array.isArray(parsed) ? parsed : ['normal']);
+      } catch (e) {
+        console.error('Failed to parse enabled filters:', e);
+        setParsedFilters(['normal']);
+      }
+    }
+  }, [enabledFilters]);
 
   // Initialize tracking session
   useEffect(() => {
@@ -265,40 +288,100 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
     if (!customJourneyEnabled) {
       // Only advance to countdown if there's no custom journey
-      setStage('countdown');
+      if (filtersEnabled && captureMode === 'photo') {
+        setStage('select-filter');
+      } else {
+        setStage('countdown');
+      }
     }
+  };
+
+  // Filter selection handler
+  const handleFilterSelect = (filterId: string) => {
+    setSelectedFilter(filterId);
+  };
+
+  // Filter confirmation handler
+  const handleFilterConfirm = () => {
+    // Track filter selection
+    if (analyticsId) {
+      trackBoothEvent(analyticsId, 'filter_selected', {
+        filterId: selectedFilter,
+        filterName: AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.name || 'Unknown'
+      });
+    }
+    setStage('countdown');
   };
 
   // Handle journey completion
   const handleJourneyComplete = () => {
     setJourneyCompleted(true);
-    setStage('countdown');
+
+    if (filtersEnabled && captureMode === 'photo') {
+      setStage('select-filter');
+    } else {
+      setStage('countdown');
+    }
     
     // Track journey completion
     if (analyticsId) {
       trackBoothEvent(analyticsId, 'journey_complete');
     }
   };
-  
 
   // Handle countdown completion
   const handleCountdownComplete = async () => {
     if (captureMode === 'photo') {
-      // Existing photo capture logic
+      // Existing photo capture logic with filter support
       if (webcamRef.current) {
         const screenshot = webcamRef.current.getScreenshot();
-        setPhotoDataUrl(screenshot);
-        setStage('preview');
+        
+        // If there's a selected filter other than 'normal', apply it
+        if (selectedFilter !== 'normal') {
+          // Apply filter to the image
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            
+            if (ctx) {
+              // Draw the original image
+              ctx.drawImage(img, 0, 0);
+              
+              // Apply filter
+              const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css;
+              if (filterCSS) {
+                ctx.filter = filterCSS;
+                ctx.drawImage(canvas, 0, 0);
+                ctx.filter = 'none'; // Reset filter
+              }
+              
+              // Convert back to data URL
+              const filteredDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+              setPhotoDataUrl(filteredDataUrl);
+              setStage('preview');
+            }
+          };
+          img.src = screenshot as string;
+        } else {
+          // No filter, use original image
+          setPhotoDataUrl(screenshot);
+          setStage('preview');
+        }
         
         // Track photo captured
         if (analyticsId) {
-          await trackBoothEvent(analyticsId, 'photo_captured');
+          await trackBoothEvent(analyticsId, 'photo_captured', {
+            filter: selectedFilter
+          });
         }
       } else {
         console.error('Webcam reference not available');
       }
     } else {
-      // Start video recording immediately after countdown
+      // For video, we'll apply the filter during recording
       startVideoRecording();
     }
   };
@@ -314,6 +397,14 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     if (!videoElement || !videoElement.srcObject) {
       console.error('Video stream not available');
       return;
+    }
+
+    // Apply filter to the video element if a filter is selected
+    if (selectedFilter !== 'normal') {
+      const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css;
+      if (filterCSS && videoElement) {
+        videoElement.style.filter = filterCSS;
+      }
     }
     
     // Clear any old recorded chunks
@@ -736,6 +827,31 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
               />
             );
           }
+
+          // Filter selection stage
+          case 'select-filter':
+            return (
+              <div className="relative">
+                <div className="aspect-video bg-black rounded overflow-hidden">
+                  <Webcam
+                    audio={captureMode === 'video'}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={videoConstraints}
+                    className="w-full h-full object-cover"
+                    mirrored={true}
+                    onUserMediaError={() => setIsCameraError(true)}
+                  />
+                  
+                  <FiltersSelector
+                    enabledFilters={parsedFilters}
+                    onSelectFilter={handleFilterSelect}
+                    onConfirm={handleFilterConfirm}
+                    videoRef={videoRef}
+                  />
+                </div>
+              </div>
+            );          
           
           // If no journey or journey completed, advance to countdown
           setStage('countdown');
