@@ -114,9 +114,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const recordedChunksRef = useRef<Blob[]>([]);
   const [remainingTime, setRemainingTime] = useState<number>(videoDuration);
   const videoRef = useRef<HTMLVideoElement>(webcamRef.current?.video || null) as RefObject<HTMLVideoElement>;
+
   // Filters variables
   const [selectedFilter, setSelectedFilter] = useState<string>('normal');
   const [parsedFilters, setParsedFilters] = useState<string[]>(['normal']);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const [videoFilter, setVideoFilter] = useState<string>('normal');
 
   // Parse the enabledFilters JSON string
   useEffect(() => {
@@ -263,6 +266,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       if (interval) clearInterval(interval);
     };
   }, [isRecording, recordingStartTime, videoDuration]);
+
+  // Update the video element when webcamRef changes
+  useEffect(() => {
+    if (webcamRef.current && webcamRef.current.video) {
+      setVideoElement(webcamRef.current.video);
+    }
+  }, [webcamRef.current]);
   
   // Handle splash page completion
   const handleSplashComplete = () => {
@@ -287,8 +297,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     }
 
     if (!customJourneyEnabled) {
-      // Only advance to countdown if there's no custom journey
-      if (filtersEnabled && captureMode === 'photo') {
+      // Show filter selection for **both** photo and video modes if filters are enabled
+      if (filtersEnabled) {
         setStage('select-filter');
       } else {
         setStage('countdown');
@@ -317,7 +327,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const handleJourneyComplete = () => {
     setJourneyCompleted(true);
 
-    if (filtersEnabled && captureMode === 'photo') {
+    if (filtersEnabled) {
       setStage('select-filter');
     } else {
       setStage('countdown');
@@ -331,8 +341,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Handle countdown completion
   const handleCountdownComplete = async () => {
+    // For photo capture with filter
     if (captureMode === 'photo') {
-      // Existing photo capture logic with filter support
       if (webcamRef.current) {
         const screenshot = webcamRef.current.getScreenshot();
         
@@ -350,11 +360,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
               // Draw the original image
               ctx.drawImage(img, 0, 0);
               
-              // Apply filter
+              // Apply filter - FIXED: Make sure we're mapping CSS filter to canvas filter correctly
               const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css;
               if (filterCSS) {
                 ctx.filter = filterCSS;
-                ctx.drawImage(canvas, 0, 0);
+                // Draw the image again with the filter applied
+                ctx.drawImage(img, 0, 0);
                 ctx.filter = 'none'; // Reset filter
               }
               
@@ -377,16 +388,20 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
             filter: selectedFilter
           });
         }
-      } else {
-        console.error('Webcam reference not available');
       }
     } else {
-      // For video, we'll apply the filter during recording
       startVideoRecording();
+
+      // Track video recording started || TODO: actually add this to our analytics
+      // if (analyticsId) {
+      //   await trackBoothEvent(analyticsId, 'video_recording_started', {
+      //     filter: selectedFilter
+      //   });
+      // }
     }
   };
 
-  // Start video recording handler
+  // Start video recording handler // TODO: double check filter support
   const startVideoRecording = () => {
     if (!webcamRef.current) {
       console.error('Webcam reference not available');
@@ -399,20 +414,44 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       return;
     }
 
-    // Apply filter to the video element if a filter is selected
-    if (selectedFilter !== 'normal') {
-      const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css;
-      if (filterCSS && videoElement) {
-        videoElement.style.filter = filterCSS;
-      }
+    // Set up canvas for filtered recording
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      console.error('Could not get canvas context');
+      return;
+    }
+    
+    // Set canvas dimensions to match video
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+    
+    // Get filter CSS
+    const filterCSS = selectedFilter !== 'normal' 
+      ? AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css || ''
+      : '';
+    
+    // Apply filter to video element for preview
+    if (filterCSS && videoElement) {
+      videoElement.style.filter = filterCSS;
+    }
+    
+    // Create canvas stream for recording
+    const canvasStream = canvas.captureStream(30); // 30 FPS
+    
+    // Add audio track from original stream to canvas stream if available
+    const audioTracks = (videoElement.srcObject as MediaStream).getAudioTracks();
+    if (audioTracks.length > 0) {
+      canvasStream.addTrack(audioTracks[0]);
     }
     
     // Clear any old recorded chunks
     recordedChunksRef.current = [];
     
-    // Create media recorder
+    // Create media recorder from canvas stream
     try {
-      const mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream, {
+      const mediaRecorder = new MediaRecorder(canvasStream, {
         mimeType: 'video/webm;codecs=vp9' // Specify codec for better compatibility
       });
       mediaRecorderRef.current = mediaRecorder;
@@ -441,6 +480,28 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       recordingTimerRef.current = setTimeout(() => {
         stopVideoRecording();
       }, videoDuration * 1000);
+      
+      // Start the canvas drawing loop
+      const drawFrame = () => {
+        if (isRecording && videoElement) {
+          // Apply filter by setting canvas filter property
+          if (filterCSS) {
+            ctx.filter = filterCSS;
+          }
+          
+          // Draw the current video frame onto the canvas
+          ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+          
+          // Clear filter for next frame
+          ctx.filter = 'none';
+          
+          // Request next frame
+          requestAnimationFrame(drawFrame);
+        }
+      };
+      
+      // Start the drawing loop
+      drawFrame();
       
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -486,6 +547,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         });
         const url = URL.createObjectURL(videoBlob);
         setVideoUrl(url);
+        
+        // Store the selected filter with the video URL to use in preview
+        if (selectedFilter !== 'normal') {
+          // Save the filter information with the video for preview
+          setVideoFilter(selectedFilter);
+        }
         
         // Force immediate stage transition regardless of onstop event
         setStage('preview');
@@ -828,11 +895,11 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
             );
           }
 
-          // Filter selection stage
+          // Select filter overlay
           case 'select-filter':
             return (
               <div className="relative">
-                <div className="aspect-video bg-black rounded overflow-hidden">
+                <div className="aspect-video bg-black rounded overflow-hidden relative">
                   <Webcam
                     audio={captureMode === 'video'}
                     ref={webcamRef}
@@ -841,17 +908,23 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
                     className="w-full h-full object-cover"
                     mirrored={true}
                     onUserMediaError={() => setIsCameraError(true)}
+                    onUserMedia={(stream) => {
+                      if (webcamRef.current && webcamRef.current.video) {
+                        setVideoElement(webcamRef.current.video);
+                      }
+                    }}
                   />
                   
                   <FiltersSelector
                     enabledFilters={parsedFilters}
                     onSelectFilter={handleFilterSelect}
                     onConfirm={handleFilterConfirm}
-                    videoRef={videoRef}
+                    videoElement={videoElement}
+                    selectedFilter={selectedFilter}
                   />
                 </div>
               </div>
-            );          
+            );
           
           // If no journey or journey completed, advance to countdown
           setStage('countdown');
@@ -929,13 +1002,19 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   onRetake={handleRetake}
                 />
               ) : (
-                <VideoPreview
-                  videoUrl={videoUrl as string}
-                  userName={userData.name}
-                  userEmail={userData.email}
-                  onSendEmail={handleSendVideoEmail}
-                  onRetake={handleRetake}
-                />
+                // For video preview with filter, we'll apply the filter through CSS
+                <div className="relative">
+                  <div style={{ filter: videoFilter !== 'normal' ? 
+                    (AVAILABLE_FILTERS.find(f => f.id === videoFilter)?.css || '') : '' }}>
+                    <VideoPreview
+                      videoUrl={videoUrl as string}
+                      userName={userData.name}
+                      userEmail={userData.email}
+                      onSendEmail={handleSendVideoEmail}
+                      onRetake={handleRetake}
+                    />
+                  </div>
+                </div>
               )}
             </>
           ) : (

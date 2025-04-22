@@ -1,74 +1,74 @@
 // src/components/booth/FiltersSelector.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { AVAILABLE_FILTERS } from '../forms/tabs/FiltersTab';
 
 interface FiltersSelectorProps {
   enabledFilters: string[];
   onSelectFilter: (filterId: string) => void;
   onConfirm: () => void;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoElement: HTMLVideoElement | null;
+  selectedFilter: string;
 }
 
 const FiltersSelector: React.FC<FiltersSelectorProps> = ({
   enabledFilters,
   onSelectFilter,
   onConfirm,
-  videoRef
+  videoElement,
+  selectedFilter
 }) => {
-  const [selectedFilter, setSelectedFilter] = useState('normal');
-  
-  // Handle filter selection
-  const handleFilterSelect = (filterId: string) => {
-    setSelectedFilter(filterId);
-    onSelectFilter(filterId);
-  };
-  
   // Get only the filters that are enabled
   const activeFilters = AVAILABLE_FILTERS.filter(
     filter => filter.id === 'normal' || enabledFilters.includes(filter.id)
   );
 
+  // Apply the selected filter to the video element
+  useEffect(() => {
+    if (videoElement) {
+      const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css || '';
+      videoElement.style.filter = filterCSS;
+    }
+  }, [selectedFilter, videoElement]);
+
   return (
-    <div className="relative w-full">
-      {/* Filter applied to the video preview */}
-      {videoRef?.current && (
-        <div 
-          className="absolute inset-0 pointer-events-none z-10"
-          style={{ filter: AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css || '' }}
-        />
-      )}
-      
-      {/* Confirm button */}
+    <div className="absolute inset-0 z-10">
+      {/* Confirm button - positioned at the top right of the container */}
       <button
         onClick={onConfirm}
-        className="absolute top-4 right-4 z-20 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg"
+        className="absolute top-4 right-4 z-20 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
       >
         Use this filter
       </button>
       
-      {/* Filters carousel */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 bg-black bg-opacity-50 py-3">
+      {/* Filters carousel - with transparent background */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 py-3">
         <div className="flex overflow-x-auto px-4 space-x-3 pb-2">
           {activeFilters.map((filter) => (
             <div
               key={filter.id}
-              onClick={() => handleFilterSelect(filter.id)}
+              onClick={() => onSelectFilter(filter.id)}
               className={`flex-shrink-0 cursor-pointer transition-all ${
                 selectedFilter === filter.id ? 'scale-110 transform' : ''
               }`}
             >
               <div 
-                className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${
+                className={`w-16 h-16 rounded-lg overflow-hidden border-2 relative ${
                   selectedFilter === filter.id ? 'border-white' : 'border-transparent'
                 }`}
               >
+                {/* Preview image with filter applied */}
                 <div 
-                  className="w-full h-full bg-gray-400"
-                  style={{ filter: filter.css }}
+                  className="w-full h-full bg-cover bg-center"
+                  style={{ 
+                    backgroundImage: `url(/filterthumb.png)`,
+                    filter: filter.css 
+                  }}
                 ></div>
-              </div>
-              <div className="text-center text-white text-xs mt-1">
-                {filter.name}
+                
+                {/* Label inside the thumbnail */}
+                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
+                  {filter.name}
+                </div>
               </div>
             </div>
           ))}

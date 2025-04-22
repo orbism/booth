@@ -9,12 +9,12 @@ import Tooltip from '@/components/ui/Tooltip';
 export const AVAILABLE_FILTERS = [
   { id: 'normal', name: 'Normal', css: '' },
   { id: 'sepia', name: 'Sepia', css: 'sepia(100%)' },
-  { id: 'grayscale', name: 'Black & White', css: 'grayscale(100%)' },
+  { id: 'grayscale', name: 'B & W', css: 'grayscale(100%)' },
   { id: 'saturate', name: 'Vibrant', css: 'saturate(200%)' },
-  { id: 'contrast', name: 'High Contrast', css: 'contrast(150%)' },
+  { id: 'contrast', name: 'Hi-Con', css: 'contrast(150%)' },
   { id: 'invert', name: 'Invert', css: 'invert(100%)' },
-  { id: 'blur', name: 'Soft Focus', css: 'blur(2px)' },
-  { id: 'hue-rotate', name: 'Color Shift', css: 'hue-rotate(180deg)' },
+  { id: 'blur', name: 'Blur', css: 'blur(2px)' },
+  { id: 'hue-rotate', name: 'Hue Shift', css: 'hue-rotate(180deg)' },
   { id: 'vintage', name: 'Vintage', css: 'sepia(50%) hue-rotate(-30deg) saturate(140%)' },
 ];
 
