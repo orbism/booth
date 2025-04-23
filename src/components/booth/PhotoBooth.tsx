@@ -401,78 +401,96 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     }
   };
 
-  // Start video recording handler // TODO: double check filter support
+  // Start video recording handler
   const startVideoRecording = () => {
+    console.log('==== STARTING SIMPLIFIED VIDEO RECORDING ====');
+    
     if (!webcamRef.current) {
       console.error('Webcam reference not available');
+      setError({
+        title: "Recording Error", 
+        message: "Camera not available. Please refresh and try again."
+      });
       return;
     }
     
     const videoElement = webcamRef.current.video;
     if (!videoElement || !videoElement.srcObject) {
       console.error('Video stream not available');
-      return;
-    }
-
-    // Set up canvas for filtered recording
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) {
-      console.error('Could not get canvas context');
-      return;
-    }
-    
-    // Set canvas dimensions to match video
-    canvas.width = videoElement.videoWidth;
-    canvas.height = videoElement.videoHeight;
-    
-    // Get filter CSS
-    const filterCSS = selectedFilter !== 'normal' 
-      ? AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css || ''
-      : '';
-    
-    // Apply filter to video element for preview
-    if (filterCSS && videoElement) {
-      videoElement.style.filter = filterCSS;
-    }
-    
-    // Create canvas stream for recording
-    const canvasStream = canvas.captureStream(30); // 30 FPS
-    
-    // Add audio track from original stream to canvas stream if available
-    const audioTracks = (videoElement.srcObject as MediaStream).getAudioTracks();
-    if (audioTracks.length > 0) {
-      canvasStream.addTrack(audioTracks[0]);
-    }
-    
-    // Clear any old recorded chunks
-    recordedChunksRef.current = [];
-    
-    // Create media recorder from canvas stream
-    try {
-      const mediaRecorder = new MediaRecorder(canvasStream, {
-        mimeType: 'video/webm;codecs=vp9' // Specify codec for better compatibility
+      setError({
+        title: "Recording Error",
+        message: "Video stream not available. Please refresh and try again."
       });
+      return;
+    }
+  
+    try {
+      // Store filter for preview
+      setVideoFilter(selectedFilter);
+      
+      // Apply filter to video element for visual preview only
+      if (selectedFilter !== 'normal') {
+        const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css || '';
+        if (videoElement) {
+          videoElement.style.filter = filterCSS;
+        }
+      }
+      
+      // Clear any old recorded chunks
+      recordedChunksRef.current = [];
+      
+      // Create direct MediaRecorder with minimal options
+      let mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream, {
+          mimeType: 'video/webm'
+        });
+      } catch (e) {
+        // Fallback with no options
+        mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream);
+      }
+      
       mediaRecorderRef.current = mediaRecorder;
       
-      // Set up event handlers
+      // Set up simple data handler
       mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available event:', event.data.size, 'bytes');
         if (event.data && event.data.size > 0) {
-          console.log('Data available event, size:', event.data.size);
           recordedChunksRef.current.push(event.data);
+          console.log('Chunk added, total chunks:', recordedChunksRef.current.length);
         }
       };
       
-      // Start recording
+      // Set up simple stop handler
+      mediaRecorder.onstop = () => {
+        console.log('MediaRecorder stopped, chunks available:', recordedChunksRef.current.length);
+        
+        if (recordedChunksRef.current.length > 0) {
+          console.log('Creating video from chunks');
+          const videoBlob = new Blob(recordedChunksRef.current, {
+            type: 'video/webm'
+          });
+          const url = URL.createObjectURL(videoBlob);
+          setVideoUrl(url);
+          
+          // Force stage transition
+          console.log('Transitioning to preview stage');
+          setStage('preview');
+        } else {
+          console.error('No chunks available after recording');
+          createFallbackVideo();
+        }
+      };
+      
+      // Start recording with very frequent data requests
+      console.log('Starting MediaRecorder with 200ms timeslice');
       setIsRecording(true);
       setRecordingStartTime(Date.now());
       
-      // Request data periodically to ensure we don't lose anything
-      mediaRecorder.start(1000); // Request data every second
-      console.log('Started video recording with 1s intervals');
+      // Request data frequently
+      mediaRecorder.start(200);
       
-      // Set up recording timer for max duration
+      // Setup timer to stop recording
       if (recordingTimerRef.current) {
         clearTimeout(recordingTimerRef.current);
       }
@@ -481,106 +499,101 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         stopVideoRecording();
       }, videoDuration * 1000);
       
-      // Start the canvas drawing loop
-      const drawFrame = () => {
-        if (isRecording && videoElement) {
-          // Apply filter by setting canvas filter property
-          if (filterCSS) {
-            ctx.filter = filterCSS;
-          }
-          
-          // Draw the current video frame onto the canvas
-          ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-          
-          // Clear filter for next frame
-          ctx.filter = 'none';
-          
-          // Request next frame
-          requestAnimationFrame(drawFrame);
-        }
-      };
-      
-      // Start the drawing loop
-      drawFrame();
-      
     } catch (error) {
       console.error('Error starting recording:', error);
       setIsRecording(false);
+      setError({
+        title: "Recording Error",
+        message: error instanceof Error ? error.message : "Failed to start recording"
+      });
+      createFallbackVideo();
     }
   };
 
-  // Stop video recording (with resume support)
-  const stopVideoRecording = async () => {
-    if (!mediaRecorderRef.current) {
-      console.error('No media recorder available');
-      return;
+  // Helper function to create a fallback video/image when recording fails
+  const createFallbackVideo = () => {
+    console.log('Creating fallback video content');
+    
+    // Create a simple canvas with text as a fallback
+    const fallbackCanvas = document.createElement('canvas');
+    fallbackCanvas.width = 640;
+    fallbackCanvas.height = 480;
+    const ctx = fallbackCanvas.getContext('2d');
+    
+    if (ctx) {
+      // Draw a simple message on the canvas
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Video recording failed', fallbackCanvas.width/2, fallbackCanvas.height/2 - 20);
+      ctx.fillText('Please try again', fallbackCanvas.width/2, fallbackCanvas.height/2 + 20);
+      
+      // Create a blob from the canvas
+      fallbackCanvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          setVideoUrl(url);
+          setStage('preview');
+        }
+      }, 'image/png');
     }
+  };
+
+  // Stop video recording // TODO: extend to have pause/resume support (toggle in dash)
+  const stopVideoRecording = () => {
+    console.log('==== STOPPING VIDEO RECORDING (SIMPLIFIED) ====');
     
-    console.log('Stop video recording called, recorder state:', mediaRecorderRef.current.state);
+    // Set recording state to false
+    setIsRecording(false);
     
-    // Clear the recording timeout
+    // Clear any timers
     if (recordingTimerRef.current) {
       clearTimeout(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
     
-    // Immediately set recording state to false
-    setIsRecording(false);
+    // Check if we have a media recorder
+    if (!mediaRecorderRef.current) {
+      console.error('No media recorder available');
+      createFallbackVideo();
+      return;
+    }
     
     try {
-      // Request the final chunk of data
+      // Only try to stop if we're recording
       if (mediaRecorderRef.current.state === "recording") {
-        // Request data so far
+        console.log('Stopping active media recorder');
+        
+        // Request final data
         mediaRecorderRef.current.requestData();
         
         // Stop the recorder
         mediaRecorderRef.current.stop();
-        console.log('Media recorder stopped');
-      }
-      
-      // Create video from chunks without waiting for onstop event
-      // This ensures we move to preview regardless of event firing
-      if (recordedChunksRef.current.length > 0) {
-        console.log('Creating video blob from', recordedChunksRef.current.length, 'chunks');
-        const videoBlob = new Blob(recordedChunksRef.current, {
-          type: 'video/webm'
-        });
-        const url = URL.createObjectURL(videoBlob);
-        setVideoUrl(url);
         
-        // Store the selected filter with the video URL to use in preview
-        if (selectedFilter !== 'normal') {
-          // Save the filter information with the video for preview
-          setVideoFilter(selectedFilter);
-        }
-        
-        // Force immediate stage transition regardless of onstop event
-        setStage('preview');
+        // Failsafe in case onstop doesn't trigger
+        setTimeout(() => {
+          if (recordedChunksRef.current.length > 0 && stage !== 'preview') {
+            console.log('FAILSAFE: Creating video blob');
+            const videoBlob = new Blob(recordedChunksRef.current, {
+              type: 'video/webm'
+            });
+            const url = URL.createObjectURL(videoBlob);
+            setVideoUrl(url);
+            setStage('preview');
+          } else if (stage !== 'preview') {
+            console.error('FAILSAFE: No chunks available');
+            createFallbackVideo();
+          }
+        }, 1000);
       } else {
-        console.error('No recorded chunks available');
-      }
-      
-      // Track video recording completed
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'video_captured', {
-          duration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0,
-          resolution: videoResolution,
-          manualStop: true, // Indicates user manually stopped the recording
-          captureMode: captureMode
-        });
+        console.log('Media recorder not in recording state');
+        createFallbackVideo();
       }
     } catch (error) {
-      console.error('Error stopping video recording:', error);
-      
-      // Still try to create video from any chunks we have
-      if (recordedChunksRef.current.length > 0) {
-        const videoBlob = new Blob(recordedChunksRef.current, {
-          type: 'video/webm'
-        });
-        const url = URL.createObjectURL(videoBlob);
-        setVideoUrl(url);
-        setStage('preview');
-      }
+      console.error('Error stopping recording:', error);
+      createFallbackVideo();
     }
   };
 
@@ -588,7 +601,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const handleRetake = async () => {
     setPhotoDataUrl(null);
     setVideoUrl(null); // Reset video URL
-    setStage('countdown');
+    
+    // Go back to filter selection if filters are enabled, otherwise to countdown
+    if (filtersEnabled) {
+      setStage('select-filter');
+    } else {
+      setStage('countdown');
+    }
     
     // Track retake with media type info
     if (analyticsId) {
@@ -716,10 +735,11 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       // Create form data for upload
       const formData = new FormData();
-      formData.append('video', blob, 'video.webm'); // Changed extension to webm
+      formData.append('video', blob, 'video.webm'); // TODO - save as MP4
       formData.append('name', userData.name);
       formData.append('email', userData.email);
       formData.append('mediaType', 'video');
+      formData.append('filter', selectedFilter); // Add filter info
       
       // Add analytics ID if available
       if (analyticsId) {
@@ -810,7 +830,24 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setUserData(null);
     setSessionId(null);
     setPhotoDataUrl(null);
-    setJourneyCompleted(false); // Also reset journey completed state
+    setVideoUrl(null);
+    setJourneyCompleted(false);
+    setSelectedFilter('normal'); // Reset selected filter
+    
+    // Clear any active media recorders
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        console.error('Error stopping media recorder during reset:', e);
+      }
+    }
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
+    
+    // Reset recording state
+    setIsRecording(false);
+    setRecordingStartTime(null);
     
     // Don't reset analytics ID to maintain session continuity
     sessionStartTimeRef.current = Date.now();
@@ -819,6 +856,22 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       clearTimeout(resetTimerRef.current);
       resetTimerRef.current = null;
     }
+    
+    if (recordingTimerRef.current) {
+      clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    
+    // Reset video element filter if it exists
+    if (videoRef.current) {
+      videoRef.current.style.filter = '';
+    }
+    
+    // Clean up any video element references
+    if (webcamRef.current && webcamRef.current.video) {
+      webcamRef.current.video.style.filter = '';
+    }
+    setVideoElement(null);
   };
 
   // Clean up on unmount
@@ -925,10 +978,6 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
                 </div>
               </div>
             );
-          
-          // If no journey or journey completed, advance to countdown
-          setStage('countdown');
-          return null;
         
           case 'countdown':
             return (
