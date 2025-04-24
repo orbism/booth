@@ -1,29 +1,37 @@
 // src/middleware.ts
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  // Get the token from the request
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  const isLoggedIn = !!token;
+/**
+ * Add security headers for cross-origin isolation and general protection
+ */
+function addSecurityHeaders(headers: Headers): Headers {
+  // Headers for cross-origin isolation (more permissive for development)
+  headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
+  headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   
-  const isOnAdminRoute = request.nextUrl.pathname.startsWith('/admin');
-  const isOnAuthRoute = request.nextUrl.pathname.startsWith('/login');
+  // General security headers
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   
-  // Redirect unauthenticated users trying to access admin routes to login
-  if (isOnAdminRoute && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-  
-  // Redirect authenticated users from login page to admin dashboard
-  if (isOnAuthRoute && isLoggedIn) {
-    return NextResponse.redirect(new URL('/admin', request.url));
-  }
-  
-  return NextResponse.next();
+  return headers;
 }
 
+export function middleware(request: NextRequest) {
+  // Initialize headers from the incoming request
+  const response = NextResponse.next();
+  
+  // Apply security headers for all responses
+  addSecurityHeaders(response.headers);
+  
+  return response;
+}
+
+// Only apply the middleware to the booth routes that need cross-origin isolation
 export const config = {
-  matcher: ['/admin/:path*', '/login'],
+  matcher: [
+    '/booth/:path*', // Apply only to booth routes
+    '/api/booth/:path*', // And booth API routes
+  ],
 };

@@ -15,7 +15,8 @@ import { AVAILABLE_FILTERS } from '../forms/tabs/FiltersTab';
 
 import { v4 as uuidv4 } from 'uuid';
 import { trackBoothEvent } from '@/lib/analytics';
-import { processVideo } from '@/lib/video-processor';
+import createCanvasRecorder, { CanvasVideoRecorder } from '@/lib/canvas-video-recorder';
+import { detectCanvasCapabilities, getBrowserRecommendations } from '@/lib/browser-compatibility';
 
 type UserData = {
   name: string;
@@ -108,22 +109,53 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Video related variables
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [isStoppingRecording, setIsStoppingRecording] = useState<boolean>(false);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const [remainingTime, setRemainingTime] = useState<number>(videoDuration);
   const videoRef = useRef<HTMLVideoElement>(webcamRef.current?.video || null) as RefObject<HTMLVideoElement>;
   const [isProcessingVideo, setIsProcessingVideo] = useState<boolean>(false);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
-  const [ffmpegError, setFfmpegError] = useState<boolean>(false);
+  
+  // Canvas recorder reference
+  const canvasRecorderRef = useRef<CanvasVideoRecorder | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Filters variables
   const [selectedFilter, setSelectedFilter] = useState<string>('normal');
   const [parsedFilters, setParsedFilters] = useState<string[]>(['normal']);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
   const [videoFilter, setVideoFilter] = useState<string>('normal');
+
+  // Define processingPhase type
+  type ProcessingPhase = 'waiting' | 'processing' | 'complete';
+  const [processingPhase, setProcessingPhase] = useState<ProcessingPhase>('waiting');
+  
+  // Add state for email processing
+  const [isProcessingEmail, setIsProcessingEmail] = useState<boolean>(false);
+
+  // Browser compatibility checks
+  const [browserCompatibility, setBrowserCompatibility] = useState<any>(null);
+  const [compatibilityWarning, setCompatibilityWarning] = useState<string | null>(null);
+  
+  // Check browser compatibility on component mount
+  useEffect(() => {
+    // Detect Canvas capabilities
+    const capabilities = detectCanvasCapabilities();
+    setBrowserCompatibility(capabilities);
+    
+    // Get recommendations for browser if needed
+    if (!capabilities.filtersSupported && filtersEnabled) {
+      const recommendations = getBrowserRecommendations(capabilities);
+      if (recommendations.length > 0) {
+        setCompatibilityWarning(recommendations[0]);
+      }
+    }
+    
+    console.log('Browser compatibility check:', capabilities);
+  }, [filtersEnabled]);
 
   // Parse the enabledFilters JSON string
   useEffect(() => {
@@ -142,7 +174,6 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   useEffect(() => {
     const initializeAnalytics = async () => {
       try {
-
         console.log('Initializing analytics session');
         
         // Generate a local tracking session ID
@@ -202,48 +233,6 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       }
     };
   }, []);
-
-  // Enhanced video state handling
-  useEffect(() => {
-    // Setup media recorder when webcam reference is available and in video mode
-    if (webcamRef.current && captureMode === 'video' && stage === 'countdown') {
-      const videoElement = webcamRef.current.video;
-      if (videoElement && videoElement.srcObject) {
-        // Clear any old recorded chunks
-        recordedChunksRef.current = [];
-        
-        // Create media recorder
-        const mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream);
-        mediaRecorderRef.current = mediaRecorder;
-        
-        // Set up event handlers
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            recordedChunksRef.current.push(event.data);
-          }
-        };
-        
-        mediaRecorder.onstop = () => {
-          const videoBlob = new Blob(recordedChunksRef.current, {
-            type: 'video/webm'
-          });
-          const url = URL.createObjectURL(videoBlob);
-          setVideoUrl(url);
-          setStage('preview');
-        };
-      }
-    }
-    
-    // Cleanup function
-    return () => {
-      if (recordingTimerRef.current) {
-        clearTimeout(recordingTimerRef.current);
-      }
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, [webcamRef.current, captureMode, stage]);
 
   // Handle the recording timer countdown
   useEffect(() => {
@@ -407,7 +396,12 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Start video recording handler
   const startVideoRecording = () => {
-    console.log('==== STARTING SIMPLIFIED VIDEO RECORDING ====');
+    console.log('==== STARTING CANVAS VIDEO RECORDING ====');
+    
+    // Reset processing state
+    setIsProcessingVideo(false);
+    setProcessingProgress(0);
+    setProcessingPhase('waiting');
     
     if (!webcamRef.current) {
       console.error('Webcam reference not available');
@@ -432,7 +426,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       // Store filter for preview
       setVideoFilter(selectedFilter);
       
-      // Apply filter to video element for visual preview only
+      // Always apply filter to video element for visual preview
+      // This ensures users see the filter even if canvas filters fail
       if (selectedFilter !== 'normal') {
         const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css || '';
         if (videoElement) {
@@ -440,75 +435,95 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         }
       }
       
-      // Clear any old recorded chunks
-      recordedChunksRef.current = [];
+      // Determine if we're in a compatible browser
+      const capabilities = browserCompatibility || detectCanvasCapabilities();
       
-      // Create direct MediaRecorder with minimal options
-      let mediaRecorder;
-      try {
-        mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream, {
-          mimeType: 'video/webm'
-        });
-      } catch (e) {
-        // Fallback with no options
-        mediaRecorder = new MediaRecorder(videoElement.srcObject as MediaStream);
-      }
+      // Find the filter CSS from our available filters
+      const filterCSS = selectedFilter !== 'normal'
+        ? AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css || ''
+        : '';
       
-      mediaRecorderRef.current = mediaRecorder;
-      
-      // Set up simple data handler
-      mediaRecorder.ondataavailable = (event) => {
-        console.log('Data available event:', event.data.size, 'bytes');
-        if (event.data && event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-          console.log('Chunk added, total chunks:', recordedChunksRef.current.length);
-        }
-      };
-      
-      // Set up simple stop handler
-      mediaRecorder.onstop = () => {
-        console.log('MediaRecorder stopped, chunks available:', recordedChunksRef.current.length);
+      console.log(`Creating canvas recorder with filter: ${selectedFilter} (CSS: ${filterCSS})`);
         
-        if (recordedChunksRef.current.length > 0) {
-          console.log('Creating video from chunks');
-          const videoBlob = new Blob(recordedChunksRef.current, {
-            type: 'video/webm'
-          });
-          const url = URL.createObjectURL(videoBlob);
-          setVideoUrl(url);
+      // Create the canvas recorder with enhanced options
+      canvasRecorderRef.current = createCanvasRecorder({
+        filterCss: filterCSS,
+        maxDuration: videoDuration,
+        // Ensure we're using suitable dimensions based on video resolution
+        width: videoResolution === 'high' ? 1920 : videoResolution === 'medium' ? 1280 : 640,
+        height: videoResolution === 'high' ? 1080 : videoResolution === 'medium' ? 720 : 360,
+        frameRate: 30, // Use consistent frame rate
+        onProgress: (progress) => {
+          console.log(`Recording progress: ${progress}%`);
+          setProcessingProgress(progress);
+        },
+        onError: (error) => {
+          console.error('Canvas recorder error:', error);
+          // Only show blocking error if recording completely fails
+          // For other errors, we'll continue with fallbacks
+          if (error.message.includes('Failed to start') || error.message.includes('No media stream')) {
+            setError({
+              title: "Recording Error",
+              message: error.message || "Failed to record video"
+            });
+            createFallbackVideo();
+          }
+        },
+        onFilterError: (message) => {
+          console.warn('Filter application error:', message);
+          // We don't set this as a blocking error, just a notification
+          // The recording continues but without the filter or with direct recording
+          setCompatibilityWarning(message);
           
-          // Force stage transition
-          console.log('Transitioning to preview stage');
-          setStage('preview');
-        } else {
-          console.error('No chunks available after recording');
-          createFallbackVideo();
+          // The video will still have the CSS filter applied visually,
+          // but the recording won't have the filter applied in the canvas
         }
-      };
+      });
       
-      // Start recording with very frequent data requests
-      console.log('Starting MediaRecorder with 200ms timeslice');
-      setIsRecording(true);
-      setRecordingStartTime(Date.now());
-      
-      // Request data frequently
-      mediaRecorder.start(200);
-      
-      // Setup timer to stop recording
-      if (recordingTimerRef.current) {
-        clearTimeout(recordingTimerRef.current);
-      }
-      
-      recordingTimerRef.current = setTimeout(() => {
-        stopVideoRecording();
-      }, videoDuration * 1000);
+      // Start recording with explicit error handling
+      canvasRecorderRef.current.startRecording(videoElement)
+        .then(() => {
+          console.log('Canvas recording started successfully');
+          setIsRecording(true);
+          setRecordingStartTime(Date.now());
+          
+          // Setup timer to stop recording
+          if (recordingTimerRef.current) {
+            clearTimeout(recordingTimerRef.current);
+          }
+          
+          recordingTimerRef.current = setTimeout(() => {
+            console.log('Maximum recording duration reached, stopping automatically');
+            stopVideoRecording();
+          }, videoDuration * 1000);
+          
+          // Track recording started event if analytics is available
+          if (analyticsId) {
+            trackBoothEvent(analyticsId, 'video_captured', {
+              filter: selectedFilter,
+              videoDuration: videoDuration,
+              resolution: videoResolution,
+              recordingStarted: true,
+              browser: capabilities?.browser?.name || 'unknown'
+            }).catch(err => console.error('Failed to track recording start:', err));
+          }
+        })
+        .catch((error) => {
+          console.error('Failed to start canvas recording:', error);
+          setIsRecording(false);
+          setError({
+            title: "Recording Error",
+            message: error instanceof Error ? error.message : "Failed to start recording"
+          });
+          createFallbackVideo();
+        });
       
     } catch (error) {
-      console.error('Error starting recording:', error);
+      console.error('Error setting up recording:', error);
       setIsRecording(false);
       setError({
         title: "Recording Error",
-        message: error instanceof Error ? error.message : "Failed to start recording"
+        message: error instanceof Error ? error.message : "Failed to set up recording"
       });
       createFallbackVideo();
     }
@@ -540,17 +555,22 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
           const url = URL.createObjectURL(blob);
           setVideoUrl(url);
           setStage('preview');
+          setIsStoppingRecording(false);
         }
       }, 'image/png');
+    } else {
+      // If canvas context couldn't be created, just reset the state
+      setIsStoppingRecording(false);
     }
   };
 
-  // Stop video recording // TODO: extend to have pause/resume support (toggle in dash)
+  // Stop video recording function
   const stopVideoRecording = async (): Promise<void> => {
-    console.log('==== STOPPING VIDEO RECORDING ====');
+    console.log('==== STOPPING CANVAS VIDEO RECORDING ====');
     
-    // Set recording state to false
+    // Set recording states
     setIsRecording(false);
+    setIsStoppingRecording(true);
     
     // Clear any timers
     if (recordingTimerRef.current) {
@@ -558,86 +578,76 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       recordingTimerRef.current = null;
     }
     
-    // Check if we have a media recorder
-    if (!mediaRecorderRef.current) {
-      console.error('No media recorder available');
+    // Check if we have a canvas recorder
+    if (!canvasRecorderRef.current) {
+      console.error('No canvas recorder available');
       createFallbackVideo();
       return;
     }
     
     try {
-      // Only try to stop if we're recording
-      if (mediaRecorderRef.current.state === "recording") {
-        console.log('Stopping active media recorder');
-        
-        // Request final data
-        mediaRecorderRef.current.requestData();
-        
-        // Stop the recorder
-        mediaRecorderRef.current.stop();
-        
-        // Replace the onstop handler
-        mediaRecorderRef.current.onstop = async () => {
-          console.log('MediaRecorder stopped, chunks available:', recordedChunksRef.current.length);
-          
-          if (recordedChunksRef.current.length > 0) {
-            console.log('Creating video from chunks');
-            const videoBlob = new Blob(recordedChunksRef.current, {
-              type: 'video/webm'
-            });
-            
-            // Start video processing if a filter is selected
-            if (selectedFilter !== 'normal') {
-              setIsProcessingVideo(true);
-              setProcessingProgress(0);
-              
-              try {
-                // Process the video with the selected filter
-                const processedBlob = await processVideo(videoBlob, {
-                  filterId: selectedFilter,
-                  onProgress: (progress: number) => setProcessingProgress(progress)
-                });
-                
-                // Create URL from processed blob
-                const url = URL.createObjectURL(processedBlob);
-                setVideoUrl(url);
-              } catch (error) {
-                console.error('Error processing video:', error);
-                setFfmpegError(true);
-                // Fallback to original video if processing fails
-                const url = URL.createObjectURL(videoBlob);
-                setVideoUrl(url);
-              } finally {
-                setIsProcessingVideo(false);
-              }
-            } else {
-              // No filter needed, use original video
-              const url = URL.createObjectURL(videoBlob);
-              setVideoUrl(url);
-            }
-            
-            // Track video captured
-            if (analyticsId) {
-              trackBoothEvent(analyticsId, 'video_captured', {
-                filter: selectedFilter
-              }).catch(err => console.error('Failed to track video captured:', err));
-            }
-            
-            // Transition to preview stage
-            console.log('Transitioning to preview stage');
-            setStage('preview');
-          } else {
-            console.error('No chunks available after recording');
-            createFallbackVideo();
-          }
-        };
-      } else {
-        console.log('Media recorder not in recording state');
-        createFallbackVideo();
+      // Process the recording
+      setProcessingPhase('processing');
+      
+      // Request to stop recording and get the video blob
+      console.log('Requesting to stop canvas recording...');
+      const videoBlob = await canvasRecorderRef.current.stopRecording();
+      
+      // Verify we got a valid blob
+      if (!videoBlob || videoBlob.size === 0) {
+        console.error('Received empty video blob');
+        throw new Error('No video data was recorded');
       }
+      
+      // Log the blob details
+      console.log('Canvas recording stopped successfully');
+      console.log(`Video blob details: size=${videoBlob.size} bytes, type=${videoBlob.type}`);
+      
+      // Check if the blob is suspiciously small - might be a dummy/fallback video
+      if (videoBlob.size < 1000) {
+        console.warn('Video blob is suspiciously small, might be a fallback video');
+        setCompatibilityWarning('Recording may have encountered issues. The video quality might be affected.');
+      }
+      
+      // Create URL from blob
+      const url = URL.createObjectURL(videoBlob);
+      setVideoUrl(url);
+      
+      // Track success
+      if (analyticsId) {
+        const capabilities = browserCompatibility || detectCanvasCapabilities();
+        trackBoothEvent(analyticsId, 'video_captured', {
+          filter: selectedFilter,
+          processed: selectedFilter !== 'normal',
+          videoSize: videoBlob.size,
+          videoType: videoBlob.type,
+          browser: capabilities?.browser?.name || 'unknown',
+          filtersSupported: capabilities?.filtersSupported || false,
+          isDummyVideo: videoBlob.size < 1000,
+          videoDuration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0
+        }).catch(err => console.error('Failed to track video capture:', err));
+      }
+      
+      // Complete processing
+      setProcessingPhase('complete');
+      setIsStoppingRecording(false);
+      
+      // Transition to preview stage
+      console.log('Transitioning to preview stage');
+      setStage('preview');
     } catch (error) {
       console.error('Error stopping recording:', error);
+      
+      // Track the error if analytics is available
+      if (analyticsId) {
+        trackBoothEvent(analyticsId, 'error', {
+          type: 'recording_error',
+          message: error instanceof Error ? error.message : String(error)
+        }).catch(err => console.error('Failed to track recording error:', err));
+      }
+      
       createFallbackVideo();
+      setIsStoppingRecording(false);
     }
   };
 
@@ -767,112 +777,121 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   };
 
   // Video sending via email handler
-  const handleSendVideoEmail = async (): Promise<any> => {
-    if (!userData || !videoUrl) return;
+  const handleSendVideoEmail = async (): Promise<void> => {
+    if (!userData) {
+      console.error('User data is not available');
+      return;
+    }
 
     try {
-      setError(null);
+      setIsProcessingEmail(true);
       
-      // Convert video URL to blob for upload
-      const response = await fetch(videoUrl);
-      const blob = await response.blob();
+      // Get video blob using getRecordedBlob method from the canvas recorder if available
+      let videoBlob: Blob | null = null;
+      
+      if (canvasRecorderRef.current) {
+        videoBlob = canvasRecorderRef.current.getRecordedBlob();
+      }
+      
+      // Fall back to videoUrl if we don't have a blob from the recorder
+      if (!videoBlob && videoUrl) {
+        // Convert URL to blob
+        const response = await fetch(videoUrl);
+        videoBlob = await response.blob();
+      }
+      
+      if (!videoBlob) {
+        console.error('No video blob available');
+        setIsProcessingEmail(false);
+        return;
+      }
+
+      // Generate session ID if not already set
+      const currentSessionId = sessionId || uuidv4();
+      if (!sessionId) {
+        setSessionId(currentSessionId);
+      }
+      
+      // Log basic information about the request
+      console.log(`------- VIDEO EMAIL REQUEST -------
+User Name: ${userData.name}
+Session ID: ${currentSessionId}
+User Email: ${userData.email}
+Preview WebM URL: ${videoUrl}
+      `);
       
       // Create form data for upload
       const formData = new FormData();
-      formData.append('video', blob, 'video.mp4'); // Now it's MP4
-      formData.append('name', userData.name);
+      formData.append('video', videoBlob, 'recording.webm');
       formData.append('email', userData.email);
-      formData.append('mediaType', 'video');
-      formData.append('filter', selectedFilter); // Add filter info
+      formData.append('name', userData.name);
+      formData.append('sessionId', currentSessionId);
       
       // Add analytics ID if available
       if (analyticsId) {
         formData.append('analyticsId', analyticsId);
       }
       
-      // Track video approved
+      // Set stage to complete with processing message
+      setStage('complete');
+      
+      // Track video approved in analytics
       if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'video_approved', {
-          filter: selectedFilter,
-          processingApplied: selectedFilter !== 'normal',
-        });
+        await trackBoothEvent(analyticsId, 'video_approved');
       }
       
-      // Send to API endpoint
-      const result = await fetch('/api/booth/capture', {
+      // Upload video for processing - should return immediately with acknowledgment
+      const response = await fetch('/api/send-video-email', {
         method: 'POST',
         body: formData,
       });
       
-      if (!result.ok) {
-        const errorData = await result.json();
-        throw new Error(errorData.error?.message || 'Failed to upload video');
-      }
-      
-      const data = await result.json();
-      setSessionId(data.sessionId);
-      setStage('complete');
-      
-      // Track completion
-      if (analyticsId) {
-        const duration = Date.now() - sessionStartTimeRef.current;
-        await trackBoothEvent(analyticsId, 'email_sent', {
-          duration,
-          boothSessionId: data.sessionId,
-        });
+      if (response.ok) {
+        const responseData = await response.json();
         
-        // Record session completion
-        await fetch('/api/analytics/track', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            event: 'session_complete',
-            analyticsId,
-            boothSessionId: data.sessionId,
-            emailDomain: userData.email.split('@')[1],
-            duration,
-            mediaType: 'video',
-            filter: selectedFilter,
-          }),
+        // Log the response including final MP4 URL when available
+        console.log(`Final MP4 URL: ${responseData.mp4Url || 'Processing'}
+Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
+        `);
+
+        // Track email sent event only if it was actually sent immediately
+        if (responseData.emailSent && analyticsId) {
+          await trackBoothEvent(analyticsId, 'email_sent');
+        }
+      } else {
+        console.error('Failed to send video', await response.text());
+        console.log('Email Sent: Failed');
+        
+        setError({
+          title: 'Processing Error',
+          message: 'We encountered an issue while processing your video. Please try again.'
         });
       }
       
-      // Start reset timer
-      if (resetTimerRef.current) {
-        clearTimeout(resetTimerRef.current);
-      }
-      
-      resetTimerRef.current = setTimeout(() => {
-        resetBooth();
-      }, resetTimeSeconds * 1000);
-      
-      return data;
+      setIsProcessingEmail(false);
     } catch (error) {
-      console.error('Error sending video email:', error);
+      console.error('Error sending video:', error);
+      console.log('Email Sent: Failed');
       
-      // Track error
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'error', {
-          type: 'email_error',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-      
+      setIsProcessingEmail(false);
       setError({
-        title: 'Email Error',
-        message: error instanceof Error 
-          ? error.message 
-          : 'Failed to send video. Please try again.'
+        title: 'Processing Error',
+        message: error instanceof Error ? error.message : 'Failed to process video. Please try again.'
       });
-      throw error;
     }
   };
 
   // Reset the booth to initial state
   const resetBooth = () => {
     setStage(splashPageEnabled ? 'splash' : 'collect-info');
+    
+    // Clean up object URLs before resetting state
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl);
+    }
+    if (photoDataUrl) {
+      // photoDataUrl is a data URL not an object URL, so no need to revoke
+    }
     
     // Reset user data and other state
     setUserData(null);
@@ -882,19 +901,35 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setJourneyCompleted(false);
     setSelectedFilter('normal'); // Reset selected filter
     
-    // Clear any active media recorders
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    // Reset processing state
+    setIsProcessingVideo(false);
+    setProcessingProgress(0);
+    setProcessingPhase('waiting');
+    
+    // Clean up canvas recorder
+    if (canvasRecorderRef.current) {
       try {
-        mediaRecorderRef.current.stop();
+        canvasRecorderRef.current.stopRecording().catch(e => {
+          console.error('Error stopping canvas recorder during reset:', e);
+        });
       } catch (e) {
-        console.error('Error stopping media recorder during reset:', e);
+        console.error('Error with canvas recorder during reset:', e);
       }
+      canvasRecorderRef.current = null;
     }
-    mediaRecorderRef.current = null;
+    
+    // Clean up any animation frames
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    // Clear any recorded chunks
     recordedChunksRef.current = [];
     
     // Reset recording state
     setIsRecording(false);
+    setIsStoppingRecording(false);
     setRecordingStartTime(null);
     
     // Don't reset analytics ID to maintain session continuity
@@ -928,8 +963,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       if (resetTimerRef.current) {
         clearTimeout(resetTimerRef.current);
       }
+      
+      // Clean up any created object URLs
+      if (videoUrl) {
+        URL.revokeObjectURL(videoUrl);
+      }
     };
-  }, []);
+  }, [videoUrl]);
 
   // Live remaining time counter during video recording
   useEffect(() => {
@@ -964,6 +1004,49 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
 
   // Render different stages
   const renderStage = () => {
+    // Add compatibility warning at the top of the content if needed
+    const renderCompatibilityWarning = () => {
+      if (compatibilityWarning) {
+        return (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 text-sm">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p>{compatibilityWarning}</p>
+              </div>
+              <div className="ml-auto pl-3">
+                <div className="-mx-1.5 -my-1.5">
+                  <button
+                    onClick={() => setCompatibilityWarning(null)}
+                    className="inline-flex rounded-md p-1.5 text-yellow-500 hover:bg-yellow-200 focus:outline-none"
+                  >
+                    <span className="sr-only">Dismiss</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      return null;
+    };
+    
+    // Add warning banner to content
+    const withCompatibilityWarning = (content: React.ReactNode) => {
+      return (
+        <>
+          {renderCompatibilityWarning()}
+          {content}
+        </>
+      );
+    };
 
     switch (stage) {
       case 'splash':
@@ -1067,13 +1150,24 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
                   </div>
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  {/* Only show countdown if we're not recording yet */}
-                  {!(captureMode === 'video' && isRecording) && !videoUrl && (
+                  {/* Only show countdown if we're not recording, not stopping recording, and no video URL exists */}
+                  {!(captureMode === 'video' && (isRecording || isStoppingRecording)) && !videoUrl && (
                     <CountdownTimer
                       seconds={countdownSeconds}
                       onComplete={handleCountdownComplete}
                       onCancel={() => setStage('collect-info')}
                     />
+                  )}
+                  
+                  {/* Show processing message when stopping recording */}
+                  {isStoppingRecording && (
+                    <div className="bg-black bg-opacity-70 rounded-lg p-6 text-white text-center max-w-xs">
+                      <div className="mb-3">
+                        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                      </div>
+                      <p className="text-lg font-medium">Finalizing video...</p>
+                      <p className="text-sm opacity-80 mt-1">Please wait</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1081,65 +1175,54 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         
             case 'preview':
               return userData && (captureMode === 'photo' ? photoDataUrl : videoUrl) ? (
-                <>
-                  {error && (
-                    <ErrorMessage
-                      title={error.title}
-                      message={error.message}
-                      onRetry={() => setError(null)}
-                      className="mb-4"
-                    />
-                  )}
-                  {captureMode === 'photo' ? (
-                    <PhotoPreview
-                      photoDataUrl={photoDataUrl as string}
-                      userName={userData.name}
-                      userEmail={userData.email}
-                      onSendEmail={handleSendEmail}
-                      onRetake={handleRetake}
-                    />
-                  ) : isProcessingVideo ? (
-                    <div className="p-6 flex flex-col items-center justify-center">
-                      <div className="text-center mb-6">
-                        <h3 className="text-xl font-bold mb-2">Processing Video</h3>
-                        <p className="text-gray-600">
-                          Applying {AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.name || 'selected'} filter...
-                        </p>
+                withCompatibilityWarning(
+                  <>
+                    {error && (
+                      <ErrorMessage
+                        title={error.title}
+                        message={error.message}
+                        onRetry={() => setError(null)}
+                        className="mb-4"
+                      />
+                    )}
+                    {captureMode === 'photo' ? (
+                      <PhotoPreview
+                        photoDataUrl={photoDataUrl as string}
+                        userName={userData.name}
+                        userEmail={userData.email}
+                        onSendEmail={handleSendEmail}
+                        onRetake={handleRetake}
+                      />
+                    ) : isProcessingVideo ? (
+                      <div className="p-6 flex flex-col items-center justify-center">
+                        <div className="text-center mb-6">
+                          <h3 className="text-xl font-bold mb-2">Processing Video</h3>
+                          <p className="text-gray-600">
+                            {processingPhase === 'processing'
+                              ? `Applying ${AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.name || 'selected'} filter...`
+                              : 'Finalizing video...'}
+                          </p>
+                        </div>
+                        <div className="w-full max-w-md bg-gray-200 rounded-full h-4 mb-4">
+                          <div 
+                            className="bg-blue-600 h-4 rounded-full transition-all duration-300" 
+                            style={{ width: `${processingProgress}%` }} 
+                          />
+                        </div>
+                        <p className="text-gray-600">{processingProgress}% complete</p>
                       </div>
-                      <div className="w-full max-w-md bg-gray-200 rounded-full h-4 mb-4">
-                        <div 
-                          className="bg-blue-600 h-4 rounded-full transition-all duration-300" 
-                          style={{ width: `${processingProgress}%` }} 
-                        />
-                      </div>
-                      <p className="text-gray-600">{processingProgress}% complete</p>
-                    </div>
-                  ) : ffmpegError ? (
-                    <div className="relative">
-                      <div className="absolute top-0 left-0 right-0 bg-yellow-100 border-l-4 border-yellow-500 p-4">
-                        <p className="text-yellow-700">
-                          <strong>Note:</strong> Filter could not be applied due to technical limitations.
-                          Your video was captured successfully but is shown without the filter.
-                        </p>
-                      </div>
+                    ) : (
                       <VideoPreview
                         videoUrl={videoUrl as string}
                         userName={userData.name}
                         userEmail={userData.email}
                         onSendEmail={handleSendVideoEmail}
                         onRetake={handleRetake}
+                        isProcessing={isProcessingEmail}
                       />
-                    </div>
-                  ) : (
-                    <VideoPreview
-                      videoUrl={videoUrl as string}
-                      userName={userData.name}
-                      userEmail={userData.email}
-                      onSendEmail={handleSendVideoEmail}
-                      onRetake={handleRetake}
-                    />
-                  )}
-                </>
+                    )}
+                  </>
+                )
               ) : (
                 <div className="p-6 text-center">
                   <ErrorMessage
@@ -1160,7 +1243,10 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
           <div className="p-6 text-center">
             <div className="text-3xl text-green-600 mb-4">Thank You!</div>
             <p className="mb-8">
-              Your photo has been sent to your email.
+              {captureMode === 'photo' 
+                ? "Your photo has been sent to your email."
+                : "You will receive an email with a download link for your video as soon as it is prepared for you!"}
+              <br />
               This booth will reset in {resetTimeSeconds} seconds.
             </p>
             <button

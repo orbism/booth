@@ -12,8 +12,10 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Check for session directly in the server component
   const session = await getServerSession(authOptions) as Session | null;
 
+  // Redirect to login if no session is found
   if (!session) {
     redirect('/login');
   }
@@ -47,19 +49,8 @@ export default async function AdminLayout({
         </div>
         
         {/* Main content */}
-        <div className="flex-1 bg-gray-50">
-          <header className="bg-white shadow-sm p-4 flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Admin Panel</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">
-                {session.user?.name || session.user?.email}
-              </span>
-            </div>
-          </header>
-          
-          <main className="p-6">
-            {children}
-          </main>
+        <div className="flex-1 p-8">
+          {children}
         </div>
       </div>
     </SessionProviderWrapper>

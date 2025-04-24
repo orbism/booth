@@ -39,8 +39,10 @@ booth-boss/
 │   │   │   │   └── SessionsList.tsx            # Client component that handles UI rendering and pagination
 │   │   │   ├── settings/                       # Settings management
 │   │   │   │   └── page.tsx                    # Settings view page
-│   │   │   └── setup/                          # Admin setup management 
-│   │   │       └── page.tsx                    # Admin first-time setup page (deprecated - moved to app/setup/page.tsx)
+│   │   │   ├── setup/                          # Admin setup management 
+│   │   │   │   └── page.tsx                    # Admin first-time setup page (deprecated - moved to app/setup/page.tsx)
+│   │   │   └── test/                           # Admin test endpoints
+│   │   │       └── route.ts                    # Test API endpoints for admin
 │   │   ├── (auth)/                             # Authentication routes
 │   │   │   └── login/                          # Login page
 │   │   │       └── page.tsx                    # Login page component
@@ -58,8 +60,10 @@ booth-boss/
 │   │   │   │   │   └── route.ts                # Backend sessions management route
 │   │   │   │   ├── settings/                   # 
 │   │   │   │   │   └── route.ts                # Backend settings management route
-│   │   │   │   └── setup/                      # API for admin account creation
-│   │   │   │       └── route.ts                # Handler for setting admin password
+│   │   │   │   ├── setup/                      # API for admin account creation
+│   │   │   │   │   └── route.ts                # Handler for setting admin password
+│   │   │   │   ├── test/                       # Admin test endpoints
+│   │   │   │   │   └── route.ts                # Test API endpoints for admin features
 │   │   │   │   └── upload/                     # 
 │   │   │   │       └── route.ts                # File upload API endpoint
 │   │   │   ├── analytics/                      # Analytics API routes
@@ -77,7 +81,10 @@ booth-boss/
 │   │   │   │   └── capture/                    # Photo capture endpoint
 │   │   │   │       └── route.ts                # Photo capture API handler
 │   │   │   ├── media/                          # not in use
-│   │   │   └── users/                          # not in use
+│   │   │   ├── users/                          # not in use
+│   │   │   └── video/                          # Video processing endpoints
+│   │   │       └── convert/                    # Video conversion endpoint
+│   │   │           └── route.ts                # WebM to MP4 conversion API
 │   │   ├── context/                            # 
 │   │   │   ├── ThemeContext.tsx                # Theme context provider
 │   │   │   └── ToastContext.tsx                # Toast notifications context provider
@@ -87,6 +94,9 @@ booth-boss/
 │   │   │   └── page.tsx                        # Admin login page
 │   │   ├── setup/                              # Admin setup management 
 │   │   │   └── page.tsx                        # Admin first-time setup page
+│   │   ├── test/                               # Testing pages
+│   │   │   └── browser-compatibility/          # Browser compatibility test
+│   │   │       └── page.tsx                    # Browser compatibility test page
 │   │   └── state/                              # not in use
 │   │   └── utils/                              # not in use
 │   │   ├── error.tsx                           # Error page
@@ -148,6 +158,9 @@ booth-boss/
 │   │   ├── admin.ts                            # Admin user utility functions
 │   │   ├── analytics.ts                        # Analytics utility functions (deprecated)
 │   │   ├── analytics-server.ts                 # Analytics utility functions
+│   │   ├── auth-check.ts                       # Authentication checking utility
+│   │   ├── browser-compatibility.ts            # Browser compatibility detection utility
+│   │   ├── canvas-video-recorder.ts            # Canvas-based video recording with filters
 │   │   ├── db-url.ts                           # Database URL constructor
 │   │   ├── email.ts                            # Email sending utilities
 │   │   ├── errors.ts                           # Error handling utilities
@@ -155,7 +168,6 @@ booth-boss/
 │   │   ├── themes.ts                           # Theme configuration utility
 │   │   ├── theme-css-injector.ts               # Theme injector to override Tailwind classes
 │   │   └── theme-loader.ts                     # Helper for loading theme settings
-│   │   └── video-processor.ts                  # New file for processing videos with filters
 │   ├── types/                                  # TypeScript type definitions
 │   │   ├── journey.ts                          # Journey type definitions
 │   │   └── next-auth.d.ts                      # NextAuth type extensions
