@@ -951,8 +951,8 @@ export class CanvasVideoRecorder {
   }
 
   /**
-   * Get the current recorded blob if available
-   * @returns The recorded video blob or null if no recording is available
+   * Get the recorded video as a Blob
+   * @returns Blob of the recorded video or null if no data is available
    */
   public getRecordedBlob(): Blob | null {
     if (this.recordedChunks.length === 0) {
@@ -960,17 +960,14 @@ export class CanvasVideoRecorder {
       return null;
     }
     
-    const mimeType = this.mediaRecorder?.mimeType || 'video/webm';
-    const videoBlob = new Blob(this.recordedChunks, { type: mimeType });
-    console.log(`Creating blob from ${this.recordedChunks.length} chunks: ${videoBlob.size} bytes`);
-    
-    // Check if the blob has actual content
-    if (videoBlob.size < 100) {
-      console.warn('Video blob is suspiciously small, may be invalid');
+    try {
+      // Use the same MIME type that was used for recording if possible
+      const mimeType = this.mediaRecorder?.mimeType || 'video/webm';
+      return new Blob(this.recordedChunks, { type: mimeType });
+    } catch (error) {
+      console.error('Error creating blob from recorded chunks:', error);
       return null;
     }
-    
-    return videoBlob;
   }
 }
 

@@ -1,6 +1,6 @@
 // src/components/booth/PhotoBooth.tsx
 "use client";
-import React, { useState, useRef, useEffect, RefObject } from 'react';
+import React, { useState, useRef, useEffect, RefObject, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import UserInfoForm from '@/components/forms/UserInfoForm';
 import CountdownTimer from '@/components/booth/CountdownTimer';
@@ -777,109 +777,77 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   };
 
   // Video sending via email handler
-  const handleSendVideoEmail = async (): Promise<void> => {
+  const handleSendVideoEmail = useCallback(async () => {
     if (!userData) {
-      console.error('User data is not available');
+      console.error('No user data available');
       return;
     }
-
+    
+    setIsProcessingEmail(true);
+    
     try {
-      setIsProcessingEmail(true);
-      
-      // Get video blob using getRecordedBlob method from the canvas recorder if available
       let videoBlob: Blob | null = null;
       
+      // Get blob from canvas recorder
       if (canvasRecorderRef.current) {
         videoBlob = canvasRecorderRef.current.getRecordedBlob();
-      }
-      
-      // Fall back to videoUrl if we don't have a blob from the recorder
-      if (!videoBlob && videoUrl) {
-        // Convert URL to blob
+      } else if (videoUrl) {
+        // Fallback to videoUrl if available
         const response = await fetch(videoUrl);
         videoBlob = await response.blob();
       }
       
       if (!videoBlob) {
-        console.error('No video blob available');
+        console.error('No video data available to send');
         setIsProcessingEmail(false);
         return;
       }
-
-      // Generate session ID if not already set
+      
+      // Create the FormData and send to API
+      const formData = new FormData();
+      formData.append('video', videoBlob, `booth-video-${Date.now()}.webm`);
+      formData.append('email', userData.email);
+      formData.append('name', userData.name || '');
+      
+      // Add other needed form data
+      if (sessionId) formData.append('sessionId', sessionId);
+      if (selectedFilter) formData.append('filterId', selectedFilter);
+      
+      // Generate current session ID if not already set
       const currentSessionId = sessionId || uuidv4();
       if (!sessionId) {
         setSessionId(currentSessionId);
+        formData.append('sessionId', currentSessionId);
       }
       
-      // Log basic information about the request
-      console.log(`------- VIDEO EMAIL REQUEST -------
-User Name: ${userData.name}
-Session ID: ${currentSessionId}
-User Email: ${userData.email}
-Preview WebM URL: ${videoUrl}
-      `);
-      
-      // Create form data for upload
-      const formData = new FormData();
-      formData.append('video', videoBlob, 'recording.webm');
-      formData.append('email', userData.email);
-      formData.append('name', userData.name);
-      formData.append('sessionId', currentSessionId);
-      
-      // Add analytics ID if available
-      if (analyticsId) {
-        formData.append('analyticsId', analyticsId);
-      }
-      
-      // Set stage to complete with processing message
-      setStage('complete');
-      
-      // Track video approved in analytics
-      if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'video_approved');
-      }
-      
-      // Upload video for processing - should return immediately with acknowledgment
       const response = await fetch('/api/send-video-email', {
         method: 'POST',
         body: formData,
       });
       
       if (response.ok) {
-        const responseData = await response.json();
-        
-        // Log the response including final MP4 URL when available
-        console.log(`Final MP4 URL: ${responseData.mp4Url || 'Processing'}
-Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
-        `);
-
-        // Track email sent event only if it was actually sent immediately
-        if (responseData.emailSent && analyticsId) {
-          await trackBoothEvent(analyticsId, 'email_sent');
-        }
+        // Handle success
+        trackBoothEvent(analyticsId, 'video_approved');
+        // Set stage to complete
+        setStage('complete');
       } else {
-        console.error('Failed to send video', await response.text());
-        console.log('Email Sent: Failed');
-        
+        // Handle error
+        console.error('Failed to send video:', await response.text());
         setError({
           title: 'Processing Error',
           message: 'We encountered an issue while processing your video. Please try again.'
         });
       }
-      
-      setIsProcessingEmail(false);
     } catch (error) {
       console.error('Error sending video:', error);
-      console.log('Email Sent: Failed');
-      
-      setIsProcessingEmail(false);
       setError({
         title: 'Processing Error',
-        message: error instanceof Error ? error.message : 'Failed to process video. Please try again.'
+        message: 'An error occurred while sending your video. Please try again.'
       });
+    } finally {
+      setIsProcessingEmail(false);
     }
-  };
+  }, [userData, videoUrl, sessionId, selectedFilter, analyticsId, trackBoothEvent, setStage]);
 
   // Reset the booth to initial state
   const resetBooth = () => {

@@ -1,17 +1,20 @@
-# BoothBoss Photo Booth Application
+# BoothBuddy Photo & Video Booth Application
 
-A modern, AI-powered photo booth application built with Next.js TypeScript, and Prisma
+A modern, AI-powered photo and video booth application built with Next.js, TypeScript, and Prisma
 
 ## Features
 
-- User-friendly photo capture experience
+- User-friendly photo and video capture experience
+- Canvas-based video recording with real-time filter application
+- Background processing for video conversion (WebM to MP4)
 - Customizable countdown timer
-- Email sharing with captured photos
+- Email sharing with captured photos and videos
 - Admin dashboard for managing settings
 - Responsive design for various devices
 - Interactive custom user journeys with smooth transitions and animations
 - Toast notifications for system feedback
 - Support for embedded content in journey pages
+- Cross-browser compatibility with fallback mechanisms
 
 ## Tech Stack
 
@@ -21,6 +24,7 @@ A modern, AI-powered photo booth application built with Next.js TypeScript, and 
 - **Authentication**: NextAuth.js
 - **Email**: Nodemailer with DreamHost SMTP
 - **Animation**: Framer Motion for smooth transitions
+- **Media Processing**: Canvas API for video recording and filter application
 
 ## Prerequisites
 
@@ -91,11 +95,15 @@ The application will be available at http://localhost:3000 (or next available po
 
 ## Project Structure
 
-`/src/app`: Next.js App Router pages and API routes
-`/src/components`: React components organized by function
-`/src/hooks`: Custom React hooks
-`/src/lib`: Utility functions and libraries
-`/prisma`: Database schema and migrations
+- `/src/app`: Next.js App Router pages and API routes
+- `/src/components`: React components organized by function
+- `/src/hooks`: Custom React hooks
+- `/src/lib`: Utility functions and libraries
+   - `/lib/browser-compatibility.ts`: Browser capability detection
+   - `/lib/canvas-video-recorder.ts`: Canvas-based video recording
+- `/src/types`: TypeScript type definitions
+- `/prisma`: Database schema and migrations
+- `/public`: Static assets and processed media files
 - `/scripts`: Helper scripts for setup and deployment
 
 ## Development Workflow
@@ -196,18 +204,49 @@ All user journey elements can be configured through the admin dashboard:
 5. Reorder pages using the up/down arrows
 6. Save configuration when complete
 
-### Photo Capture
+### Photo/Video Capture
 - Professional countdown timer with sound effects
 - Live preview with optional filters and effects
 - Review and retake capabilities
 - Automated delivery to user's email
 
-### Photo/Video Filters**
+### Photo/Video Filters
 - Apple Photobooth-style filters including Sepia, Black & White, Vibrant, High Contrast, and more
+- Canvas-based filter application for both photo and video modes
+- Filters are applied in real-time during preview and in final media
 - Live filter preview before capture
 - Admin controls for enabling/disabling specific filters
-- Filter effects for both photo and video modes
+- Cross-browser compatibility with automatic feature detection
 
+## Video Processing
+
+The application includes comprehensive video recording and processing capabilities:
+
+### Canvas-based Recording
+- High-quality video recording using HTML5 Canvas API
+- Real-time filter application during recording
+- Automatic fallback mechanisms for browser compatibility
+- Customizable resolution and frame rate settings
+
+### Video Processing Pipeline
+1. Videos are captured in WebM format using MediaRecorder API
+2. Filters are applied in real-time using Canvas filter API
+3. WebM files are saved to the server for immediate preview
+4. Background processing converts WebM to MP4 for broader compatibility
+5. Both formats are retained for fallback purposes
+6. Emails are sent with download links once processing is complete
+
+### Browser Compatibility
+- Automatic detection of browser capabilities
+- Graceful degradation when certain features are unavailable
+- Clear user feedback about compatibility issues
+- Support for major browsers including Chrome, Firefox, Safari, and Edge
+
+### Email Delivery
+- Asynchronous video processing to avoid blocking the UI
+- Clear user feedback during processing
+- Robust error handling with retry mechanisms
+- Configurable email templates for video sharing
 
 ## Analytics Features
 
