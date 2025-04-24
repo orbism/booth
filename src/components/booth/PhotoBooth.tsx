@@ -15,6 +15,7 @@ import { AVAILABLE_FILTERS } from '../forms/tabs/FiltersTab';
 
 import { v4 as uuidv4 } from 'uuid';
 import { trackBoothEvent } from '@/lib/analytics';
+import { processVideo } from '@/lib/video-processor';
 
 type UserData = {
   name: string;
@@ -114,6 +115,9 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const recordedChunksRef = useRef<Blob[]>([]);
   const [remainingTime, setRemainingTime] = useState<number>(videoDuration);
   const videoRef = useRef<HTMLVideoElement>(webcamRef.current?.video || null) as RefObject<HTMLVideoElement>;
+  const [isProcessingVideo, setIsProcessingVideo] = useState<boolean>(false);
+  const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [ffmpegError, setFfmpegError] = useState<boolean>(false);
 
   // Filters variables
   const [selectedFilter, setSelectedFilter] = useState<string>('normal');
@@ -542,8 +546,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   };
 
   // Stop video recording // TODO: extend to have pause/resume support (toggle in dash)
-  const stopVideoRecording = () => {
-    console.log('==== STOPPING VIDEO RECORDING (SIMPLIFIED) ====');
+  const stopVideoRecording = async (): Promise<void> => {
+    console.log('==== STOPPING VIDEO RECORDING ====');
     
     // Set recording state to false
     setIsRecording(false);
@@ -572,21 +576,61 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         // Stop the recorder
         mediaRecorderRef.current.stop();
         
-        // Failsafe in case onstop doesn't trigger
-        setTimeout(() => {
-          if (recordedChunksRef.current.length > 0 && stage !== 'preview') {
-            console.log('FAILSAFE: Creating video blob');
+        // Replace the onstop handler
+        mediaRecorderRef.current.onstop = async () => {
+          console.log('MediaRecorder stopped, chunks available:', recordedChunksRef.current.length);
+          
+          if (recordedChunksRef.current.length > 0) {
+            console.log('Creating video from chunks');
             const videoBlob = new Blob(recordedChunksRef.current, {
               type: 'video/webm'
             });
-            const url = URL.createObjectURL(videoBlob);
-            setVideoUrl(url);
+            
+            // Start video processing if a filter is selected
+            if (selectedFilter !== 'normal') {
+              setIsProcessingVideo(true);
+              setProcessingProgress(0);
+              
+              try {
+                // Process the video with the selected filter
+                const processedBlob = await processVideo(videoBlob, {
+                  filterId: selectedFilter,
+                  onProgress: (progress: number) => setProcessingProgress(progress)
+                });
+                
+                // Create URL from processed blob
+                const url = URL.createObjectURL(processedBlob);
+                setVideoUrl(url);
+              } catch (error) {
+                console.error('Error processing video:', error);
+                setFfmpegError(true);
+                // Fallback to original video if processing fails
+                const url = URL.createObjectURL(videoBlob);
+                setVideoUrl(url);
+              } finally {
+                setIsProcessingVideo(false);
+              }
+            } else {
+              // No filter needed, use original video
+              const url = URL.createObjectURL(videoBlob);
+              setVideoUrl(url);
+            }
+            
+            // Track video captured
+            if (analyticsId) {
+              trackBoothEvent(analyticsId, 'video_captured', {
+                filter: selectedFilter
+              }).catch(err => console.error('Failed to track video captured:', err));
+            }
+            
+            // Transition to preview stage
+            console.log('Transitioning to preview stage');
             setStage('preview');
-          } else if (stage !== 'preview') {
-            console.error('FAILSAFE: No chunks available');
+          } else {
+            console.error('No chunks available after recording');
             createFallbackVideo();
           }
-        }, 1000);
+        };
       } else {
         console.log('Media recorder not in recording state');
         createFallbackVideo();
@@ -723,7 +767,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   };
 
   // Video sending via email handler
-  const handleSendVideoEmail = async () => {
+  const handleSendVideoEmail = async (): Promise<any> => {
     if (!userData || !videoUrl) return;
 
     try {
@@ -735,7 +779,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       // Create form data for upload
       const formData = new FormData();
-      formData.append('video', blob, 'video.webm'); // TODO - save as MP4
+      formData.append('video', blob, 'video.mp4'); // Now it's MP4
       formData.append('name', userData.name);
       formData.append('email', userData.email);
       formData.append('mediaType', 'video');
@@ -748,11 +792,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       // Track video approved
       if (analyticsId) {
-        await trackBoothEvent(analyticsId, 'photo_approved'); // Reusing existing event type for now
+        await trackBoothEvent(analyticsId, 'video_approved', {
+          filter: selectedFilter,
+          processingApplied: selectedFilter !== 'normal',
+        });
       }
       
-      // TODO: Update the API endpoint to handle video uploads
-      // For now, we'll use the same endpoint as photos
+      // Send to API endpoint
       const result = await fetch('/api/booth/capture', {
         method: 'POST',
         body: formData,
@@ -787,6 +833,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
             boothSessionId: data.sessionId,
             emailDomain: userData.email.split('@')[1],
             duration,
+            mediaType: 'video',
+            filter: selectedFilter,
           }),
         });
       }
@@ -1031,30 +1079,58 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
               </div>
             );
         
-        case 'preview':
-          return userData && (captureMode === 'photo' ? photoDataUrl : videoUrl) ? (
-            <>
-              {error && (
-                <ErrorMessage
-                  title={error.title}
-                  message={error.message}
-                  onRetry={() => setError(null)}
-                  className="mb-4"
-                />
-              )}
-              {captureMode === 'photo' ? (
-                <PhotoPreview
-                  photoDataUrl={photoDataUrl as string}
-                  userName={userData.name}
-                  userEmail={userData.email}
-                  onSendEmail={handleSendEmail}
-                  onRetake={handleRetake}
-                />
-              ) : (
-                // For video preview with filter, we'll apply the filter through CSS
-                <div className="relative">
-                  <div style={{ filter: videoFilter !== 'normal' ? 
-                    (AVAILABLE_FILTERS.find(f => f.id === videoFilter)?.css || '') : '' }}>
+            case 'preview':
+              return userData && (captureMode === 'photo' ? photoDataUrl : videoUrl) ? (
+                <>
+                  {error && (
+                    <ErrorMessage
+                      title={error.title}
+                      message={error.message}
+                      onRetry={() => setError(null)}
+                      className="mb-4"
+                    />
+                  )}
+                  {captureMode === 'photo' ? (
+                    <PhotoPreview
+                      photoDataUrl={photoDataUrl as string}
+                      userName={userData.name}
+                      userEmail={userData.email}
+                      onSendEmail={handleSendEmail}
+                      onRetake={handleRetake}
+                    />
+                  ) : isProcessingVideo ? (
+                    <div className="p-6 flex flex-col items-center justify-center">
+                      <div className="text-center mb-6">
+                        <h3 className="text-xl font-bold mb-2">Processing Video</h3>
+                        <p className="text-gray-600">
+                          Applying {AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.name || 'selected'} filter...
+                        </p>
+                      </div>
+                      <div className="w-full max-w-md bg-gray-200 rounded-full h-4 mb-4">
+                        <div 
+                          className="bg-blue-600 h-4 rounded-full transition-all duration-300" 
+                          style={{ width: `${processingProgress}%` }} 
+                        />
+                      </div>
+                      <p className="text-gray-600">{processingProgress}% complete</p>
+                    </div>
+                  ) : ffmpegError ? (
+                    <div className="relative">
+                      <div className="absolute top-0 left-0 right-0 bg-yellow-100 border-l-4 border-yellow-500 p-4">
+                        <p className="text-yellow-700">
+                          <strong>Note:</strong> Filter could not be applied due to technical limitations.
+                          Your video was captured successfully but is shown without the filter.
+                        </p>
+                      </div>
+                      <VideoPreview
+                        videoUrl={videoUrl as string}
+                        userName={userData.name}
+                        userEmail={userData.email}
+                        onSendEmail={handleSendVideoEmail}
+                        onRetake={handleRetake}
+                      />
+                    </div>
+                  ) : (
                     <VideoPreview
                       videoUrl={videoUrl as string}
                       userName={userData.name}
@@ -1062,24 +1138,22 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
                       onSendEmail={handleSendVideoEmail}
                       onRetake={handleRetake}
                     />
-                  </div>
+                  )}
+                </>
+              ) : (
+                <div className="p-6 text-center">
+                  <ErrorMessage
+                    title="Missing Data"
+                    message="Error: Missing photo or user data"
+                  />
+                  <button
+                    onClick={() => setStage('collect-info')}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Start Over
+                  </button>
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="p-6 text-center">
-              <ErrorMessage
-                title="Missing Data"
-                message="Error: Missing photo or user data"
-              />
-              <button
-                onClick={() => setStage('collect-info')}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Start Over
-              </button>
-            </div>
-          );
+              );
         
       case 'complete':
         return (

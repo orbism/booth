@@ -10,11 +10,19 @@ import { sendBoothPhoto, sendBoothVideo } from '@/lib/email';
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const mediaFile = formData.get('photo') as File || formData.get('video') as File;
+    
+    // Support both photo and video uploads
+    const photoFile = formData.get('photo') as File | null;
+    const videoFile = formData.get('video') as File | null;
+    
+    // Determine media type
+    const mediaFile = photoFile || videoFile;
+    const mediaType = photoFile ? 'photo' : 'video';
+    
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const analyticsId = formData.get('analyticsId') as string;
-    const mediaType = formData.get('mediaType') as string || 'photo';
+    const filter = formData.get('filter') as string || 'normal';
     
     if (!mediaFile || !name || !email) {
       return NextResponse.json(
@@ -29,9 +37,13 @@ export async function POST(request: NextRequest) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    // Generate a unique filename
-    const uniqueId = uuidv4();
-    const fileExtension = mediaType === 'video' ? '.webm' : '.jpg';
+    // Generate a unique filename with username and timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const safeUsername = name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const uniqueId = `boothboss-${safeUsername}-${timestamp}`;
+    
+    // Use appropriate extension based on media type
+    const fileExtension = mediaType === 'video' ? '.mp4' : '.jpg';
     const fileName = `${uniqueId}${fileExtension}`;
     const filePath = path.join(uploadsDir, fileName);
     
@@ -47,14 +59,15 @@ export async function POST(request: NextRequest) {
     console.log(`Media file saved to ${filePath}`);
     console.log(`Public URL: ${fullUrl}`);
     
-    // Save session to database
+    // Save session to database with additional metadata
     const boothSession = await prisma.boothSession.create({
       data: {
         userName: name,
         userEmail: email,
-        photoPath: publicPath, // Store the path regardless of media type for now
+        photoPath: publicPath,
         eventName: 'Photo Booth Session',
-        // mediaType: mediaType, // Add this field to your database schema
+        mediaType: mediaType,
+        filter: filter,
       },
     });
 
@@ -65,6 +78,8 @@ export async function POST(request: NextRequest) {
           data: {
             boothSessionId: boothSession.id,
             emailDomain: email.split('@')[1],
+            mediaType: mediaType,
+            filter: filter,
           },
         });
       } catch (analyticsError) {
@@ -78,14 +93,14 @@ export async function POST(request: NextRequest) {
       await sendBoothVideo(
         email,
         name,
-        fullUrl, // Send the URL instead of the file
+        fullUrl,
         boothSession.id
       );
     } else {
       await sendBoothPhoto(
         email,
         name,
-        filePath, // Keep photo attachments for now
+        filePath,
         boothSession.id
       );
     }

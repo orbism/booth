@@ -155,6 +155,7 @@ booth-boss/
 │   │   ├── themes.ts                           # Theme configuration utility
 │   │   ├── theme-css-injector.ts               # Theme injector to override Tailwind classes
 │   │   └── theme-loader.ts                     # Helper for loading theme settings
+│   │   └── video-processor.ts                  # New file for processing videos with filters
 │   ├── types/                                  # TypeScript type definitions
 │   │   ├── journey.ts                          # Journey type definitions
 │   │   └── next-auth.d.ts                      # NextAuth type extensions

@@ -37,7 +37,8 @@ model BoothSession {
   userName     String
   userEmail    String
   photoPath    String
-  mediaType    String   @default("photo")
+  mediaType String?  @default("photo") // "photo" or "video"
+  filter    String?  @default("normal")
   createdAt    DateTime @default(now())
   shared       Boolean  @default(false)
   emailSent    Boolean  @default(false)
@@ -124,7 +125,8 @@ model BoothAnalytics {
   userAgent      String?
   emailDomain    String?
   durationMs     Int?
-  mediaType      String?         // 'photo' or 'video'
+  mediaType     String?  @default("photo") // "photo" or "video"
+  filter        String?  @default("normal")
   events         BoothEventLog[]
 }
 
