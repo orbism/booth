@@ -835,6 +835,15 @@ Preview WebM URL: ${videoUrl}
       // Set stage to complete with processing message
       setStage('complete');
       
+      // Start reset timer
+      if (resetTimerRef.current) {
+        clearTimeout(resetTimerRef.current);
+      }
+      
+      resetTimerRef.current = setTimeout(() => {
+        resetBooth();
+      }, resetTimeSeconds * 1000);
+      
       // Track video approved in analytics
       if (analyticsId) {
         await trackBoothEvent(analyticsId, 'video_approved');
