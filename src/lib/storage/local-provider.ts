@@ -6,7 +6,7 @@
 
 import path from 'path';
 import { promises as fs } from 'fs';
-import { stat, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import { StorageOptions, StorageResult } from './index';
 import { getStorageSettings } from './settings';
 
@@ -164,8 +164,8 @@ export async function deleteFile(urlOrPath: string): Promise<boolean> {
     }
     
     return false;
-  } catch (error) {
-    console.error('Local storage delete error:', error);
+  } catch (_error) {
+    console.error('Local storage delete error:', _error);
     return false;
   }
 }
@@ -199,7 +199,7 @@ export async function getFileInfo(urlOrPath: string): Promise<StorageResult | nu
       uploadedAt: stats.mtime,
       provider: 'local'
     };
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }

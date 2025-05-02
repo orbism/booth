@@ -56,6 +56,13 @@ type Settings = {
   videoResolution?: string;
   videoEffect?: string;
   videoDuration?: number;
+  // Storage-related fields
+  filtersEnabled: boolean;
+  enabledFilters?: string | null;
+  storageProvider: string;
+  blobVercelEnabled: boolean;
+  localUploadPath: string;
+  storageBaseUrl: string | null;
 };
 
 type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
@@ -249,8 +256,8 @@ export default function SettingsPage() {
           splashPageTitle: settings.splashPageTitle || '',
           splashPageContent: settings.splashPageContent || '',
           splashPageImage: settings.splashPageImage || null,
-          splashPageButtonText: settings.splashPageButtonText || '',
-          captureMode: (settings.captureMode as 'photo' | 'video') || 'photo',
+          splashPageButtonText: settings.splashPageButtonText || 'Start',
+          captureMode: settings.captureMode as 'photo' | 'video' || 'photo',
           photoOrientation: settings.photoOrientation || 'portrait-standard',
           photoDevice: settings.photoDevice || 'ipad',
           photoResolution: settings.photoResolution || 'medium',
@@ -262,6 +269,13 @@ export default function SettingsPage() {
           videoResolution: settings.videoResolution || 'medium',
           videoEffect: settings.videoEffect || 'none',
           videoDuration: settings.videoDuration || 10,
+          // Add storage-related fields
+          filtersEnabled: settings.filtersEnabled || false,
+          enabledFilters: settings.enabledFilters || null,
+          storageProvider: settings.storageProvider || 'auto',
+          blobVercelEnabled: settings.blobVercelEnabled || true,
+          localUploadPath: settings.localUploadPath || 'uploads',
+          storageBaseUrl: settings.storageBaseUrl || null,
         }}
         onSubmit={handleUpdateSettings}
       />

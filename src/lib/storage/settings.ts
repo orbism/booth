@@ -67,7 +67,10 @@ export function determineCurrentProvider(settings: StorageSettings): 'local' | '
   return 'local';
 }
 
-export default {
+// Create a named constant for the default export
+const storageSettings = {
   getStorageSettings,
   determineCurrentProvider,
-}; 
+};
+
+export default storageSettings; 

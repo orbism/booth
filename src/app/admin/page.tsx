@@ -15,13 +15,18 @@ export const metadata = {
 // Define an interface that reflects the schema of your boothSession model.
 // Adjust the property types if your database schema differs.
 interface PhotoSession {
-  id: string; // or number, depending on your Prisma model
+  id: string;
   photoPath: string;
   userName: string;
   userEmail: string;
   createdAt: Date;
   emailSent: boolean;
-  mediaType: string;
+  mediaType: string | null;
+  filter: string | null;
+  shared: boolean;
+  templateUsed: string | null;
+  eventName: string | null;
+  userId: string | null;
 }
 
 export default async function AdminDashboard() {

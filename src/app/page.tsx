@@ -7,7 +7,34 @@ import { getThemeSettings } from '@/lib/theme-loader';
 
 export const revalidate = 0; // Disable caching for this page
 
-async function getBoothSettings() {
+// Define a type for the settings to ensure we handle journeyConfig correctly
+type Settings = {
+  id?: string;
+  countdownTime: number;
+  resetTime: number;
+  eventName: string;
+  customJourneyEnabled?: boolean;
+  journeyConfig?: any; // Could be a JSON string or a JSON object
+  splashPageEnabled?: boolean;
+  splashPageTitle?: string | null;
+  splashPageContent?: string | null;
+  splashPageImage?: string | null;
+  splashPageButtonText?: string | null;
+  captureMode?: string;
+  photoOrientation?: string;
+  photoResolution?: string;
+  photoEffect?: string;
+  printerEnabled?: boolean;
+  aiImageCorrection?: boolean;
+  videoOrientation?: string;
+  videoResolution?: string;
+  videoEffect?: string;
+  videoDuration?: number;
+  filtersEnabled?: boolean;
+  enabledFilters?: string | null;
+};
+
+async function getBoothSettings(): Promise<Settings> {
   try {
     const settings = await prisma.settings.findFirst();
     return settings || {
@@ -30,9 +57,20 @@ export default async function Home() {
   const themeSettings = await getThemeSettings();
   
   // Parse journey config from JSON if it exists
-  const journeyPages = settings.journeyConfig 
-    ? JSON.parse(settings.journeyConfig as string) 
-    : [];
+  let journeyPages = [];
+  if (settings.journeyConfig) {
+    try {
+      // If it's already a JSON object, use it directly
+      if (typeof settings.journeyConfig === 'object') {
+        journeyPages = settings.journeyConfig;
+      } else {
+        // Otherwise, try to parse it as a JSON string
+        journeyPages = JSON.parse(settings.journeyConfig as string);
+      }
+    } catch (error) {
+      console.error('Error parsing journey config:', error);
+    }
+  }
 
   return (
     <BoothLayout>
@@ -58,7 +96,7 @@ export default async function Home() {
           splashPageContent={settings.splashPageContent || 'Get ready for a fun photo experience!'}
           splashPageImage={settings.splashPageImage}
           splashPageButtonText={settings.splashPageButtonText || 'Start'}
-          captureMode={settings.captureMode as 'photo' | 'video'}
+          captureMode={settings.captureMode as 'photo' | 'video' || 'photo'}
           photoOrientation={settings.photoOrientation}
           photoResolution={settings.photoResolution}
           photoEffect={settings.photoEffect}
@@ -73,6 +111,5 @@ export default async function Home() {
         />
       </div>
     </BoothLayout>
-
   );
 }

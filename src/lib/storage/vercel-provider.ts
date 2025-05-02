@@ -4,7 +4,7 @@
  * Implements the storage interface for Vercel Blob storage.
  */
 
-import { put, head, list, del, PutBlobResult, HeadBlobResult } from '@vercel/blob';
+import { put, head, list, del, PutBlobResult, HeadBlobResult, PutCommandOptions } from '@vercel/blob';
 import { StorageOptions, StorageResult } from './index';
 
 /**
@@ -44,13 +44,15 @@ export async function uploadFile(
   const pathname = directory ? `${directory}/${filename}` : filename;
   
   try {
-    // Upload using Vercel Blob - forcing type to work with Vercel's API
-    const blob = await put(pathname, file as any, {
+    // Upload using Vercel Blob
+    const putOptions: PutCommandOptions = {
       access: 'public', // Always use public access for now - Vercel Blob API only accepts 'public'
       addRandomSuffix,
       contentType: options.metadata?.contentType,
-      metadata
-    });
+      // Metadata is not supported in Vercel Blob's type definitions, so we don't include it
+    };
+    
+    const blob = await put(pathname, file as any, putOptions);
     
     // Return storage result
     return processBlobResult(blob);
@@ -68,7 +70,7 @@ export async function fileExists(urlOrPath: string): Promise<boolean> {
     // Use head() to check if the file exists
     await head(urlOrPath);
     return true;
-  } catch (error) {
+  } catch (_error) {
     // If head() fails, the file doesn't exist or is inaccessible
     return false;
   }
@@ -81,8 +83,8 @@ export async function deleteFile(urlOrPath: string): Promise<boolean> {
   try {
     await del(urlOrPath);
     return true;
-  } catch (error) {
-    console.error('Vercel Blob delete error:', error);
+  } catch (_error) {
+    console.error('Vercel Blob delete error:', _error);
     return false;
   }
 }
@@ -94,7 +96,7 @@ export async function getFileInfo(urlOrPath: string): Promise<StorageResult | nu
   try {
     const blob = await head(urlOrPath);
     return processBlobResult(blob);
-  } catch (error) {
+  } catch (_error) {
     // If head() fails, the file doesn't exist or is inaccessible
     return null;
   }
@@ -111,15 +113,13 @@ export async function listFiles(prefix?: string): Promise<StorageResult[]> {
       url: blob.url,
       pathname: blob.pathname,
       size: blob.size,
-      // Make sure contentType is always a string
-      contentType: typeof blob.contentType === 'string' 
-        ? blob.contentType 
-        : 'application/octet-stream',
+      // Vercel's ListBlobResultBlob doesn't have contentType, use default
+      contentType: 'application/octet-stream',
       uploadedAt: new Date(blob.uploadedAt),
       provider: 'vercel' as const
     }));
-  } catch (error) {
-    console.error('Vercel Blob list error:', error);
+  } catch (_error) {
+    console.error('Vercel Blob list error:', _error);
     return [];
   }
 }

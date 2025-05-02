@@ -157,8 +157,8 @@ export async function PUT(_request: NextRequest) {
         customJourneyEnabled: validatedData.customJourneyEnabled,
         activeJourneyId: validatedData.journeyId || null,
         journeyConfig: validatedData.journeyPages?.length 
-          ? JSON.stringify(validatedData.journeyPages)
-          : null,
+          ? validatedData.journeyPages  // Let Prisma handle the JSON serialization
+          : undefined,                  // Use undefined instead of null for Prisma JSON fields
         splashPageEnabled: validatedData.splashPageEnabled,
         splashPageTitle: validatedData.splashPageTitle,
         splashPageContent: validatedData.splashPageContent,

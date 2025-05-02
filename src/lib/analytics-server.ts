@@ -65,7 +65,7 @@ export async function getAnalyticsSummary(days: number = 30) {
     };
 
     // Get top email domains
-    const emailDomainsResult: EmailDomainGroupResult[] = await prisma.boothAnalytics.groupBy({
+    const queryResult = await prisma.boothAnalytics.groupBy({
       by: ['emailDomain'],
       where: {
         timestamp: {
@@ -86,6 +86,9 @@ export async function getAnalyticsSummary(days: number = 30) {
       },
       take: 5
     });
+    
+    // Apply the type after receiving the result
+    const emailDomainsResult: EmailDomainGroupResult[] = queryResult;
 
     interface EmailDomainResult {
       domain: string;
@@ -201,7 +204,7 @@ export async function getAnalyticsSummaryForDateRange(startDate: Date, endDate: 
     };
 
     // Get top email domains
-    const emailDomainsResult: EmailDomainGroupResult[] = await prisma.boothAnalytics.groupBy({
+    const queryResult = await prisma.boothAnalytics.groupBy({
       by: ['emailDomain'],
       where: {
         timestamp: {
@@ -222,6 +225,9 @@ export async function getAnalyticsSummaryForDateRange(startDate: Date, endDate: 
       },
       take: 5
     });
+    
+    // Apply the type after receiving the result
+    const emailDomainsResult: EmailDomainGroupResult[] = queryResult;
 
     interface EmailDomainResult {
       domain: string;

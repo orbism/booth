@@ -59,14 +59,16 @@ export async function GET(request: NextRequest) {
     });
     
     // Add mediaType property to each session if it doesn't exist
-    const enhancedSessions = sessions.map((session: { mediaType?: string, photoPath?: string }) => {
-      if (!session.mediaType) {
+    const enhancedSessions = sessions.map((session) => {
+      // Clone the session to avoid modifying the Prisma objects directly
+      const enhancedSession = { ...session };
+      
+      if (!enhancedSession.mediaType) {
         // Simple logic to determine if it's a video by file extension
-        // @ts-ignore - Adding mediaType property
-        session.mediaType = session.photoPath?.endsWith('.webm') || 
-                           session.photoPath?.endsWith('.mp4') ? 'video' : 'photo';
+        enhancedSession.mediaType = enhancedSession.photoPath?.endsWith('.webm') || 
+                           enhancedSession.photoPath?.endsWith('.mp4') ? 'video' : 'photo';
       }
-      return session;
+      return enhancedSession;
     });
     
     const totalCount = await prisma.boothSession.count({ where });

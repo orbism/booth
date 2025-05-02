@@ -233,7 +233,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       videoDuration: initialSettings.videoDuration || 10,
       filtersEnabled: initialSettings.filtersEnabled || false,
       enabledFilters: initialSettings.enabledFilters || JSON.stringify(['normal']),
-      storageProvider: initialSettings.storageProvider || 'auto',
+      storageProvider: initialSettings.storageProvider as 'auto' | 'local' | 'vercel' || 'auto',
       blobVercelEnabled: initialSettings.blobVercelEnabled || true,
       localUploadPath: initialSettings.localUploadPath || 'uploads',
       storageBaseUrl: initialSettings.storageBaseUrl || null,

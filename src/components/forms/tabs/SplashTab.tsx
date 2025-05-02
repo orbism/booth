@@ -95,13 +95,11 @@ const SplashTab: React.FC<SplashTabProps> = ({
           
           <FileUploadField
             id="splashPageImage"
-            name="splashPageImage"
             label="Background Image"
             accept="image/*"
-            helpText="Recommended size: 1920x1080px. Optional - leave blank for a solid color background."
-            register={register}
-            setValue={setValue}
-            watch={watch}
+            helperText="Recommended size: 1920x1080px. Optional - leave blank for a solid color background."
+            value={watch('splashPageImage') || null}
+            onChange={(value) => setValue('splashPageImage', value)}
           />
           
           <div>

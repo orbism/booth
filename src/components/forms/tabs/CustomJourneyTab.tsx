@@ -515,13 +515,11 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FileUploadField
                         id={`background-image-${index}`}
-                        name={`journeyPages.${index}.backgroundImage`}
                         label="Background Image"
                         accept="image/*"
-                        helpText="Recommended size: 1920x1080px"
-                        register={register}
-                        setValue={setValue}
-                        watch={watch}
+                        helperText="Recommended size: 1920x1080px"
+                        value={watch(`journeyPages.${index}.backgroundImage` as const) || null}
+                        onChange={(value) => setValue(`journeyPages.${index}.backgroundImage` as const, value)}
                       />
                       
                       <div>
@@ -538,13 +536,11 @@ const CustomJourneyTab: React.FC<CustomJourneyTabProps> = ({
                     
                     <FileUploadField
                       id={`button-image-${index}`}
-                      name={`journeyPages.${index}.buttonImage`}
                       label="Custom Button Image (optional)"
                       accept="image/*"
-                      helpText="This will replace the text button with your custom image"
-                      register={register}
-                      setValue={setValue}
-                      watch={watch}
+                      helperText="This will replace the text button with your custom image"
+                      value={watch(`journeyPages.${index}.buttonImage` as const) || null}
+                      onChange={(value) => setValue(`journeyPages.${index}.buttonImage` as const, value)}
                     />
                   </div>
                 </div>

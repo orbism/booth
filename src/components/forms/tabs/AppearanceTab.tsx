@@ -75,7 +75,7 @@ const AppearanceTab: React.FC<AppearanceTabProps> = ({
                 />
                 <input
                     type="text"
-                    value={watch('primaryColor')}
+                    value={watch('primaryColor') || ''}
                     onChange={(e) => setValue('primaryColor', e.target.value)}
                     className="ml-2 flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     disabled={currentTheme !== 'custom'}
@@ -100,7 +100,7 @@ const AppearanceTab: React.FC<AppearanceTabProps> = ({
                 />
                 <input
                     type="text"
-                    value={watch('secondaryColor')}
+                    value={watch('secondaryColor') || ''}
                     onChange={(e) => setValue('secondaryColor', e.target.value)}
                     className="ml-2 flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     disabled={currentTheme !== 'custom'}
@@ -125,7 +125,7 @@ const AppearanceTab: React.FC<AppearanceTabProps> = ({
                 />
                 <input
                     type="text"
-                    value={watch('backgroundColor')}
+                    value={watch('backgroundColor') || ''}
                     onChange={(e) => setValue('backgroundColor', e.target.value)}
                     className="ml-2 flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     disabled={currentTheme !== 'custom'}

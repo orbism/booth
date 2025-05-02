@@ -36,7 +36,7 @@ interface AnalyticsSummary {
 interface AnalyticsEvent {
   id: string;
   eventType: string;
-  timestamp: string;
+  timestamp: string | Date;
   analyticsId: string;
   metadata: string | null;
   analytics?: {
