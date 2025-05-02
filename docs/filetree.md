@@ -4,6 +4,25 @@ Renamed from BoothBoss
 
 This document provides an overview of the project's file structure, organized alphabetically for easier navigation.
 
+### Storage System
+
+The storage system uses a provider pattern to support multiple storage backends:
+
+```
+src/lib/storage/
+├── index.ts          # Main storage module with unified interface
+├── settings.ts       # Storage configuration handling
+├── local-provider.ts # Local file system storage implementation
+└── vercel-provider.ts # Vercel Blob storage implementation
+```
+
+**Key Components:**
+
+- `index.ts` - Provides a unified storage interface and auto-selects the appropriate provider
+- `settings.ts` - Handles storage configuration through environment variables
+- `local-provider.ts` - Implements file operations for local file system storage
+- `vercel-provider.ts` - Implements file operations for Vercel Blob storage
+
 ```
 booth-boss/                                      # Main project directory
 ├── .cursor/                                     # Cursor AI editor configuration

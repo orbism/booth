@@ -73,6 +73,10 @@ type SettingsData = {
   videoDuration: number;
   filtersEnabled: boolean;
   enabledFilters?: string | null;
+  storageProvider: string;
+  blobVercelEnabled: boolean;
+  localUploadPath: string;
+  storageBaseUrl: string | null;
 };
 
 // Settings schema
@@ -152,6 +156,12 @@ const settingsSchema = z.object({
   // Photo Filters/Effects
   filtersEnabled: z.boolean().default(false),
   enabledFilters: z.string().optional().nullable(),
+
+  // Storage settings
+  storageProvider: z.enum(["auto", "local", "vercel"]).default("auto"),
+  blobVercelEnabled: z.boolean().default(true),
+  localUploadPath: z.string().default("uploads"),
+  storageBaseUrl: z.string().optional().nullable(),
 });
 
 export type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -223,6 +233,10 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       videoDuration: initialSettings.videoDuration || 10,
       filtersEnabled: initialSettings.filtersEnabled || false,
       enabledFilters: initialSettings.enabledFilters || JSON.stringify(['normal']),
+      storageProvider: initialSettings.storageProvider || 'auto',
+      blobVercelEnabled: initialSettings.blobVercelEnabled || true,
+      localUploadPath: initialSettings.localUploadPath || 'uploads',
+      storageBaseUrl: initialSettings.storageBaseUrl || null,
     }
   });
 

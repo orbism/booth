@@ -253,5 +253,36 @@ Access the analytics dashboard from the admin section at `/admin/analytics`. The
 3. Detailed event logs with search and filter capabilities
 4. Export functionality for offline analysis
 
+## Storage Configuration
+
+BoothBoss supports multiple storage providers for media files:
+
+### Environment Variables
+
+Configure storage using the following environment variables:
+
+- `STORAGE_PROVIDER`: Set to `"auto"`, `"local"`, or `"vercel"` (default: `"auto"`)
+  - `auto`: Automatically uses Vercel Blob when deployed on Vercel, local storage otherwise
+  - `local`: Always uses local file system storage
+  - `vercel`: Always uses Vercel Blob storage
+
+- `ENABLE_VERCEL_BLOB`: Set to `"true"` or `"false"` (default: `"true"`)
+  - Controls whether Vercel Blob is used when `STORAGE_PROVIDER` is set to `"auto"` and running on Vercel
+
+- `LOCAL_UPLOAD_PATH`: Directory within the public folder for uploaded files (default: `"uploads"`)
+  - Example: If set to `"media"`, files will be stored in `/public/media/`
+
+- `STORAGE_BASE_URL`: (Optional) Override the base URL for accessing media files
+  - Useful for CDN configurations or custom domains for your media
+
+### Storage Implementations
+
+The application uses a unified storage interface that abstracts the details of the underlying storage mechanism:
+
+- **Local Storage**: Files are stored in the public directory and served directly by the Next.js application
+- **Vercel Blob Storage**: Files are stored in Vercel's Blob storage service, which provides CDN-backed storage
+
+For Vercel Blob storage, you'll need to set up a Vercel project and set the `BLOB_READ_WRITE_TOKEN` environment variable.
+
 ## License
 TBD

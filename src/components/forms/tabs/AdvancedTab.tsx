@@ -2,7 +2,7 @@
 import React from 'react';
 import { UseFormWatch, UseFormSetValue, UseFormRegister, FieldErrors } from 'react-hook-form';
 import { SettingsFormValues } from '../SettingsForm'; 
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from "@/context/ThemeContext";
 
 interface AdvancedTabProps {
   register: UseFormRegister<SettingsFormValues>;
@@ -22,6 +22,17 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
   reset
 }) => {
   const { currentTheme } = useTheme();
+  
+  // Get current values from form
+  const storageProvider = watch('storageProvider');
+  const blobVercelEnabled = watch('blobVercelEnabled');
+  const localUploadPath = watch('localUploadPath');
+  const storageBaseUrl = watch('storageBaseUrl');
+  
+  // Additional state as needed
+  const isVercelEnvironment = process.env.NEXT_PUBLIC_VERCEL_ENV 
+    || process.env.VERCEL 
+    || Boolean(process.env.VERCEL_URL);
   
   // Function to handle data export
   const handleExportSettings = () => {
@@ -88,39 +99,72 @@ const AdvancedTab: React.FC<AdvancedTabProps> = ({
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-medium text-gray-900">Advanced Settings</h3>
-      
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-            Configuration Notes
-          </label>
-          <textarea
-            id="notes"
-            rows={6}
-            {...register('notes')}
-            placeholder="Add any additional notes about your booth configuration here"
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
+      <div className="border-b border-gray-200 pb-5">
+        <h3 className="text-lg font-medium leading-6 text-gray-900">Advanced Settings</h3>
+        <p className="mt-1 text-sm text-gray-500">
+          Configure advanced options for your booth application.
+        </p>
+      </div>
+
+      {/* Storage Configuration Section */}
+      <div className="border-b border-gray-200 pb-5">
+        <h4 className="text-md font-medium leading-6 text-gray-900">Storage Configuration</h4>
+        <p className="mt-1 text-sm text-gray-500 mb-4">
+          Storage settings are currently configured through environment variables.
+        </p>
+        
+        {/* Environment Info */}
+        <div className="bg-gray-50 p-4 rounded-md mb-4">
+          <h5 className="text-sm font-medium text-gray-700">Environment Information</h5>
+          <p className="mt-1 text-xs text-gray-500">
+            Deployment Type: {isVercelEnvironment ? 'Vercel' : 'Local/Other'}
+          </p>
+          <p className="text-xs text-gray-500">
+            Current Storage: {process.env.STORAGE_PROVIDER === 'vercel' 
+              ? 'Vercel Blob' 
+              : process.env.STORAGE_PROVIDER === 'local' 
+                ? 'Local Storage' 
+                : isVercelEnvironment && process.env.ENABLE_VERCEL_BLOB !== 'false' 
+                  ? 'Vercel Blob (Auto)' 
+                  : 'Local Storage (Auto)'}
+          </p>
+          <p className="text-xs text-gray-500">
+            Local Upload Path: {process.env.LOCAL_UPLOAD_PATH || 'uploads'}
+          </p>
+          {process.env.STORAGE_BASE_URL && (
+            <p className="text-xs text-gray-500">
+              Storage Base URL: {process.env.STORAGE_BASE_URL}
+            </p>
+          )}
         </div>
         
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Custom HTML/CSS</h4>
-          <div className="space-y-2">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <span className="ml-2 text-sm text-gray-700">Enable custom CSS</span>
-            </label>
-            <p className="text-xs text-gray-500">
-              This setting allows you to add custom CSS to override the default styles.
-              Use with caution as it may impact the application behavior.
-            </p>
-            {/* Custom CSS textarea could be added here if checkbox is checked */}
-          </div>
+        <div className="text-sm text-gray-500">
+          <p className="mb-2">
+            To configure storage settings, update your environment variables:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><code>STORAGE_PROVIDER</code>: Set to "auto", "local", or "vercel"</li>
+            <li><code>ENABLE_VERCEL_BLOB</code>: Set to "true" or "false"</li>
+            <li><code>LOCAL_UPLOAD_PATH</code>: Set the path within the public directory</li>
+            <li><code>STORAGE_BASE_URL</code>: Override the base URL for assets (optional)</li>
+          </ul>
         </div>
+      </div>
+
+      {/* Notes */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes
+        </label>
+        <textarea
+          {...register('notes')}
+          rows={3}
+          className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Add any notes or reminders here..."
+        />
+        {errors.notes && (
+          <p className="mt-1 text-xs text-red-600">{errors.notes.message}</p>
+        )}
       </div>
       
       <div className="pt-4 border-t border-gray-200">
