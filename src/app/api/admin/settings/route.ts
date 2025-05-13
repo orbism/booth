@@ -61,6 +61,37 @@ const settingsSchema = z.object({
   enabledFilters: z.string().optional().nullable(),
 });
 
+// Helper function to safely parse journey config data
+function safelyParseJourneyConfig(journeyConfig: any): any[] {
+  // If it's already an array, return it directly
+  if (Array.isArray(journeyConfig)) {
+    return journeyConfig;
+  }
+  
+  // If it's null or undefined, return empty array
+  if (!journeyConfig) {
+    return [];
+  }
+  
+  // If it's a string (serialized JSON), try to parse it
+  if (typeof journeyConfig === 'string') {
+    try {
+      return JSON.parse(journeyConfig);
+    } catch (error) {
+      console.error('Error parsing journeyConfig JSON:', error);
+      return [];
+    }
+  }
+  
+  // If it's an object, return it in an array
+  if (typeof journeyConfig === 'object') {
+    return [journeyConfig];
+  }
+  
+  // Default fallback
+  return [];
+}
+
 export async function GET(_request: NextRequest) {
   if (_request.url) {
     // Do nothing but this prevents the unused variable warning
@@ -82,10 +113,8 @@ export async function GET(_request: NextRequest) {
       });
     }
 
-    // Parse journey config from JSON if it exists
-    const journeyPages = settings.journeyConfig 
-    ? JSON.parse(settings.journeyConfig as string) 
-    : [];
+    // Safely parse journey config regardless of its type
+    const journeyPages = safelyParseJourneyConfig(settings.journeyConfig);
     
     return NextResponse.json({
       ...settings,
@@ -94,6 +123,7 @@ export async function GET(_request: NextRequest) {
       journeyPages
     });
   } catch (error) {
+    console.error('Error fetching settings:', error);
     return handleApiError(error, 'Failed to fetch settings');
   }
 }
@@ -128,6 +158,11 @@ export async function PUT(_request: NextRequest) {
       });
     }
     
+    // Ensure journeyConfig is properly serialized as JSON string before saving
+    const journeyConfig = validatedData.journeyPages?.length 
+      ? JSON.stringify(validatedData.journeyPages)  // Explicitly stringify to ensure it's a JSON string
+      : undefined;                 // Use undefined instead of null for Prisma JSON fields
+    
     // Update settings
     const updatedSettings = await prisma.settings.update({
       where: {
@@ -156,9 +191,7 @@ export async function PUT(_request: NextRequest) {
         notes: validatedData.notes,
         customJourneyEnabled: validatedData.customJourneyEnabled,
         activeJourneyId: validatedData.journeyId || null,
-        journeyConfig: validatedData.journeyPages?.length 
-          ? validatedData.journeyPages  // Let Prisma handle the JSON serialization
-          : undefined,                  // Use undefined instead of null for Prisma JSON fields
+        journeyConfig, // Use our explicitly stringified value
         splashPageEnabled: validatedData.splashPageEnabled,
         splashPageTitle: validatedData.splashPageTitle,
         splashPageContent: validatedData.splashPageContent,
@@ -181,8 +214,15 @@ export async function PUT(_request: NextRequest) {
       }
     });
     
-    return NextResponse.json(updatedSettings);
+    // Return processed settings with parsed journeyPages for consistent API response
+    const processedSettings = {
+      ...updatedSettings,
+      journeyPages: safelyParseJourneyConfig(updatedSettings.journeyConfig)
+    };
+    
+    return NextResponse.json(processedSettings);
   } catch (error) {
+    console.error('Error updating settings:', error);
     return handleApiError(error, 'Failed to update settings');
   }
 }
