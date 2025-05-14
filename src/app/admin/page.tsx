@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
-import { getAnalyticsSummary } from '@/lib/analytics';
+import { getAnalyticsSummary } from '@/lib/analytics-server';
 import Link from 'next/link';
 import OptimizedImage from '@/components/ui/OptimizedImage';
 
@@ -44,8 +44,24 @@ export default async function AdminDashboard() {
     take: 10,
   });
 
-  // TODO - pass number of days for analytics summary here, eg. `(7)` for a week.
-  const analytics = await getAnalyticsSummary();
+  // Safely get analytics with error handling
+  let analytics = {
+    totalSessions: 0,
+    completedSessions: 0,
+    averageCompletionTimeMs: 0,
+    completionRate: '0',
+  };
+  
+  try {
+    // Get analytics summary for the last 7 days
+    const analyticsData = await getAnalyticsSummary(7);
+    if (analyticsData) {
+      analytics = analyticsData;
+    }
+  } catch (error) {
+    console.error('Failed to load analytics:', error);
+    // Continue with default values
+  }
 
   return (
     <div className="p-6">

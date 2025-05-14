@@ -2,15 +2,54 @@
 
 import nodemailer from 'nodemailer';
 import { prisma } from './prisma';
+import emailPreviewStore from './email-preview';
 
-interface EmailAttachment {
+export interface EmailAttachment {
   filename: string;
   path?: string;
   content?: Buffer | string;
   contentType?: string;
 }
 
+export interface EmailConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  fromName: string;
+  secure?: boolean;
+}
 
+/**
+ * Email sending result interface
+ */
+export interface EmailResult {
+  messageId: string;
+  success: boolean;
+  preview?: string; // ID of the preview email (in development mode)
+}
+
+/**
+ * Check if email sending is enabled in development mode
+ */
+export function isEmailEnabledInDev(): boolean {
+  // Always disabled if EMAIL_FORCE_DISABLED is true
+  if (process.env.EMAIL_FORCE_DISABLED === 'true') {
+    return false;
+  }
+  
+  // In development, only enabled if EMAIL_ENABLED_IN_DEV is true
+  if (process.env.NODE_ENV === 'development') {
+    return process.env.EMAIL_ENABLED_IN_DEV === 'true';
+  }
+  
+  // In production, always enabled unless forced disabled
+  return true;
+}
+
+/**
+ * Send an email using the configured transport
+ */
 export async function sendEmail({
   to,
   subject,
@@ -21,30 +60,68 @@ export async function sendEmail({
   subject: string;
   html: string;
   attachments?: EmailAttachment[];
-}) {
+}): Promise<EmailResult> {
   try {
     // Get SMTP settings from database
     const settings = await prisma.settings.findFirst();
     
     if (!settings) {
+      console.error('⚠️ Email configuration error: SMTP settings not found in database');
       throw new Error('SMTP settings not found');
     }
 
-    // In development, log email instead of sending it
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📧 Email would be sent in production:');
-      console.log(`📧 To: ${to}`);
-      console.log(`📧 Subject: ${subject}`);
-      console.log(`📧 Attachments: ${attachments.length}`);
+    // Create the email data
+    const emailData = {
+      from: `"${settings.companyName}" <${settings.smtpUser}>`,
+      to,
+      subject,
+      html,
+      attachments,
+    };
+
+    // Log email details for debugging (sensitive info redacted)
+    console.log('📧 Preparing email:', {
+      to,
+      subject,
+      attachments: attachments.map(a => ({ filename: a.filename, contentType: a.contentType })),
+      smtpConfig: {
+        host: settings.smtpHost,
+        port: settings.smtpPort,
+        secure: settings.smtpPort === 465,
+        auth: {
+          user: settings.smtpUser,
+          pass: '***REDACTED***'
+        }
+      }
+    });
+
+    // Check if email sending is disabled in development
+    if (!isEmailEnabledInDev()) {
+      console.log('📧 Email sending disabled in development mode');
+      console.log('📧 Email subject:', subject);
+      console.log('📧 Email recipient:', to);
       
-      // Skip actual sending and return mock info
+      // Store in preview system
+      const preview = emailPreviewStore.storeEmail({
+        to,
+        from: emailData.from,
+        subject,
+        html,
+        attachments,
+        sent: false
+      });
+      
+      console.log(`📧 Email preview stored with ID: ${preview.id}`);
+      
+      // Return mock info with preview ID
       return {
         messageId: `mock-id-${Date.now()}`,
-        success: true
+        success: true,
+        preview: preview.id
       };
     }
 
-    // Production email sending
+    // Configure email transport
     const transporter = nodemailer.createTransport({
       host: settings.smtpHost,
       port: settings.smtpPort,
@@ -55,18 +132,48 @@ export async function sendEmail({
       },
     });
 
-    const info = await transporter.sendMail({
-      from: `"${settings.companyName}" <${settings.smtpUser}>`,
-      to,
-      subject,
-      html,
-      attachments,
-    });
+    // Send the email
+    console.log('📧 Sending email...');
+    const info = await transporter.sendMail(emailData);
+    console.log(`📧 Email sent successfully: ${info.messageId}`);
+    
+    // In development, also store in preview system
+    if (process.env.NODE_ENV === 'development') {
+      const preview = emailPreviewStore.storeEmail({
+        to,
+        from: emailData.from,
+        subject,
+        html,
+        attachments,
+        sent: true
+      });
+      
+      return {
+        ...info,
+        success: true,
+        preview: preview.id
+      };
+    }
 
-    return info;
+    return {
+      ...info,
+      success: true
+    };
   } catch (error) {
-    console.error('Failed to send email:', error);
-    throw new Error('Failed to send email');
+    console.error('❌ Failed to send email:', error);
+    
+    // Provide more detailed error message based on the error type
+    if (error instanceof Error) {
+      if (error.message.includes('ECONNREFUSED')) {
+        throw new Error('Failed to connect to SMTP server. Check your SMTP host and port settings.');
+      } else if (error.message.includes('Invalid login')) {
+        throw new Error('SMTP authentication failed. Check your username and password.');
+      } else if (error.message.includes('certificate')) {
+        throw new Error('SSL certificate issue with SMTP server. Try disabling secure connection or update certificate.');
+      }
+    }
+    
+    throw new Error(`Failed to send email: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -77,6 +184,8 @@ export async function sendBoothPhoto(
   boothSessionId: string
 ) {
   try {
+    console.log(`📧 Sending booth photo email to ${userEmail} (Session ID: ${boothSessionId})`);
+    
     const settings = await prisma.settings.findFirst();
     
     if (!settings) {
@@ -84,7 +193,7 @@ export async function sendBoothPhoto(
     }
 
     // Send email to user
-    await sendEmail({
+    const userEmailResult = await sendEmail({
       to: userEmail,
       subject: settings.emailSubject,
       html: `
@@ -103,8 +212,10 @@ export async function sendBoothPhoto(
       ],
     });
 
+    console.log(`📧 User email result: ${userEmailResult.success ? 'Success' : 'Failed'}`);
+
     // Send notification to admin
-    await sendEmail({
+    const adminEmailResult = await sendEmail({
       to: settings.adminEmail,
       subject: `New Photo Booth Session: ${userName}`,
       html: `
@@ -126,16 +237,22 @@ export async function sendBoothPhoto(
       ],
     });
 
+    console.log(`📧 Admin email result: ${adminEmailResult.success ? 'Success' : 'Failed'}`);
+
     // Update booth session to mark email as sent
     await prisma.boothSession.update({
       where: { id: boothSessionId },
       data: { emailSent: true },
     });
 
-    return true;
+    return {
+      success: true,
+      userEmail: userEmailResult,
+      adminEmail: adminEmailResult
+    };
   } catch (error) {
-    console.error('Failed to send booth photo:', error);
-    throw new Error('Failed to send booth photo');
+    console.error('❌ Failed to send booth photo:', error);
+    throw new Error(`Failed to send booth photo: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -146,6 +263,8 @@ export async function sendBoothVideo(
   boothSessionId: string
 ) {
   try {
+    console.log(`📧 Sending booth video email to ${userEmail} (Session ID: ${boothSessionId})`);
+    
     const settings = await prisma.settings.findFirst();
     
     if (!settings) {
@@ -153,7 +272,7 @@ export async function sendBoothVideo(
     }
 
     // Send email to user with link instead of attachment
-    await sendEmail({
+    const userEmailResult = await sendEmail({
       to: userEmail,
       subject: settings.emailSubject,
       html: `
@@ -175,8 +294,10 @@ export async function sendBoothVideo(
       // No attachments for video emails - just send the link
     });
 
+    console.log(`📧 User video email result: ${userEmailResult.success ? 'Success' : 'Failed'}`);
+
     // Send notification to admin
-    await sendEmail({
+    const adminEmailResult = await sendEmail({
       to: settings.adminEmail,
       subject: `New Video Booth Session: ${userName}`,
       html: `
@@ -194,15 +315,21 @@ export async function sendBoothVideo(
       // No video attachment for admin either
     });
 
+    console.log(`📧 Admin video email result: ${adminEmailResult.success ? 'Success' : 'Failed'}`);
+
     // Update booth session to mark email as sent
     await prisma.boothSession.update({
       where: { id: boothSessionId },
       data: { emailSent: true },
     });
 
-    return true;
+    return {
+      success: true,
+      userEmail: userEmailResult,
+      adminEmail: adminEmailResult
+    };
   } catch (error) {
-    console.error('Failed to send booth video link:', error);
-    throw new Error('Failed to send booth video link');
+    console.error('❌ Failed to send booth video link:', error);
+    throw new Error(`Failed to send booth video link: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

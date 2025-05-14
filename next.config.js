@@ -3,6 +3,14 @@ const nextConfig = {
   reactStrictMode: true,
   // swcMinify has been removed as it's no longer needed in Next.js 15+
   
+  // Configure allowed image domains
+  images: {
+    domains: [
+      'wtkibydara8vvh8z.public.blob.vercel-storage.com', // Vercel Blob storage domain
+      'public.blob.vercel-storage.com',                  // Generic Vercel Blob domain
+    ],
+  },
+  
   // Security headers
   async headers() {
     return [

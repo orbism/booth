@@ -13,6 +13,33 @@ A modern, AI-powered photo booth application built with Next.js TypeScript, and 
 - Toast notifications for system feedback
 - Support for embedded content in journey pages
 
+### User Management System
+
+The application includes a comprehensive user management system with role-based access control:
+
+- **User Roles**: Support for both regular users and admin roles
+- **Admin Interface**: Complete management interface for creating, editing, and deleting users
+- **Session Management**: View and manage user sessions with email resend functionality
+- **Bulk Operations**: Support for bulk deletion of sessions and secure data wiping
+- **Data Isolation**: Multi-tenant system with proper data segregation between users
+
+### Email System
+
+- **Configurable Email Templates**: Customize email templates for photo/video sharing
+- **Development Mode Preview**: View emails in development without sending them
+- **SMTP Configuration**: Set up your own email delivery service
+- **Email Resend**: Ability to resend emails for specific photo booth sessions
+- **User-Specific Email Settings**: Each user can have their own email configuration (coming soon)
+
+### Storage System
+
+The application supports multiple storage backends:
+
+- **Local Storage**: Store files on local file system (development mode)
+- **Vercel Blob Storage**: Store files on Vercel's cloud storage (production mode)
+- **Automatic Fallback**: System automatically selects the appropriate storage based on environment
+- **Optional Configuration**: Configure storage preferences through environment variables
+
 ## Tech Stack
 
 - **Frontend**: Next.js, React, TypeScript, Tailwind CSS

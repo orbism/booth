@@ -40,6 +40,16 @@ export default async function AdminLayout({
             <Link href="/admin/sessions" className="block py-2 px-4 rounded hover:bg-blue-700">
               All Sessions
             </Link>
+            <Link href="/admin/users" className="block py-2 px-4 rounded hover:bg-blue-700">
+              User Management
+            </Link>
+            
+            {process.env.NODE_ENV === 'development' && (
+              <Link href="/admin/email-preview" className="block py-2 px-4 rounded hover:bg-blue-700">
+                Email Preview
+              </Link>
+            )}
+            
             <div className="pt-4 mt-4 border-t border-blue-700">
               <Link href="/api/auth/signout" className="block py-2 px-4 rounded hover:bg-blue-700">
                 Sign Out

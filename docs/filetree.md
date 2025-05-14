@@ -23,6 +23,22 @@ src/lib/storage/
 - `local-provider.ts` - Implements file operations for local file system storage
 - `vercel-provider.ts` - Implements file operations for Vercel Blob storage
 
+**User Management System:**
+
+The user management system provides role-based access control and multi-tenant data isolation:
+
+```
+src/app/api/admin/users/
+├── route.ts                     # List and create users
+├── [id]/                        # User-specific operations
+│   └── route.ts                 # Get, update, delete user
+└── sessions/                    # Session management
+    ├── [id]/                    # Single session operations
+    │   └── route.ts             # Delete/resend for specific session
+    └── bulk/                    # Bulk operations
+        └── route.ts             # Bulk delete and data wipe
+```
+
 ```
 booth-boss/                                      # Main project directory
 ├── .cursor/                                     # Cursor AI editor configuration
@@ -85,6 +101,8 @@ booth-boss/                                      # Main project directory
 │   │   ├── admin/                               # Admin dashboard pages
 │   │   │   ├── analytics/                       # Analytics section
 │   │   │   │   └── page.tsx                     # Analytics dashboard
+│   │   │   ├── email-preview/                   # Email preview interface
+│   │   │   │   └── page.tsx                     # Email preview page
 │   │   │   ├── layout.tsx                       # Admin layout with sidebar
 │   │   │   ├── page.tsx                         # Admin dashboard
 │   │   │   ├── sessions/                        # Sessions management
@@ -96,6 +114,10 @@ booth-boss/                                      # Main project directory
 │   │   │   │   └── page.tsx                     # Admin first-time setup page (deprecated)
 │   │   │   └── test/                            # Admin test endpoints
 │   │   │       └── route.ts                     # Test API endpoints for admin
+│   │   │   └── users/                           # User management interface
+│   │   │       ├── page.tsx                     # User listing and management
+│   │   │       └── [id]/                        # User details page
+│   │   │           └── page.tsx                 # User editing and data management
 │   │   ├── api/                                 # API routes
 │   │   │   ├── admin/                           # Admin-related API endpoints
 │   │   │   │   ├── analytics/                   # Analytics API
@@ -113,8 +135,17 @@ booth-boss/                                      # Main project directory
 │   │   │   │   │   └── route.ts                 # Setup handler
 │   │   │   │   ├── test/                        # Test endpoints
 │   │   │   │   │   └── route.ts                 # Test API endpoints
-│   │   │   │   └── upload/                      # File uploads
-│   │   │   │       └── route.ts                 # Upload endpoint
+│   │   │   │   ├── upload/                      # File uploads
+│   │   │   │   │   └── route.ts                 # Upload endpoint
+│   │   │   │   └── users/                       # User management API
+│   │   │   │       ├── route.ts                 # List and create users
+│   │   │   │       ├── [id]/                    # User-specific operations
+│   │   │   │       │   └── route.ts             # Get, update, delete user
+│   │   │   │       └── sessions/                # Session management
+│   │   │   │           ├── [id]/                # Single session operations
+│   │   │   │           │   └── route.ts         # Delete/resend for specific session
+│   │   │   │           └── bulk/                # Bulk operations
+│   │   │   │               └── route.ts         # Bulk delete and data wipe
 │   │   │   ├── analytics/                       # Analytics API routes
 │   │   │   │   └── track/                       # Analytics tracking
 │   │   │   │       └── route.ts                 # Tracking handler
