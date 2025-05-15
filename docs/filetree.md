@@ -92,6 +92,26 @@ src/components/onboarding/
 └── AccountSetupWizard.tsx       # Multi-step setup wizard for new users
 ```
 
+**Custom URL Routing System:**
+
+The custom URL routing system allows for event-specific booth experiences:
+
+```
+src/app/
+├── e/                           # Custom event URL routes
+│   └── [urlPath]/               # Dynamic URL path routes
+│       └── page.tsx             # Event-specific booth page
+├── admin/                       # Admin section
+│   └── event-urls/              # Event URL management
+│       └── page.tsx             # Event URL admin interface
+
+src/app/api/admin/
+└── event-urls/                  # Event URL API endpoints
+    ├── route.ts                 # List, create event URLs
+    └── [id]/                    # URL-specific operations
+        └── route.ts             # Get, update, delete URLs
+```
+
 ```
 booth-boss/                                      # Main project directory
 ├── .cursor/                                     # Cursor AI editor configuration

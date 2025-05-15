@@ -4,6 +4,16 @@ A modern, AI-powered photo booth application built with Next.js TypeScript, and 
 
 ## Features
 
+- **Photo Booth Interface**: A sleek, user-friendly photo and video capture interface
+- **Admin Dashboard**: Complete control over booth settings, user management, and analytics
+- **Email Integration**: Send booth photos directly to user email
+- **Analytics**: Track usage patterns and engagement metrics
+- **Multi-User Support**: Support for multiple admin/staff accounts
+- **Theme Customization**: Customize colors, logos, and branding
+- **Custom Event URLs**: Create custom URLs for specific events with tailored settings
+- **Video Booth Mode**: Capture short video clips in addition to photos
+- **Custom Journey Builder**: Create custom user journeys and questionnaires
+- **Subscription Management**: Manage service tiers and user subscriptions
 - User-friendly photo capture experience
 - Customizable countdown timer
 - Email sharing with captured photos

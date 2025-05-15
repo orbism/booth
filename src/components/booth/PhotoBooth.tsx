@@ -57,6 +57,7 @@ interface PhotoBoothProps {
   videoDuration?: number;
   filtersEnabled?: boolean;
   enabledFilters?: string | null;
+  eventUrlId?: string;
 }
 
 const PhotoBooth: React.FC<PhotoBoothProps> = ({
@@ -89,6 +90,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   aiImageCorrection = false,
   filtersEnabled = false,
   enabledFilters = null,
+  eventUrlId = null,
 }) => {
   const [stage, setStage] = useState<BoothStage>(splashPageEnabled ? 'splash' : 'collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);

@@ -1,5 +1,5 @@
-// src/app/page.tsx (updated)
 import React from 'react';
+import { redirect } from 'next/navigation';
 import BoothLayout from '@/components/layouts/BoothLayout';
 import PhotoBooth from '@/components/booth/PhotoBooth';
 import { prisma } from '@/lib/prisma';
@@ -32,40 +32,84 @@ type Settings = {
   videoDuration?: number;
   filtersEnabled?: boolean;
   enabledFilters?: string | null;
+  userId?: string;
   companyName?: string;
   companyLogo?: string | null;
   primaryColor?: string;
   showBoothBossLogo?: boolean;
 };
 
-async function getBoothSettings(): Promise<Settings> {
+type EventUrl = {
+  id: string;
+  urlPath: string;
+  eventName: string;
+  isActive: boolean;
+  userId: string;
+};
+
+async function getEventSettings(urlPath: string): Promise<{ settings: Settings, eventUrl: EventUrl | null }> {
   try {
-    const settings = await prisma.settings.findFirst();
-    return settings || {
-      countdownTime: 3,
-      resetTime: 60,
-      eventName: 'Photo Booth Event',
+    // Find the event URL
+    const eventUrl = await prisma.eventUrl.findUnique({
+      where: { urlPath: urlPath.toLowerCase() },
+    });
+    
+    // If not found or not active, return null
+    if (!eventUrl || !eventUrl.isActive) {
+      return { settings: { countdownTime: 3, resetTime: 60, eventName: 'Photo Booth Event' }, eventUrl: null };
+    }
+    
+    // Get settings for this user
+    const settings = await prisma.settings.findFirst({
+      where: { userId: eventUrl.userId },
+    });
+    
+    if (!settings) {
+      // Use default settings but with event name from the URL
+      return { 
+        settings: { 
+          countdownTime: 3, 
+          resetTime: 60, 
+          eventName: eventUrl.eventName,
+          userId: eventUrl.userId
+        }, 
+        eventUrl 
+      };
+    }
+    
+    // Return both settings and event URL info
+    return { 
+      settings: {
+        ...settings,
+        // Override event name with the one from the URL
+        eventName: eventUrl.eventName
+      }, 
+      eventUrl 
     };
   } catch (error) {
-    console.error('Failed to fetch settings:', error);
-    return {
-      countdownTime: 3,
-      resetTime: 60,
-      eventName: 'Photo Booth Event',
+    console.error('Failed to fetch event settings:', error);
+    
+    // Return default settings
+    return { 
+      settings: { 
+        countdownTime: 3, 
+        resetTime: 60, 
+        eventName: 'Photo Booth Event'
+      }, 
+      eventUrl: null 
     };
   }
 }
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams?: { [key: string]: string | string[] | undefined };
-}) {
-  const settings = await getBoothSettings();
-  const themeSettings = await getThemeSettings();
+export default async function EventPage({ params }: { params: { urlPath: string } }) {
+  const { settings, eventUrl } = await getEventSettings(params.urlPath);
   
-  // Check if we have an eventUrlId in the URL
-  const eventUrlId = searchParams?.eventUrlId as string | undefined;
+  // If event URL not found or not active, redirect to home
+  if (!eventUrl) {
+    redirect('/');
+  }
+  
+  const themeSettings = await getThemeSettings(settings.userId);
   
   // Parse journey config from JSON if it exists
   let journeyPages = [];
@@ -84,13 +128,13 @@ export default async function Home({
   }
 
   return (
-    <BoothLayout
+    <BoothLayout 
       eventName={settings.eventName}
       companyName={settings.companyName}
       companyLogo={settings.companyLogo}
       primaryColor={settings.primaryColor}
       showBranding={settings.showBoothBossLogo !== false}
-      eventUrlId={eventUrlId}
+      eventUrlId={eventUrl.id}
     >
       <div className="p-4">
         <h1 className="text-2xl font-bold text-center mb-6">
@@ -126,9 +170,9 @@ export default async function Home({
           videoDuration={settings.videoDuration}
           filtersEnabled={settings.filtersEnabled || false}
           enabledFilters={settings.enabledFilters || null}
-          eventUrlId={eventUrlId}
+          eventUrlId={eventUrl.id}
         />
       </div>
     </BoothLayout>
   );
-}
+} 

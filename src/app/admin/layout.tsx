@@ -43,6 +43,9 @@ export default async function AdminLayout({
             <Link href="/admin/users" className="block py-2 px-4 rounded hover:bg-blue-700">
               User Management
             </Link>
+            <Link href="/admin/event-urls" className="block py-2 px-4 rounded hover:bg-blue-700">
+              Event URLs
+            </Link>
             
             {process.env.NODE_ENV === 'development' && (
               <Link href="/admin/email-preview" className="block py-2 px-4 rounded hover:bg-blue-700">
