@@ -5,6 +5,8 @@ import "./globals.css";
 import { getThemeSettings } from "@/lib/theme-loader";
 import { generateThemeCssOverrides } from "@/lib/theme-css-injector";
 import { ToastProvider } from "@/context/ToastContext";
+import SessionProviderWrapper from "@/components/providers/SessionProviderWrapper";
+import { SubscriptionProvider } from "@/components/providers/SubscriptionProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,9 +50,13 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ToastProvider>
-          {children}
-        </ToastProvider>
+        <SessionProviderWrapper>
+          <SubscriptionProvider>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </SubscriptionProvider>
+        </SessionProviderWrapper>
       </body>
     </html>
   );

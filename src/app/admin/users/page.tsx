@@ -152,7 +152,7 @@ export default function UsersPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userIds: bulkSelections,
+          sessionIds: bulkSelections,
         }),
       });
       

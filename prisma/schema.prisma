@@ -1,12 +1,10 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
   relationMode = "prisma"
 }
 
@@ -15,19 +13,125 @@ enum UserRole {
   USER
 }
 
+// Added enums for subscription tiers and durations
+enum SubscriptionTier {
+  FREE
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  ADMIN
+}
+
+enum SubscriptionDuration {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  TRIAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  TRIAL
+}
+
 model User {
   id            String       @id @default(cuid())
   name          String?
   email         String       @unique
   emailVerified DateTime?
   image         String?
-  password      String? 
-  role          UserRole     @default(USER)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  password      String?
+  role          UserRole     @default(USER)
+  
+  // Added SaaS fields for multi-tenant functionality
+  username      String?      @unique // Used for custom URLs
+  organizationName String?   // Name of the organization/business
+  organizationSize String?   // Size of organization (small, medium, large)
+  industry      String?      // Industry category
+  onboardingCompleted Boolean @default(false) // Whether account setup is completed
+  
+  // Email verification fields
+  verificationToken      String?   // Token for email verification
+  verificationTokenExpires DateTime? // When the token expires
+  
+  // Password reset fields
+  resetToken      String?   // Token for password reset
+  resetTokenExpires DateTime? // When the token expires
+  
+  // Subscription management
+  subscription  Subscription?
+  eventUrls     EventUrl[]   // Custom event URLs
+  
   sessions      Session[]
   boothSessions BoothSession[]
   settings      Settings?
+  
+  // Limits/usage tracking
+  mediaCount    Int          @default(0) // Number of media items created
+  emailsSent    Int          @default(0) // Number of emails sent
+}
+
+// New model for subscription management
+model Subscription {
+  id              String              @id @default(cuid())
+  userId          String              @unique
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  tier            SubscriptionTier    @default(FREE)
+  duration        SubscriptionDuration @default(TRIAL)
+  status          SubscriptionStatus  @default(TRIAL)
+  
+  startDate       DateTime            @default(now())
+  endDate         DateTime            @default(now()) // When subscription expires
+  trialEndDate    DateTime?           // When free trial ends
+  
+  // Stripe integration fields
+  stripeCustomerId String?            @unique
+  stripeSubscriptionId String?
+  stripePriceId    String?
+  
+  // Subscription limits (pulled from tier but can be customized)
+  maxMedia        Int                 @default(10)
+  maxEmails       Int                 @default(5)
+  maxVideoDuration Int                @default(10)
+  maxDays         Int                 @default(1)
+  
+  // Feature flags
+  customDomain    Boolean             @default(false)
+  analyticsAccess Boolean             @default(false)
+  filterAccess    Boolean             @default(false)
+  videoAccess     Boolean             @default(true)
+  aiEnhancement   Boolean             @default(false)
+  journeyBuilder  Boolean             @default(false)
+  brandingRemoval Boolean             @default(false)
+  prioritySupport Boolean             @default(false)
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+// New model for custom event URLs
+model EventUrl {
+  id              String              @id @default(cuid())
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  urlPath         String              @unique // The custom path (e.g., "wedding")
+  isActive        Boolean             @default(true)
+  eventName       String              // Display name for the event
+  eventStartDate  DateTime?
+  eventEndDate    DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  @@index([userId])
 }
 
 model Session {
@@ -44,117 +148,124 @@ model BoothSession {
   userName     String
   userEmail    String
   photoPath    String
-  mediaType String?  @default("photo") // "photo" or "video"
-  filter    String?  @default("normal")
   createdAt    DateTime @default(now())
   shared       Boolean  @default(false)
   emailSent    Boolean  @default(false)
   templateUsed String?
   eventName    String?
+  mediaType    String?  @default("photo")
+  filter       String?  @default("normal")
+  eventUrl     String?  // Track which custom event URL this was created under
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model Settings {
-  id              String @id @default(cuid())
-  eventName       String @default("Photo Booth Event")
-  adminEmail      String
-  countdownTime   Int    @default(3)
-  resetTime       Int    @default(60)
-  emailSubject    String @default("Your Photo Booth Picture")
-  emailTemplate   String @default("Thank you for using our photo booth! Here's your picture.")
-  smtpHost        String
-  smtpPort        Int
-  smtpUser        String
-  smtpPassword    String
-  companyName     String @default("BoothBoss")
-  companyLogo     String?
-  primaryColor    String @default("#3B82F6")
-  secondaryColor  String @default("#1E40AF")
-  theme           String @default("custom")
-  backgroundColor String? 
-  borderColor     String?
-  buttonColor     String?
-  textColor       String?
-  notes           String? @db.Text
-
+  id                   String   @id @default(cuid())
+  eventName            String   @default("Photo Booth Event")
+  adminEmail           String
+  countdownTime        Int      @default(3)
+  resetTime            Int      @default(60)
+  emailSubject         String   @default("Your Photo Booth Picture")
+  emailTemplate        String   @default("Thank you for using our photo booth! Here's your picture.")
+  smtpHost             String
+  smtpPort             Int
+  smtpUser             String
+  smtpPassword         String
+  companyName          String   @default("BoothBoss")
+  companyLogo          String?
+  primaryColor         String   @default("#3B82F6")
+  secondaryColor       String   @default("#1E40AF")
+  backgroundColor      String?
+  borderColor          String?
+  buttonColor          String?
+  notes                String?  @db.Text
+  textColor            String?
+  theme                String   @default("custom")
+  
   // Custom Journey Settings
-  customJourneyEnabled Boolean @default(false)
-  activeJourneyId     String?  // ID of the currently active journey
+  customJourneyEnabled Boolean  @default(false)
   journeyConfig        Json?
+  activeJourneyId      String?  // ID of the currently active journey
   
   // Splash Page Settings
-  splashPageEnabled   Boolean @default(false)
-  splashPageTitle     String?
-  splashPageContent   String?
-  splashPageImage     String?
-  splashPageButtonText String? @default("Start")
-
-  // Capture Mode Settings
-  captureMode            String  @default("photo") // "photo" or "video"
+  splashPageButtonText String?  @default("Start")
+  splashPageContent    String?
+  splashPageEnabled    Boolean  @default(false)
+  splashPageImage      String?
+  splashPageTitle      String?
   
   // Photo Mode Settings
-  photoOrientation       String  @default("portrait-standard") // portrait-standard, portrait-story, square, landscape-standard, landscape-cinematic
-  photoDevice            String  @default("ipad") // ipad, iphone, android, mac, pc
-  photoResolution        String  @default("medium") // low, medium, high
-  photoEffect            String  @default("none") // none, sepia, black-white, etc.
-  printerEnabled         Boolean @default(false)
-  aiImageCorrection      Boolean @default(false)
+  aiImageCorrection    Boolean  @default(false)
+  captureMode          String   @default("photo")
+  photoDevice          String   @default("ipad")
+  photoEffect          String   @default("none")
+  photoOrientation     String   @default("portrait-standard")
+  photoResolution      String   @default("medium")
+  printerEnabled       Boolean  @default(false)
   
   // Video Mode Settings
-  videoOrientation       String  @default("portrait-standard") // portrait-standard, portrait-story, square, landscape-standard, landscape-cinematic
-  videoDevice            String  @default("ipad") // ipad, iphone, android, mac, pc 
-  videoResolution        String  @default("medium") // low, medium, high
-  videoEffect            String  @default("none") // none, sepia, black-white, etc.
-  videoDuration          Int     @default(10) // in seconds
-
+  videoDevice          String   @default("ipad")
+  videoDuration        Int      @default(10)
+  videoEffect          String   @default("none")
+  videoOrientation     String   @default("portrait-standard")
+  videoResolution      String   @default("medium")
+  
   // Photo Filters/Effects
-  filtersEnabled     Boolean @default(false)
-  enabledFilters     String? // JSON string of enabled filters
+  enabledFilters       String?
+  filtersEnabled       Boolean  @default(false)
   
   // Storage Settings
-  storageProvider       String  @default("auto") // "auto", "local", "vercel"
+  storageProvider       String  @default("auto") // "auto", "local", "vercel" 
   blobVercelEnabled     Boolean @default(true)
   localUploadPath       String  @default("uploads")
   storageBaseUrl        String?
-
-  // Relations
-  user           User    @relation(fields: [userId], references: [id])
-  userId         String  @unique
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  
+  // SaaS Branding
+  showBoothBossLogo   Boolean @default(true) // Hide branding for higher tiers
+  customCss           String? @db.Text  // Custom CSS for white-label
+  
+  // Relationship with User
+  userId              String?  // Initially optional, will be linked to admin
+  user                User?    @relation(fields: [userId], references: [id])
+  
+  // Timestamps
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
+  
+  @@unique([userId])
 }
 
 model Journey {
   id        String   @id @default(cuid())
   name      String
-  content   String   @db.Text // JSON string of journey pages
+  content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-// Analytics models start here
 
 model BoothAnalytics {
   id             String          @id @default(cuid())
   sessionId      String          @unique
   boothSessionId String?
-  eventType      String          // session_start, session_complete
+  eventType      String
   timestamp      DateTime        @default(now())
   completedAt    DateTime?
   userAgent      String?
   emailDomain    String?
   durationMs     Int?
-  mediaType     String?  @default("photo") // "photo" or "video"
-  filter        String?  @default("normal")
+  mediaType      String?         @default("photo")
+  filter         String?         @default("normal")
+  userId         String?         // Link to the user who owns this data
+  eventUrl       String?         // Track which custom event URL this was created under
   events         BoothEventLog[]
 }
 
 model BoothEventLog {
-  id          String         @id @default(cuid())
+  id          String          @id @default(cuid())
   analyticsId String
   eventType   String
-  metadata    String?        // JSON string
-  timestamp   DateTime       @default(now())
+  metadata    String?
+  timestamp   DateTime        @default(now())
   analytics   BoothAnalytics? @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
 
   @@index([analyticsId])

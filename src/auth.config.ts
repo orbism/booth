@@ -27,6 +27,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    error: "/login", // Custom error page that will handle specific error codes
   },
   providers: [
     CredentialsProvider({
@@ -47,6 +48,11 @@ export const authOptions: NextAuthOptions = {
           const { email, password } = parsedCredentials.data;
           const user = await getUser(email);
           if (!user) return null;
+          
+          // Check if email has been verified
+          if (!user.emailVerified) {
+            throw new Error("EMAIL_NOT_VERIFIED");
+          }
           
           const passwordsMatch = await bcryptjs.compare(
             password,

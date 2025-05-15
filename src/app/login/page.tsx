@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const loginSchema = z.object({
@@ -17,7 +17,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 // New component to display error messages more consistently
-const LoginErrorMessage = ({ message }: { message: string }) => (
+const LoginErrorMessage = ({ message, isVerificationError = false, email = '' }: { message: string, isVerificationError?: boolean, email?: string }) => (
   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
     <div className="flex">
       <div className="py-1">
@@ -25,25 +25,63 @@ const LoginErrorMessage = ({ message }: { message: string }) => (
           <path d="M10 0a10 10 0 110 20 10 10 0 010-20zm0 18a8 8 0 100-16 8 8 0 000 16zM9 5h2v6H9V5zm0 8h2v2H9v-2z"/>
         </svg>
       </div>
-      <div>
+      <div className="flex-1">
         <p>{message}</p>
+        {isVerificationError && email && (
+          <div className="mt-2">
+            <button 
+              onClick={() => handleResendVerification(email)}
+              className="text-blue-600 underline hover:text-blue-800"
+            >
+              Resend verification email
+            </button>
+          </div>
+        )}
       </div>
     </div>
   </div>
 );
 
+// Function to handle resending verification email
+async function handleResendVerification(email: string) {
+  try {
+    const response = await fetch('/api/auth/resend-verification', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      alert('Verification email has been sent! Please check your inbox.');
+    } else {
+      alert(`Failed to resend verification email: ${data.error || 'Unknown error'}`);
+    }
+  } catch (error) {
+    console.error('Error resending verification:', error);
+    alert('Failed to resend verification email. Please try again later.');
+  }
+}
+
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+  const [isVerificationError, setIsVerificationError] = useState(false);
   const [needsSetup, setNeedsSetup] = useState<boolean>(false);
   const [setupSuccess, setSetupSuccess] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState<string>('');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const {
     register,
     handleSubmit,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -55,6 +93,12 @@ export default function LoginPage() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('setup') === 'success') {
       setSetupSuccess(true);
+    }
+    
+    // Check for verification success
+    if (urlParams.get('verified') === 'true') {
+      setSetupSuccess(true);
+      setError('Your email has been verified. You can now log in.');
     }
   
     async function checkAdminSetup() {
@@ -74,26 +118,35 @@ export default function LoginPage() {
     }
   
     // Check for auth errors passed as query params
-    const errorParam = urlParams.get('error');
+    const errorParam = searchParams.get('error');
     if (errorParam) {
       let errorMessage = "Authentication failed";
+      const email = searchParams.get('email') || '';
       
       // Map NextAuth error codes to user-friendly messages
       if (errorParam === 'CredentialsSignin') {
         errorMessage = "Invalid email or password. Please try again.";
       } else if (errorParam === 'AccessDenied') {
         errorMessage = "You don't have permission to access this page.";
+      } else if (errorParam === 'EMAIL_NOT_VERIFIED') {
+        errorMessage = "Your email has not been verified. Please check your inbox for the verification link.";
+        setIsVerificationError(true);
+        if (email) {
+          setCurrentEmail(email);
+        }
       }
       
       setError(errorMessage);
     }
     
     checkAdminSetup();
-  }, [setValue]);
+  }, [setValue, searchParams]);
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setError(null);
+      setIsVerificationError(false);
+      setCurrentEmail(data.email);
       
       const result = await signIn("credentials", {
         redirect: false,
@@ -107,6 +160,9 @@ export default function LoginPage() {
           setError("Invalid email or password. Please check your credentials and try again.");
         } else if (result.error.includes('AccessDenied')) {
           setError("You don't have permission to access this page.");
+        } else if (result.error.includes('EMAIL_NOT_VERIFIED')) {
+          setError("Your email has not been verified. Please check your inbox for the verification link.");
+          setIsVerificationError(true);
         } else {
           setError(result.error || "Authentication failed");
         }
@@ -135,7 +191,11 @@ export default function LoginPage() {
           </div>
         )}
         
-        {error && <LoginErrorMessage message={error} />}
+        {error && <LoginErrorMessage 
+          message={error} 
+          isVerificationError={isVerificationError}
+          email={currentEmail}
+        />}
         
         {needsSetup && (
           <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
@@ -192,6 +252,15 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+        
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <Link href="/register" className="text-blue-600 hover:underline">
+              Sign up
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
