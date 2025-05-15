@@ -23,6 +23,22 @@ src/lib/storage/
 - `local-provider.ts` - Implements file operations for local file system storage
 - `vercel-provider.ts` - Implements file operations for Vercel Blob storage
 
+**SaaS Subscription System:**
+
+The subscription system provides tiered access and feature management:
+
+```
+src/lib/
+├── subscription-features.ts  # Subscription tiers, pricing, and feature definitions
+└── email-templates/
+    └── welcome.ts            # Welcome email template for new users
+```
+
+```
+src/components/providers/
+└── SubscriptionProvider.tsx  # Context provider for subscription feature access
+```
+
 **User Management System:**
 
 The user management system provides role-based access control and multi-tenant data isolation:
@@ -39,6 +55,43 @@ src/app/api/admin/users/
         └── route.ts             # Bulk delete and data wipe
 ```
 
+**Registration and Verification System:**
+
+The registration system provides user onboarding and verification:
+
+```
+src/app/
+├── register/                    # User registration
+│   └── page.tsx                 # Registration form
+├── verify-email/                # Email verification
+│   └── page.tsx                 # Verification handler page
+├── verify-success/              # Successful verification
+│   └── page.tsx                 # Verification success page
+└── account-setup/               # Account setup wizard
+    └── page.tsx                 # Setup wizard page
+
+src/app/api/
+├── auth/
+│   ├── register/                # Registration API
+│   │   └── route.ts             # User registration endpoint
+│   ├── verify-email/            # Email verification API
+│   │   └── route.ts             # Verification endpoint
+│   └── user/                    # User data API
+│       └── route.ts             # Current user data endpoint
+├── account-setup/               # Account setup API
+│   └── route.ts                 # Setup data endpoint
+├── event-urls/                  # Custom URL management
+│   └── check/                   # URL availability checking
+│       └── route.ts             # URL check endpoint
+└── subscription/                # Subscription management
+    └── route.ts                 # User subscription data endpoint
+```
+
+```
+src/components/onboarding/
+└── AccountSetupWizard.tsx       # Multi-step setup wizard for new users
+```
+
 ```
 booth-boss/                                      # Main project directory
 ├── .cursor/                                     # Cursor AI editor configuration
@@ -53,6 +106,7 @@ booth-boss/                                      # Main project directory
 │   ├── browser-compatibility.md                 # Browser compatibility information
 │   ├── ffmpeg-wasm.md                           # FFMPEG WebAssembly documentation
 │   ├── filetree.md                              # This file structure document
+│   ├── phase3-saas-plan.md                      # SaaS transformation plan
 │   ├── pipeline.md                              # Development workflow and pipeline documentation
 │   └── web-workers.md                           # Web Workers documentation
 ├── eslint.config.mjs                            # ESLint configuration module
@@ -69,6 +123,7 @@ booth-boss/                                      # Main project directory
 │   │       ├── add_filters_fields.sql           # Database migration for photo/video filters
 │   │       ├── add_journey_fields.sql           # Custom journey fields migrations
 │   │       ├── add_splash_page_fields.sql       # Database migration for splash fields
+│   │       ├── add_subscription_fields.sql      # Database migration for SaaS fields
 │   │       └── add_theme_fields.sql             # Theme fields migrations
 │   ├── schema.prisma                            # Prisma database schema
 │   └── seed.ts                                  # Database seeding script
@@ -98,6 +153,8 @@ booth-boss/                                      # Main project directory
 │   │   │   └── login/                           # Login page
 │   │   │       └── page.tsx                     # Login page component
 │   │   ├── (booth)/                             # Photo/video booth routes
+│   │   ├── account-setup/                       # Account setup wizard page
+│   │   │   └── page.tsx                         # Setup wizard component
 │   │   ├── admin/                               # Admin dashboard pages
 │   │   │   ├── analytics/                       # Analytics section
 │   │   │   │   └── page.tsx                     # Analytics dashboard
@@ -119,6 +176,8 @@ booth-boss/                                      # Main project directory
 │   │   │       └── [id]/                        # User details page
 │   │   │           └── page.tsx                 # User editing and data management
 │   │   ├── api/                                 # API routes
+│   │   │   ├── account-setup/                   # Account setup API
+│   │   │   │   └── route.ts                     # Setup data endpoint
 │   │   │   ├── admin/                           # Admin-related API endpoints
 │   │   │   │   ├── analytics/                   # Analytics API
 │   │   │   │   │   └── dashboard/               # 
@@ -154,14 +213,25 @@ booth-boss/                                      # Main project directory
 │   │   │   │   │   └── route.ts                 # NextAuth.js handler
 │   │   │   │   ├── error/                       # Auth error handling
 │   │   │   │   │   └── route.ts                 # Error redirect handler
+│   │   │   │   ├── register/                    # Registration API
+│   │   │   │   │   └── route.ts                 # User registration endpoint
+│   │   │   │   ├── user/                        # User data API
+│   │   │   │   │   └── route.ts                 # Current user data endpoint
+│   │   │   │   ├── verify-email/                # Email verification API
+│   │   │   │   │   └── route.ts                 # Verification endpoint
 │   │   │   │   └── route.ts                     # General auth handler
 │   │   │   ├── booth/                           # Booth endpoints
 │   │   │   │   ├── capture/                     # Photo/video capture
 │   │   │   │   │   └── route.ts                 # Capture handler
 │   │   │   │   └── settings/                    # Booth settings
 │   │   │   │       └── route.ts                 # Settings API
+│   │   │   ├── event-urls/                      # Custom URL management
+│   │   │   │   └── check/                       # URL availability checking
+│   │   │   │       └── route.ts                 # URL check endpoint
 │   │   │   ├── media/                           # Media endpoints (not in use)
 │   │   │   ├── send-video-email/                # Video email endpoint
+│   │   │   ├── subscription/                    # Subscription management
+│   │   │   │   └── route.ts                     # User subscription data endpoint
 │   │   │   ├── users/                           # User endpoints (not in use)
 │   │   │   └── video/                           # Video processing
 │   │   │       └── convert/                     # Video conversion
@@ -178,12 +248,18 @@ booth-boss/                                      # Main project directory
 │   │   │   └── page.tsx                         # Login page
 │   │   ├── not-found.tsx                        # 404 page
 │   │   ├── page.tsx                             # Landing page
+│   │   ├── register/                            # User registration
+│   │   │   └── page.tsx                         # Registration form
 │   │   ├── setup/                               # Admin setup
 │   │   │   └── page.tsx                         # First-time setup page
 │   │   ├── state/                               # State management (not in use)
 │   │   ├── test/                                # Testing pages
 │   │   │   └── browser-compatibility/           # Browser tests
 │   │   │       └── page.tsx                     # Browser capability test page
+│   │   ├── verify-email/                        # Email verification
+│   │   │   └── page.tsx                         # Verification handler page
+│   │   ├── verify-success/                      # Successful verification
+│   │   │   └── page.tsx                         # Verification success page
 │   │   └── utils/                               # Utilities (not in use)
 │   ├── auth.config.ts                           # Authentication configuration
 │   ├── auth.ts                                  # Authentication utilities
@@ -224,8 +300,11 @@ booth-boss/                                      # Main project directory
 │   │   │   └── PreviewDeviceFrame.tsx           # Device frame
 │   │   ├── layouts/                             # Layout components
 │   │   │   └── BoothLayout.tsx                  # Booth layout wrapper
+│   │   ├── onboarding/                          # Onboarding components
+│   │   │   └── AccountSetupWizard.tsx           # Multi-step setup wizard
 │   │   ├── providers/                           # Context providers
-│   │   │   └── SessionProviderWrapper.tsx       # Auth session provider
+│   │   │   ├── SessionProviderWrapper.tsx       # Auth session provider
+│   │   │   └── SubscriptionProvider.tsx         # Subscription context provider
 │   │   └── ui/                                  # UI components
 │   │       ├── DateRangePicker.tsx              # Date range selector
 │   │       ├── ErrorMessage.tsx                 # Error message component
@@ -242,9 +321,12 @@ booth-boss/                                      # Main project directory
 │   │   ├── browser-compatibility.ts             # Browser capability detection
 │   │   ├── canvas-video-recorder.ts             # Video recording with filters
 │   │   ├── db-url.ts                            # Database URL utilities
+│   │   ├── email-templates/                     # Email templates
+│   │   │   └── welcome.ts                       # Welcome email for new users
 │   │   ├── email.ts                             # Email sending utilities
 │   │   ├── errors.ts                            # Error handling utilities
 │   │   ├── prisma.ts                            # Prisma client setup
+│   │   ├── subscription-features.ts             # Subscription tiers and features
 │   │   ├── theme-css-injector.ts                # Theme CSS injection
 │   │   ├── theme-loader.ts                      # Theme loading utilities
 │   │   └── themes.ts                            # Theme definitions
@@ -268,6 +350,8 @@ React components organized by function:
 - `/booth`:        Core photo/video booth components including the main PhotoBooth.tsx component
 - `/forms`:        Form components for data collection
 - `/journey`:      Components for the custom user journey feature
+- `/onboarding`:   Components for user registration and onboarding
+- `/providers`:    Context providers for features like subscription access
 - `/ui`:           Reusable UI components like buttons, modals, etc.
 
 ### `/src/lib`
@@ -277,22 +361,18 @@ Utility functions and specialized libraries:
 - `browser-compatibility.ts`:  Detection of browser capabilities
 - `canvas-video-recorder.ts`:  Canvas-based video recording with filters
 - `email.ts`:                  Email sending functionality
+- `subscription-features.ts`:  Subscription tier definitions and feature access
 
-### `/public`
-Static assets and media files:
-- `/fonts`:        Web fonts for consistent typography
-- `/images`:       Static images used throughout the application
-- `/sounds`:       Sound effects for booth experience
-- `/videos`:       Processed videos in WebM and MP4 formats
-- `/workers`:      Web workers for client-side processing
+### `/src/app/api`
+API routes organized by function:
+- `/auth`:         Authentication, registration and verification endpoints
+- `/admin`:        Admin-specific operations and settings
+- `/booth`:        Booth configuration and capture endpoints
+- `/subscription`: Subscription management endpoints
 
-### `/prisma`
-Database schema and migration files:
-- `schema.prisma`: Prisma database schema definition
-- `seed.ts`:       Script for seeding the database with initial data
-- `/migrations`:   Database migration files
-
-### Key Files
-- `PhotoBooth.tsx`:            The main component handling photo/video capture with filters
-- `canvas-video-recorder.ts`:  Implementation of the canvas-based video recording with filter support
-- `browser-compatibility.ts`:  Utility to detect browser capabilities for canvas/video features 
+### Key New Files
+- `SubscriptionProvider.tsx`:    Context provider for subscription features
+- `subscription-features.ts`:    Definition of subscription tiers and features
+- `register/page.tsx`:           User registration form
+- `verify-email/page.tsx`:       Email verification handler
+- `AccountSetupWizard.tsx`:      Multi-step account setup wizard for new users

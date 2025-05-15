@@ -1,4 +1,4 @@
-# BoothBoss Photo Booth Application
+# BoothBuddy Photo Booth Application
 
 A modern, AI-powered photo booth application built with Next.js TypeScript, and Prisma
 
@@ -12,6 +12,27 @@ A modern, AI-powered photo booth application built with Next.js TypeScript, and 
 - Interactive custom user journeys with smooth transitions and animations
 - Toast notifications for system feedback
 - Support for embedded content in journey pages
+
+### Registration and Onboarding
+
+The application now features a complete registration and onboarding system:
+
+- **User Registration**: Self-service registration with email verification
+- **Email Verification**: Secure verification process with token-based authentication
+- **Account Setup Wizard**: Multi-step onboarding process for new users
+- **Custom URL Selection**: Users can select and verify availability of custom event URLs
+- **Welcome Emails**: Automated welcome emails for new users with getting started information
+- **Free Trial Provisioning**: Automatic creation of trial subscriptions for new users
+
+### Subscription System
+
+The application includes a tiered subscription model for SaaS functionality:
+
+- **Multiple Subscription Tiers**: Support for various subscription levels (Free Trial, Bronze, Silver, Gold, Platinum)
+- **Feature-based Access Control**: Different features available based on subscription tier
+- **Usage Limits**: Tier-specific limits for media count, sessions, and other resources
+- **Subscription Context**: React context provider for checking feature access across the application
+- **Trial Management**: Support for time-limited free trials with upgrade prompts
 
 ### User Management System
 
@@ -140,6 +161,28 @@ Follow these steps to deploy the application:
 2. Start the production server:
 `npm start`
 
+## SaaS and User Management
+
+The application is designed as a multi-tenant SaaS platform with comprehensive user management:
+
+### Registration and Verification
+1. Users can register through the `/register` page
+2. A verification email is sent to confirm the user's email address
+3. After verification, users complete the account setup process
+4. A free trial subscription is automatically provisioned
+
+### Admin Controls
+1. Administrators can manage all users through the admin interface
+2. View and edit user details including role, subscription, and usage metrics
+3. Manage user sessions and send email reminders
+4. Perform bulk operations like deletion and data wiping
+
+### Subscription Management
+1. Users are assigned to subscription tiers with different feature sets
+2. The system enforces tier-based limits and access controls
+3. Upgrade paths are available for users to enhance their subscription
+4. Usage metrics are tracked against tier limits
+
 ## Admin Setup
 
 The application includes functionality for secure admin account setup:
@@ -162,11 +205,14 @@ The application includes an admin dashboard for managing booth sessions and sett
 - Complete session listing with pagination
 - Settings management interface
 - Secure authentication using NextAuth.js
+- User management system with role-based access
+- Email verification status monitoring
 
 ### Routes
 - `/admin` - Main dashboard with recent sessions
 - `/admin/sessions` - Complete list of all photo booth sessions
 - `/admin/settings` - Booth configuration settings
+- `/admin/users` - User management interface
 
 Access to these routes is protected by authentication middleware.
 
@@ -282,7 +328,7 @@ Access the analytics dashboard from the admin section at `/admin/analytics`. The
 
 ## Storage Configuration
 
-BoothBoss supports multiple storage providers for media files:
+BoothBuddy supports multiple storage providers for media files:
 
 ### Environment Variables
 
