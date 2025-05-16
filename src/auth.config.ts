@@ -9,11 +9,33 @@ import { prisma } from "./lib/prisma";
 
 async function getUser(email: string) {
   try {
-    return await prisma.user.findUnique({
-      where: {
-        email,
-      },
-    });
+    // Use raw query to get user with role
+    const users = await prisma.$queryRaw`
+      SELECT id, name, email, emailVerified, image, password, role
+      FROM User
+      WHERE email = ${email}
+    `;
+    
+    // Raw query returns an array
+    const user = Array.isArray(users) && users.length > 0 ? users[0] : null;
+    
+    if (!user) return null;
+    
+    // Fix empty role if needed
+    if (!user.role || user.role === '') {
+      console.log(`User ${email} has an empty role, updating to 'CUSTOMER'`);
+      // Update user with empty role
+      await prisma.$executeRaw`
+        UPDATE User 
+        SET role = 'CUSTOMER' 
+        WHERE id = ${user.id} AND (role = '' OR role IS NULL)
+      `;
+      
+      // Set role for this session
+      user.role = 'CUSTOMER';
+    }
+    
+    return user;
   } catch (error) {
     console.error("Failed to fetch user:", error);
     throw new Error("Failed to fetch user.");
@@ -60,12 +82,13 @@ export const authOptions: NextAuthOptions = {
           );
           
           if (passwordsMatch) {
+            console.log(`User authenticated, role: ${user.role}`);
             return {
               id: user.id,
               name: user.name,
               email: user.email,
               image: user.image,
-              role: user.role,
+              role: user.role || 'CUSTOMER', // Ensure role is never empty
             };
           }
         }
@@ -80,6 +103,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        console.log('JWT callback - user role:', user.role);
       }
       return token;
     },
@@ -87,6 +111,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role;
+        console.log('Session callback - user role:', token.role);
       }
       return session;
     },

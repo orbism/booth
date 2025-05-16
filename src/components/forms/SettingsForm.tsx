@@ -268,12 +268,19 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     if (currentTheme && currentTheme !== 'custom') {
       // Apply theme preset values when theme changes
       const themeColors = THEMES[currentTheme as Exclude<ThemeOption, 'custom'>];
-      setValue('primaryColor', themeColors.primaryColor);
-      setValue('secondaryColor', themeColors.secondaryColor);
-      setValue('backgroundColor', themeColors.backgroundColor);
-      setValue('borderColor', themeColors.borderColor);
-      setValue('buttonColor', themeColors.buttonColor);
-      setValue('textColor', themeColors.textColor);
+      // Add safety check to ensure themeColors exists before accessing properties
+      if (themeColors) {
+        setValue('primaryColor', themeColors.primaryColor);
+        setValue('secondaryColor', themeColors.secondaryColor);
+        setValue('backgroundColor', themeColors.backgroundColor);
+        setValue('borderColor', themeColors.borderColor);
+        setValue('buttonColor', themeColors.buttonColor);
+        setValue('textColor', themeColors.textColor);
+      } else {
+        // Fallback to default theme if the selected theme is not found
+        console.warn(`Theme "${currentTheme}" not found, using default values`);
+        setValue('theme', 'custom');
+      }
     }
   }, [watch('theme'), setValue]);
 

@@ -7,24 +7,40 @@ import { isSystemAdmin, isSettingsAdmin } from '@/types/user';
  * Check if the current user has admin privileges
  */
 async function checkAdminAccess() {
-  const session = await getServerSession();
-  
-  if (!session || !session.user || !session.user.email) {
+  try {
+    const session = await getServerSession();
+    
+    // No session or user means not authorized
+    if (!session || !session.user) {
+      console.log("Admin check failed: No session or user");
+      return false;
+    }
+    
+    // Check for ADMIN role directly - this is the preferred method
+    if (session.user.role === 'ADMIN') {
+      console.log("Admin check passed: User has ADMIN role");
+      return true;
+    }
+    
+    // Fallback check: system admin from env
+    if (session.user.email && isSystemAdmin({ email: session.user.email })) {
+      console.log("Admin check passed: User is system admin from env");
+      return true;
+    }
+    
+    // Fallback check: admin from settings
+    const settings = await prisma.settings.findFirst();
+    if (settings && session.user.email && isSettingsAdmin(session.user.email, settings.adminEmail)) {
+      console.log("Admin check passed: User is admin from settings");
+      return true;
+    }
+    
+    console.log(`Admin check failed: User ${session.user.email} does not have admin privileges`);
+    return false;
+  } catch (error) {
+    console.error("Error checking admin access:", error);
     return false;
   }
-  
-  // Check if user is the system admin (from env)
-  if (session.user && session.user.email && isSystemAdmin({ email: session.user.email })) {
-    return true;
-  }
-  
-  // Check if the user is the admin from settings
-  const settings = await prisma.settings.findFirst();
-  if (settings && isSettingsAdmin(session.user.email, settings.adminEmail)) {
-    return true;
-  }
-  
-  return false;
 }
 
 /**

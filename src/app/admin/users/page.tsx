@@ -42,7 +42,7 @@ export default function UsersPage() {
     name: '',
     email: '',
     password: '',
-    role: 'USER',
+    role: 'CUSTOMER',
   });
   const [modalError, setModalError] = useState<string | null>(null);
 
@@ -213,7 +213,7 @@ export default function UsersPage() {
         name: '',
         email: '',
         password: '',
-        role: 'USER',
+        role: 'CUSTOMER',
       });
       
       // Close the modal
@@ -608,7 +608,7 @@ export default function UsersPage() {
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full px-3 py-2 border rounded-md"
                 >
-                  <option value="USER">User</option>
+                  <option value="CUSTOMER">Customer</option>
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>

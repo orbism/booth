@@ -191,7 +191,7 @@ export default async function UserAdminDashboard({
       <div className="bg-white shadow-md rounded-lg p-6 mb-8">
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link 
             href={`/u/${username}/admin/event-urls`}
             className="p-4 border border-gray-200 rounded-lg flex items-center hover:bg-gray-50"
@@ -221,31 +221,16 @@ export default async function UserAdminDashboard({
           </Link>
           
           <Link 
-            href={`/u/${username}`}
+            href={`/api/auth/signout`}
             className="p-4 border border-gray-200 rounded-lg flex items-center hover:bg-gray-50"
           >
-            <div className="mr-3 p-2 bg-purple-100 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+            <div className="mr-3 p-2 bg-red-100 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V7.414a1 1 0 00-.293-.707L11.414 2.414A1 1 0 0010.707 2H4a1 1 0 00-1 1zm9 2.5a.5.5 0 01.5-.5h4a.5.5 0 01.5.5v7a.5.5 0 01-.5.5h-4a.5.5 0 01-.5-.5v-7zm-7 7a.5.5 0 01.5-.5h4a.5.5 0 01.5.5v2a.5.5 0 01-.5.5h-4a.5.5 0 01-.5-.5v-2z" clipRule="evenodd" />
               </svg>
             </div>
             <div>
-              <p className="font-medium">Account</p>
-            </div>
-          </Link>
-          
-          <Link 
-            href="/e/demo"
-            className="p-4 border border-gray-200 rounded-lg flex items-center hover:bg-gray-50"
-            target="_blank"
-          >
-            <div className="mr-3 p-2 bg-yellow-100 rounded-full">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-medium">Launch Demo Booth</p>
+              <p className="font-medium">Sign Out</p>
             </div>
           </Link>
         </div>

@@ -4,6 +4,19 @@ import type { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getToken } from 'next-auth/jwt';
 
+// Enable detailed debugging logs
+const DEBUG = true;
+
+/**
+ * Debug logger function
+ */
+function debugLog(message: string, data?: any) {
+  if (DEBUG) {
+    console.log(`[MIDDLEWARE DEBUG] ${message}`);
+    if (data) console.log(JSON.stringify(data, null, 2));
+  }
+}
+
 /**
  * Add security headers for cross-origin isolation and general protection
  */
@@ -21,154 +34,230 @@ function addSecurityHeaders(headers: Headers): Headers {
 }
 
 /**
- * Check if a URL is for a custom event URL
+ * Get the current user's username from their ID
  */
-async function isCustomEventUrl(pathname: string): Promise<boolean | string> {
-  // Custom event URLs follow the pattern: /e/{urlPath}
-  if (pathname.startsWith('/e/')) {
-    const urlPath = pathname.split('/')[2];
-    
-    // Skip if no urlPath or it contains additional slashes
-    if (!urlPath || urlPath.includes('/')) {
-      return false;
-    }
-    
-    try {
-      // Using raw query to work around TypeScript issues with the EventUrl model
-      const eventUrl = await prisma.$queryRaw`
-        SELECT id, isActive 
-        FROM EventUrl 
-        WHERE urlPath = ${urlPath}
-      `;
-      
-      // Result from raw query is an array
-      const foundUrl = Array.isArray(eventUrl) && eventUrl.length > 0 ? eventUrl[0] : null;
-      
-      // If found and active, return the ID for further use
-      if (foundUrl && foundUrl.isActive) {
-        return foundUrl.id;
-      }
-    } catch (error) {
-      console.error('Error checking custom event URL:', error);
-    }
-  }
+async function getUsernameFromToken(token: any): Promise<string | null> {
+  if (!token?.sub) return null;
   
-  return false;
+  try {
+    // Using raw query to work around TypeScript issues with the User model
+    const users = await prisma.$queryRaw`
+      SELECT username 
+      FROM User 
+      WHERE id = ${token.sub}
+    `;
+    
+    // Result from raw query is an array
+    const user = Array.isArray(users) && users.length > 0 ? users[0] : null;
+    
+    return user?.username || null;
+  } catch (error) {
+    console.error('Error getting username from token:', error);
+    return null;
+  }
 }
 
 /**
- * Check if the username exists and user is authorized to access it
+ * Gets equivalent user-specific route for an admin route
  */
-async function checkUsernameAccess(request: NextRequest): Promise<{ 
-  exists: boolean; 
-  userId: string | null; 
-  isAdmin: boolean; 
-  isOwnAccount: boolean; 
-}> {
-  const token = await getToken({ req: request });
-  const pathname = request.nextUrl.pathname;
+function getEquivalentUserRoute(adminPath: string, username: string): string {
+  // Remove the /admin prefix
+  const pathAfterAdmin = adminPath.substring('/admin'.length);
   
-  // Extract username from the path: /u/[username]
-  if (!pathname.startsWith('/u/')) {
-    return { exists: false, userId: null, isAdmin: false, isOwnAccount: false };
+  // Handle the root admin path
+  if (pathAfterAdmin === '') {
+    return `/u/${username}/admin`; // Admin dashboard maps to user dashboard
   }
   
-  const urlParts = pathname.split('/');
-  if (urlParts.length < 3) {
-    return { exists: false, userId: null, isAdmin: false, isOwnAccount: false };
-  }
+  // Standard mapping for all other paths
+  return `/u/${username}${pathAfterAdmin}`;
+}
+
+/**
+ * Redirect to login with return URL
+ */
+function redirectToLogin(request: NextRequest, returnUrl: string): NextResponse {
+  const encodedReturnUrl = encodeURIComponent(returnUrl);
+  debugLog(`Redirecting unauthenticated user to login with return URL: ${returnUrl}`);
+  return NextResponse.redirect(new URL(`/login?returnUrl=${encodedReturnUrl}`, request.url));
+}
+
+/**
+ * Redirect to forbidden page
+ */
+function redirectToForbidden(request: NextRequest): NextResponse {
+  debugLog(`Access forbidden, redirecting to /forbidden`);
+  return NextResponse.redirect(new URL('/forbidden', request.url));
+}
+
+/**
+ * Create secure response with headers
+ */
+function createSecureResponse(response = NextResponse.next()): NextResponse {
+  const headers = new Headers(response.headers);
+  addSecurityHeaders(headers);
   
-  const username = urlParts[2];
-  
-  if (!username) {
-    return { exists: false, userId: null, isAdmin: false, isOwnAccount: false };
-  }
-  
-  try {
-    // Using raw query to check if username exists
-    const users = await prisma.$queryRaw`
-      SELECT id, role, username 
-      FROM User 
-      WHERE username = ${username}
-    `;
-    
-    // No user found with this username
-    if (!Array.isArray(users) || users.length === 0) {
-      return { exists: false, userId: null, isAdmin: false, isOwnAccount: false };
-    }
-    
-    const user = users[0];
-    const isAdmin = token?.role === 'ADMIN';
-    const isOwnAccount = token?.sub === user.id;
-    
-    return { 
-      exists: true, 
-      userId: user.id, 
-      isAdmin, 
-      isOwnAccount 
-    };
-  } catch (error) {
-    console.error('Error checking username access:', error);
-    return { exists: false, userId: null, isAdmin: false, isOwnAccount: false };
-  }
+  return new NextResponse(undefined, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
 }
 
 export async function middleware(request: NextRequest) {
+  const startTime = Date.now();
   const { pathname } = request.nextUrl;
   
-  // Initialize headers from the incoming request
-  const response = NextResponse.next();
+  debugLog(`Middleware executing for path: ${pathname}`);
   
-  // Apply security headers for all responses
-  addSecurityHeaders(response.headers);
+  // Get the user's token and authentication info
+  const token = await getToken({ req: request });
+  const isAuthenticated = !!token;
+  const isAdmin = token?.role === 'ADMIN';
+  const isUser = token?.role === 'CUSTOMER';
+  const username = token ? await getUsernameFromToken(token) : null;
   
-  // Handle custom event URLs
-  const eventUrlResult = await isCustomEventUrl(pathname);
-  if (eventUrlResult) {
-    // Extract event URL ID
-    const eventUrlId = typeof eventUrlResult === 'string' ? eventUrlResult : null;
+  debugLog(`Authentication info:`, {
+    path: pathname,
+    isAuthenticated,
+    role: token?.role,
+    isAdmin,
+    isUser,
+    username,
+    tokenSub: token?.sub
+  });
+  
+  // Handle root path redirection for authenticated users
+  if (pathname === '/' && isAuthenticated) {
+    if (isAdmin) {
+      debugLog('Redirecting admin to /admin dashboard');
+      return NextResponse.redirect(new URL('/admin', request.url));
+    } else if (username) {
+      debugLog(`Redirecting user to their dashboard at /u/${username}/admin`);
+      return NextResponse.redirect(new URL(`/u/${username}/admin`, request.url));
+    }
+  }
+  
+  // STRICT ADMIN ROUTE PROTECTION - Handle ALL admin routes
+  if (pathname.startsWith('/admin')) {
+    debugLog(`ADMIN ROUTE ACCESS ATTEMPT - Path: ${pathname}, Role: ${token?.role}`);
     
-    if (eventUrlId) {
-      // Create a modified URL for the booth with the event URL ID
-      const url = new URL('/e/' + pathname.split('/')[2], request.url);
+    // Only ADMIN role can access admin routes - no exceptions
+    // First check if user is authenticated
+    if (!isAuthenticated) {
+      debugLog(`UNAUTHORIZED - User not authenticated`);
+      return redirectToLogin(request, pathname);
+    }
+    
+    // Then strictly enforce admin role requirement
+    if (token?.role !== 'ADMIN') {
+      debugLog(`ACCESS DENIED - Non-admin role "${token?.role}" attempting to access ${pathname}`);
       
-      // Rewrite the request to our custom event page
-      return NextResponse.rewrite(url);
+      // If user has a username, redirect to equivalent user route
+      if (username) {
+        const userRoute = getEquivalentUserRoute(pathname, username);
+        debugLog(`REDIRECTING to user-specific route: ${userRoute}`);
+        return NextResponse.redirect(new URL(userRoute, request.url));
+      }
+      
+      // If no username available, redirect to account setup
+      if (isUser) {
+        debugLog(`REDIRECTING to account setup - User has no username`);
+        return NextResponse.redirect(new URL('/account-setup', request.url));
+      }
+      
+      // For all other cases, redirect to forbidden
+      debugLog(`REDIRECTING to forbidden - User is not admin and has no valid alternative route`);
+      return redirectToForbidden(request);
     }
+    
+    // If we get here, user is an admin - allow access
+    debugLog(`ACCESS GRANTED - Admin user accessing ${pathname}`);
+    const response = createSecureResponse();
+    const endTime = Date.now();
+    debugLog(`Middleware completed in ${endTime - startTime}ms with status: ${response.status}`);
+    return response;
   }
   
-  // Handle username-based routes (/u/[username]/*)
+  // Handle user-specific routes
   if (pathname.startsWith('/u/')) {
-    const usernameCheck = await checkUsernameAccess(request);
+    const pathUsername = pathname.split('/')[2];
     
-    // Username doesn't exist
-    if (!usernameCheck.exists) {
-      const url = new URL('/404', request.url);
-      return NextResponse.rewrite(url);
+    if (!pathUsername) {
+      return NextResponse.redirect(new URL('/404', request.url));
     }
     
-    // It's the admin section and user is not authorized (not admin or not their account)
-    if (pathname.includes('/admin') && !usernameCheck.isAdmin && !usernameCheck.isOwnAccount) {
-      const url = new URL('/forbidden', request.url);
-      return NextResponse.rewrite(url);
+    // Check if accessing admin section
+    if (pathname.includes('/admin')) {
+      // Unauthenticated users go to login
+      if (!isAuthenticated) {
+        return redirectToLogin(request, pathname);
+      }
+      
+      // Only allow access if admin or own account
+      const hasAccess = isAdmin || (username === pathUsername);
+      if (!hasAccess) {
+        debugLog(`User ${username} attempted to access ${pathUsername}'s admin area`);
+        return redirectToForbidden(request);
+      }
     }
     
-    // User viewing someone else's profile but not an admin
-    if (!usernameCheck.isAdmin && !usernameCheck.isOwnAccount) {
-      const url = new URL('/forbidden', request.url);
-      return NextResponse.rewrite(url);
+    // Check if username exists (for public profile views)
+    try {
+      // Use raw query instead of count with TypeScript issues
+      const users = await prisma.$queryRaw`
+        SELECT COUNT(*) as count
+        FROM User 
+        WHERE username = ${pathUsername}
+      `;
+      
+      const userCount = Array.isArray(users) && users.length > 0 ? users[0].count : 0;
+      
+      if (userCount === 0) {
+        return NextResponse.redirect(new URL('/404', request.url));
+      }
+    } catch (error) {
+      console.error(`Error checking username existence: ${error}`);
+      return NextResponse.json({ error: 'Server error' }, { status: 500 });
     }
   }
   
+  // Handle API routes
+  if (pathname.startsWith('/api/admin')) {
+    debugLog(`API ADMIN ROUTE ACCESS ATTEMPT - Path: ${pathname}, Role: ${token?.role}`);
+    
+    // Unauthenticated users get 401
+    if (!isAuthenticated) {
+      debugLog(`API UNAUTHORIZED - User not authenticated`);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Non-admin users get 403
+    if (token?.role !== 'ADMIN') {
+      debugLog(`API FORBIDDEN - Non-admin role "${token?.role}" attempting to access ${pathname}`);
+      return NextResponse.json({ error: 'Forbidden', role: token?.role }, { status: 403 });
+    }
+    
+    debugLog(`API ACCESS GRANTED - Admin user accessing ${pathname}`);
+  }
+  
+  // Default: allow access with security headers
+  const response = createSecureResponse();
+  const endTime = Date.now();
+  debugLog(`Middleware completed in ${endTime - startTime}ms with status: ${response.status}`);
   return response;
 }
 
-// Apply the middleware to the booth routes and event URL routes
+// Apply the middleware to all relevant routes
 export const config = {
   matcher: [
-    '/booth/:path*',        // Apply to booth routes
-    '/api/booth/:path*',    // And booth API routes
-    '/e/:path*',            // Custom event URL pattern
-    '/u/:path*',            // Username-based routes
+    '/',                       // Root route for redirections
+    '/admin',                  // Admin root (exact match)
+    '/admin/:path*',           // Admin routes with paths
+    '/booth/:path*',           // Booth routes
+    '/api/booth/:path*',       // Booth API routes
+    '/api/admin/:path*',       // Admin API routes
+    '/u/:path*',               // Username-based routes
+    '/login',                  // Login page for redirection
   ],
 };

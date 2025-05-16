@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -76,6 +76,7 @@ export default function LoginPage() {
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   
   const {
     register,
@@ -86,6 +87,64 @@ export default function LoginPage() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
   });
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session?.user) {
+      console.log('Session detected, role:', session.user.role);
+      
+      // Check if there's a returnUrl in search params
+      const returnUrl = searchParams.get('returnUrl');
+      
+      // If returnUrl exists and user is authorized to access it, redirect there
+      if (returnUrl) {
+        // For admin routes, only redirect admin users
+        if (returnUrl.startsWith('/admin') && session.user.role === 'ADMIN') {
+          console.log(`Admin user redirecting to ${returnUrl}`);
+          router.push(returnUrl);
+          return;
+        }
+        
+        // For non-admin routes, redirect all users
+        if (!returnUrl.startsWith('/admin')) {
+          console.log(`User redirecting to ${returnUrl}`);
+          router.push(returnUrl);
+          return;
+        }
+      }
+      
+      // Otherwise, redirect based on role
+      if (session.user.role === 'ADMIN') {
+        console.log('Admin user redirecting to /admin');
+        router.push('/admin');
+      } else {
+        // For regular users, get the username and redirect to their dashboard
+        console.log('Regular user fetching username for redirect');
+        fetch('/api/auth/user')
+          .then(res => {
+            if (!res.ok) {
+              console.error(`Error fetching user data: ${res.status}`);
+              throw new Error('Failed to fetch user data');
+            }
+            return res.json();
+          })
+          .then(data => {
+            console.log('User data received:', data);
+            if (data.user?.username) {
+              console.log(`Redirecting to user dashboard: /u/${data.user.username}/admin`);
+              router.push(`/u/${data.user.username}/admin`);
+            } else {
+              console.log('No username found, redirecting to home');
+              router.push('/');
+            }
+          })
+          .catch((error) => {
+            console.error('Error fetching user data:', error);
+            router.push('/');
+          });
+      }
+    }
+  }, [session, router, searchParams]);
 
   // Check if admin needs setup
   useEffect(() => {
@@ -167,7 +226,8 @@ export default function LoginPage() {
           setError(result.error || "Authentication failed");
         }
       } else {
-        router.push("/admin");
+        // Success - let the useEffect handle redirection
+        console.log("Login successful, redirecting...");
         router.refresh();
       }
     } catch (error) {

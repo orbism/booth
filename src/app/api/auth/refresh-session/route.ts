@@ -22,15 +22,9 @@ export async function GET(request: NextRequest) {
     // Get user ID from session
     const userId = session.user.id;
     
-    // Get role directly from the session if available
-    const roleFromSession = session.user.role;
-    const isAdminFromSession = roleFromSession === 'ADMIN';
-    
-    console.log('User API - Session role:', roleFromSession);
-    
-    // Fetch user data - use raw query to get around TypeScript issues
+    // Fetch the actual role from the database using raw query to avoid TypeScript issues
     const users = await prisma.$queryRaw`
-      SELECT id, name, email, emailVerified, username, organizationName, role
+      SELECT id, role
       FROM User
       WHERE id = ${userId}
     `;
@@ -48,35 +42,25 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    const userRole = user.role || roleFromSession;
-    const isAdmin = userRole === 'ADMIN';
-    
-    console.log('User API - Database role:', user.role);
-    console.log('User API - Final role used:', userRole);
-    
-    // Return user data with role information
+    // Return role information
     return NextResponse.json({
-      isAuthenticated: true,
-      isAdmin,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        username: user.username,
-        organizationName: user.organizationName,
-        role: userRole,
-        isAdmin
-      }
+      message: 'Session refresh data',
+      currentSession: {
+        role: session.user.role
+      },
+      databaseValue: {
+        role: user.role
+      },
+      instructions: "The session shows a cached role. You need to sign out and sign back in to refresh the session token with the updated role from the database."
     });
     
   } catch (error) {
-    console.error('Error fetching user data:', error);
+    console.error('Error refreshing session data:', error);
     
     return NextResponse.json(
       { 
-        error: 'Failed to fetch user data',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        isAuthenticated: false
+        error: 'Failed to refresh session data',
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

@@ -6,6 +6,27 @@ import { prisma } from '@/lib/prisma';
 import { handleApiError, unauthorizedResponse } from '@/lib/errors';
 import { z } from 'zod';
 
+// Helper function to safely parse journey config
+function safelyParseJourneyConfig(journeyConfig: any): any[] {
+  if (!journeyConfig) return [];
+  
+  try {
+    // If it's already an array, return it
+    if (Array.isArray(journeyConfig)) return journeyConfig;
+    
+    // If it's a string, try to parse it
+    if (typeof journeyConfig === 'string') {
+      return JSON.parse(journeyConfig);
+    }
+    
+    // Otherwise convert to string and parse
+    return JSON.parse(JSON.stringify(journeyConfig));
+  } catch (error) {
+    console.error('Error parsing journey config:', error);
+    return [];
+  }
+}
+
 // Define validation schema for settings
 const settingsSchema = z.object({
   eventName: z.string().min(1, "Event name is required"),
@@ -29,6 +50,8 @@ const settingsSchema = z.object({
   textColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional(),
   notes: z.string().optional().nullable(),
   customJourneyEnabled: z.boolean().default(false),
+  journeyName: z.string().optional(),
+  journeyId: z.string().optional(),
   journeyPages: z.array(
     z.object({
       id: z.string(),
@@ -38,73 +61,148 @@ const settingsSchema = z.object({
       buttonText: z.string(),
       buttonImage: z.string().nullable()
     })
-  ).default([]),
-  journeyId: z.string().optional(),
+  ).optional().default([]),
+
+  // Splash Page settings
   splashPageEnabled: z.boolean().default(false),
   splashPageTitle: z.string().optional(),
   splashPageContent: z.string().optional(),
   splashPageImage: z.string().optional().nullable(),
   splashPageButtonText: z.string().optional(),
+
+  // Capture Mode Settings
   captureMode: z.enum(["photo", "video"]).default("photo"),
+
+  // Photo Mode Settings
   photoOrientation: z.string().default("portrait-standard"),
   photoDevice: z.string().default("ipad"),
   photoResolution: z.string().default("medium"),
   photoEffect: z.string().default("none"),
   printerEnabled: z.boolean().default(false),
   aiImageCorrection: z.boolean().default(false),
+  
+  // Video Mode Settings
   videoOrientation: z.string().default("portrait-standard"),
   videoDevice: z.string().default("ipad"),
   videoResolution: z.string().default("medium"),
   videoEffect: z.string().default("none"),
   videoDuration: z.coerce.number().int().min(5).max(60).default(10),
+
+  // Photo Filters/Effects
   filtersEnabled: z.boolean().default(false),
   enabledFilters: z.string().optional().nullable(),
+
+  // Storage settings
+  storageProvider: z.enum(["auto", "local", "vercel"]).default("auto"),
+  blobVercelEnabled: z.boolean().default(true),
+  localUploadPath: z.string().default("uploads"),
+  storageBaseUrl: z.string().optional().nullable(),
 });
 
-// Helper function to safely parse journey config data
-function safelyParseJourneyConfig(journeyConfig: any): any[] {
-  // If it's already an array, return it directly
-  if (Array.isArray(journeyConfig)) {
-    return journeyConfig;
+// Create default settings for a user if they don't exist
+async function ensureUserSettings(userId: string): Promise<string> {
+  // Check if user already has settings
+  const existingSettings = await prisma.settings.findUnique({
+    where: { userId },
+    select: { id: true }
+  });
+  
+  if (existingSettings) {
+    return existingSettings.id;
   }
   
-  // If it's null or undefined, return empty array
-  if (!journeyConfig) {
-    return [];
+  // Get user details for setting up the settings
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true }
+  });
+  
+  if (!user) {
+    throw new Error('User not found');
   }
   
-  // If it's a string (serialized JSON), try to parse it
-  if (typeof journeyConfig === 'string') {
-    try {
-      return JSON.parse(journeyConfig);
-    } catch (error) {
-      console.error('Error parsing journeyConfig JSON:', error);
-      return [];
+  // Create default settings for the user
+  const defaultSettings = await prisma.settings.create({
+    data: {
+      userId,
+      adminEmail: user.email,
+      // Add defaults for required fields
+      eventName: 'My Event',
+      countdownTime: 3,
+      resetTime: 30,
+      emailSubject: 'Your Booth Photo/Video',
+      emailTemplate: 'Thank you for participating!',
+      smtpHost: '',
+      smtpPort: 587,
+      smtpUser: '',
+      smtpPassword: '',
+      companyName: 'My Company',
+      primaryColor: '#007bff',
+      secondaryColor: '#6c757d',
     }
-  }
+  });
   
-  // If it's an object, return it in an array
-  if (typeof journeyConfig === 'object') {
-    return [journeyConfig];
-  }
-  
-  // Default fallback
-  return [];
+  return defaultSettings.id;
 }
 
-export async function GET(_request: NextRequest) {
-  if (_request.url) {
-    // Do nothing but this prevents the unused variable warning
-  }
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session) {
+    if (!session || !session.user) {
       return unauthorizedResponse();
     }
     
-    const settings = await prisma.settings.findFirst();
+    const isAdmin = session.user.role === 'ADMIN';
+    let where: any = {};
     
+    // If not admin, filter settings by user ID
+    if (!isAdmin) {
+      const userId = session.user.id;
+      if (!userId) {
+        return unauthorizedResponse();
+      }
+      
+      where = { userId };
+      console.log(`Getting settings for user ${userId}`);
+    } else {
+      console.log('Admin user, getting global settings');
+    }
+    
+    // Get settings that match the filter
+    const settings = await prisma.settings.findFirst({ where });
+    
+    // If settings don't exist, create default settings for the user (if not admin)
+    if (!settings && !isAdmin) {
+      const userId = session.user.id;
+      if (!userId) {
+        return unauthorizedResponse();
+      }
+      
+      try {
+        const settingsId = await ensureUserSettings(userId);
+        console.log(`Created default settings for user ${userId} with ID ${settingsId}`);
+        
+        // Fetch the newly created settings
+        const newSettings = await prisma.settings.findFirst({ 
+          where: { id: settingsId } 
+        });
+        
+        if (newSettings) {
+          // Return the new settings with default journeyPages
+          return NextResponse.json({
+            ...newSettings,
+            customJourneyEnabled: newSettings.customJourneyEnabled || false,
+            activeJourneyId: newSettings.activeJourneyId || null,
+            journeyPages: []
+          });
+        }
+      } catch (createError) {
+        console.error('Error creating default settings:', createError);
+      }
+    }
+    
+    // If we still don't have settings
     if (!settings) {
       return NextResponse.json({ 
         error: 'Settings not found' 
@@ -120,7 +218,12 @@ export async function GET(_request: NextRequest) {
       ...settings,
       customJourneyEnabled: settings.customJourneyEnabled || false,
       activeJourneyId: settings.activeJourneyId || null,
-      journeyPages
+      journeyPages,
+      // Include debug info
+      _meta: {
+        isAdmin,
+        userId: session.user.id,
+      }
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -128,49 +231,98 @@ export async function GET(_request: NextRequest) {
   }
 }
 
-export async function PUT(_request: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session) {
+    if (!session || !session.user) {
       return unauthorizedResponse();
     }
     
-    const data = await _request.json();
-
-    // console.log('Updating settings with:', {
-    //   theme: data.theme,
-    //   primaryColor: data.primaryColor,
-    //   secondaryColor: data.secondaryColor
-    // });
+    const isAdmin = session.user.role === 'ADMIN';
+    let where: any = {};
+    
+    // If not admin, filter settings by user ID
+    if (!isAdmin) {
+      const userId = session.user.id;
+      if (!userId) {
+        return unauthorizedResponse();
+      }
+      
+      where = { userId };
+    }
+    
+    const data = await request.json();
     
     // Validate settings data
     const validatedData = settingsSchema.parse(data);
     
-    // Find existing settings
-    const existingSettings = await prisma.settings.findFirst();
+    // Find existing settings that the user has access to
+    const existingSettings = await prisma.settings.findFirst({ where });
     
     if (!existingSettings) {
+      // If settings don't exist and user is not admin, create them
+      if (!isAdmin) {
+        const userId = session.user.id;
+        if (!userId) {
+          return unauthorizedResponse();
+        }
+        
+        try {
+          const settingsId = await ensureUserSettings(userId);
+          console.log(`Created default settings for user ${userId} with ID ${settingsId}`);
+        } catch (error) {
+          console.error('Error creating settings:', error);
+          return NextResponse.json({ 
+            error: 'Failed to create settings' 
+          }, { 
+            status: 500 
+          });
+        }
+      } else {
+        return NextResponse.json({ 
+          error: 'Settings not found' 
+        }, { 
+          status: 404 
+        });
+      }
+    }
+    
+    // Get settings ID to update (either existing or newly created)
+    const settingsToUpdate = existingSettings || 
+      await prisma.settings.findFirst({ where });
+    
+    if (!settingsToUpdate) {
       return NextResponse.json({ 
-        error: 'Settings not found' 
+        error: 'Failed to locate or create settings' 
       }, { 
-        status: 404 
+        status: 500 
       });
     }
     
     // Ensure journeyConfig is properly serialized as JSON string before saving
     const journeyConfig = validatedData.journeyPages?.length 
       ? JSON.stringify(validatedData.journeyPages)  // Explicitly stringify to ensure it's a JSON string
-      : undefined;                 // Use undefined instead of null for Prisma JSON fields
+      : null;
+    
+    // Make sure adminEmail is set
+    const adminEmail = validatedData.adminEmail || session.user.email;
+    if (!adminEmail) {
+      return NextResponse.json({ 
+        error: 'Admin email is required' 
+      }, { 
+        status: 400 
+      });
+    }
     
     // Update settings
     const updatedSettings = await prisma.settings.update({
       where: {
-        id: existingSettings.id
+        id: settingsToUpdate.id
       },
       data: {
         eventName: validatedData.eventName,
-        adminEmail: validatedData.adminEmail,
+        adminEmail: adminEmail,
         countdownTime: validatedData.countdownTime,
         resetTime: validatedData.resetTime,
         emailSubject: validatedData.emailSubject,
@@ -211,6 +363,10 @@ export async function PUT(_request: NextRequest) {
         videoDuration: validatedData.videoDuration,
         filtersEnabled: validatedData.filtersEnabled,
         enabledFilters: validatedData.enabledFilters,
+        storageProvider: validatedData.storageProvider,
+        blobVercelEnabled: validatedData.blobVercelEnabled,
+        localUploadPath: validatedData.localUploadPath,
+        storageBaseUrl: validatedData.storageBaseUrl,
       }
     });
     

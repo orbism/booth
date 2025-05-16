@@ -165,6 +165,36 @@ src/auth.config.ts               # Authentication configuration settings
 src/auth.ts                      # Main authentication setup and utilities
 ```
 
+## Database Migration Scripts
+
+- `/prisma/update-role-values.js`: Script to update role values in the database from USER to CUSTOMER
+- `/scripts/db.js`: Database management utility script
+- `/scripts/reset-db.js`: Script to reset the database
+- `/scripts/setup-env.js`: Environment setup script
+
+## Components
+
+- `/src/components/admin/eventUrl/`: Components for event URL management in admin interface
+- `/src/components/booth/camera/`: Camera components for the photo booth
+- `/src/components/ui/forms/`: Reusable form components
+
+## API Endpoints
+
+- `/src/app/api/admin/`: API routes for admin operations
+  - `/src/app/api/admin/users/`: User management API endpoints
+
+## User Interface Components
+
+- `/src/app/u/[username]/admin/`: User-specific admin interface components
+  - `/src/app/u/[username]/admin/page.tsx`: Main admin dashboard for specific user
+  - `/src/app/u/[username]/admin/settings/`: User-specific settings administration
+  - `/src/app/u/[username]/admin/event-urls/`: Event URL management for specific user
+  - `/src/app/u/[username]/admin/sessions/`: Session management for specific user
+
+## Media Handling
+
+- `/src/lib/media/`: Media processing utilities
+
 ```
 booth-boss/                                      # Main project directory
 ├── .cursor/                                     # Cursor AI editor configuration

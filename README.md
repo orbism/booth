@@ -369,3 +369,30 @@ For Vercel Blob storage, you'll need to set up a Vercel project and set the `BLO
 
 ## License
 TBD
+
+## User-Specific Admin Interface
+
+The application now implements a user-specific admin interface accessible via the `/u/[username]/admin/` route structure:
+
+### Features
+- **User-Specific Dashboard**: Each user has their own dedicated admin dashboard
+- **Role-Based Access Control**: Only ADMIN users can access admin routes
+- **User-Specific Settings**: Manage settings specific to a user account
+- **Custom Event URL Management**: Create and manage event URLs for specific user accounts
+- **Session Management**: View and manage photo booth sessions for specific users
+
+### Routes
+- `/u/[username]/admin` - User-specific dashboard with quick actions and usage stats
+- `/u/[username]/admin/settings` - Settings management for specific user
+- `/u/[username]/admin/event-urls` - Event URL management for specific user
+- `/u/[username]/admin/sessions` - Session management for specific user
+
+## Role System
+
+The application uses a role-based access control system:
+
+### User Roles
+- **ADMIN**: Full administrative access to all system functions
+- **CUSTOMER**: Regular user access with limited administrative capabilities
+
+The role system ensures proper separation of concerns and data security across the application.

@@ -8,24 +8,40 @@ import bcrypt from 'bcryptjs';
  * Check if the current user has admin privileges
  */
 async function checkAdminAccess() {
-  const session = await getServerSession();
-  
-  if (!session || !session.user || !session.user.email) {
+  try {
+    const session = await getServerSession();
+    
+    // No session or user means not authorized
+    if (!session || !session.user) {
+      console.log("Admin check failed: No session or user");
+      return false;
+    }
+    
+    // Check for ADMIN role directly - this is the preferred method
+    if (session.user.role === 'ADMIN') {
+      console.log("Admin check passed: User has ADMIN role");
+      return true;
+    }
+    
+    // Fallback check: system admin from env
+    if (session.user.email && isSystemAdmin({ email: session.user.email })) {
+      console.log("Admin check passed: User is system admin from env");
+      return true;
+    }
+    
+    // Fallback check: admin from settings
+    const settings = await prisma.settings.findFirst();
+    if (settings && session.user.email && isSettingsAdmin(session.user.email, settings.adminEmail)) {
+      console.log("Admin check passed: User is admin from settings");
+      return true;
+    }
+    
+    console.log(`Admin check failed: User ${session.user.email} does not have admin privileges`);
+    return false;
+  } catch (error) {
+    console.error("Error checking admin access:", error);
     return false;
   }
-  
-  // Check if user is the system admin (from env)
-  if (session.user && session.user.email && isSystemAdmin({ email: session.user.email })) {
-    return true;
-  }
-  
-  // Check if the user is the admin from settings
-  const settings = await prisma.settings.findFirst();
-  if (settings && isSettingsAdmin(session.user.email, settings.adminEmail)) {
-    return true;
-  }
-  
-  return false;
 }
 
 /**
@@ -43,55 +59,43 @@ export async function GET(
 
     const userId = params.id;
     
-    // Check if role field exists in the schema
-    const hasRoleField = await prisma.$queryRaw`
-      SELECT COUNT(*) as count 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_NAME = 'User' AND COLUMN_NAME = 'role'
-    `.then((result: any) => result[0].count > 0);
+    // Get the user with raw SQL
+    const userResults = await prisma.$queryRaw`
+      SELECT id, name, email, image, createdAt, role
+      FROM User
+      WHERE id = ${userId}
+    `;
     
-    // Get the user with their sessions
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        createdAt: true,
-        // Only select role if it exists in the schema
-        ...(hasRoleField ? { role: true } : {}),
-        // Include sessions and booth sessions
-        sessions: {
-          select: {
-            id: true,
-            expires: true,
-          },
-          orderBy: {
-            expires: 'desc',
-          },
-        },
-        boothSessions: {
-          select: {
-            id: true,
-            photoPath: true,
-            createdAt: true,
-            emailSent: true,
-            mediaType: true,
-            filter: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
-    });
-
-    if (!user) {
+    if (!Array.isArray(userResults) || userResults.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+    
+    const user = userResults[0];
+    
+    // Get user sessions
+    const sessions = await prisma.$queryRaw`
+      SELECT id, expires
+      FROM Session
+      WHERE userId = ${userId}
+      ORDER BY expires DESC
+    `;
+    
+    // Get booth sessions
+    const boothSessions = await prisma.$queryRaw`
+      SELECT id, photoPath, createdAt, emailSent, mediaType, filter
+      FROM BoothSession
+      WHERE userId = ${userId}
+      ORDER BY createdAt DESC
+    `;
+    
+    // Combine data
+    const userWithSessions = {
+      ...user,
+      sessions: sessions || [],
+      boothSessions: boothSessions || []
+    };
 
-    return NextResponse.json(user);
+    return NextResponse.json(userWithSessions);
   } catch (error) {
     console.error('Error fetching user:', error);
     return NextResponse.json(

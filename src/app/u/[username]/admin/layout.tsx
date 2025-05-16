@@ -56,9 +56,9 @@ export default async function AdminLayout({
       {/* Admin Sidebar */}
       <div className="w-64 bg-white shadow-md">
         <div className="p-4 border-b">
-          <Link href={`/u/${username}`} className="text-lg font-semibold text-blue-600">
-            Account Dashboard
-          </Link>
+          <h1 className="text-lg font-semibold text-gray-800">
+            User Dashboard
+          </h1>
         </div>
         
         <nav className="mt-4">

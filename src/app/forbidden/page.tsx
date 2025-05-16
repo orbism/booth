@@ -1,19 +1,30 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 
 export default function ForbiddenPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    // Log the unauthorized access attempt (optional)
-    console.error('Forbidden access attempt');
-  }, []);
+    // Log the unauthorized access attempt
+    console.error('Forbidden access attempt', {
+      path: pathname,
+      user: session?.user?.email,
+      role: session?.user?.role
+    });
+  }, [pathname, session]);
+
+  // Determine if it's an admin route
+  const isAdminRoute = pathname?.startsWith('/admin');
+  const userRole = session?.user?.role || 'Not authenticated';
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center p-4">
-      <div className="max-w-md mx-auto text-center space-y-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
+      <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md text-center space-y-6">
         <div className="bg-red-50 border border-red-200 rounded-full p-4 w-20 h-20 flex items-center justify-center mx-auto">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
@@ -33,9 +44,20 @@ export default function ForbiddenPage() {
         
         <h1 className="text-3xl font-bold text-gray-900">Access Denied</h1>
         
-        <p className="text-lg text-gray-600">
-          You don't have permission to access this page. Please log in with the appropriate account or contact your administrator.
-        </p>
+        <div className="text-lg text-gray-600">
+          {isAdminRoute ? (
+            <p>
+              This page requires <span className="font-semibold text-red-600">ADMIN</span> role permissions.
+              {userRole !== 'Not authenticated' && (
+                <> Your current role is <span className="font-semibold">{userRole}</span>.</>
+              )}
+            </p>
+          ) : (
+            <p>
+              You don't have permission to access this page. Please log in with the appropriate account or contact your administrator.
+            </p>
+          )}
+        </div>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
           <button 
@@ -45,12 +67,21 @@ export default function ForbiddenPage() {
             Return Home
           </button>
           
-          <button 
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            onClick={() => router.push('/login')}
-          >
-            Login
-          </button>
+          {status === 'authenticated' ? (
+            <button 
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              onClick={() => signOut({ callbackUrl: '/login' })}
+            >
+              Sign Out
+            </button>
+          ) : (
+            <button 
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              onClick={() => router.push('/login')}
+            >
+              Sign In
+            </button>
+          )}
         </div>
       </div>
     </div>

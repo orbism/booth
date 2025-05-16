@@ -8,25 +8,40 @@ import bcrypt from 'bcryptjs';
  * Check if the current user has admin privileges
  */
 async function checkAdminAccess() {
-  const session = await getServerSession();
-  
-  if (!session || !session.user || !session.user.email) {
+  try {
+    const session = await getServerSession();
+    
+    // No session or user means not authorized
+    if (!session || !session.user) {
+      console.log("Admin check failed: No session or user");
+      return false;
+    }
+    
+    // Check for ADMIN role directly - this is the preferred method
+    if (session.user.role === 'ADMIN') {
+      console.log("Admin check passed: User has ADMIN role");
+      return true;
+    }
+    
+    // Fallback check: system admin from env
+    if (session.user.email && isSystemAdmin({ email: session.user.email })) {
+      console.log("Admin check passed: User is system admin from env");
+      return true;
+    }
+    
+    // Fallback check: admin from settings
+    const settings = await prisma.settings.findFirst();
+    if (settings && session.user.email && isSettingsAdmin(session.user.email, settings.adminEmail)) {
+      console.log("Admin check passed: User is admin from settings");
+      return true;
+    }
+    
+    console.log(`Admin check failed: User ${session.user.email} does not have admin privileges`);
+    return false;
+  } catch (error) {
+    console.error("Error checking admin access:", error);
     return false;
   }
-  
-  // Check if user is the system admin (from env)
-  // Make sure the user has an email property
-  if (session.user && session.user.email && isSystemAdmin({ email: session.user.email })) {
-    return true;
-  }
-  
-  // Check if the user is the admin from settings
-  const settings = await prisma.settings.findFirst();
-  if (settings && isSettingsAdmin(session.user.email, settings.adminEmail)) {
-    return true;
-  }
-  
-  return false;
 }
 
 /**
@@ -48,41 +63,41 @@ export async function GET(req: NextRequest) {
     // Calculate pagination
     const skip = (page - 1) * limit;
     
-    // Build the query
-    const where = search 
-      ? {
-          OR: [
-            { name: { contains: search } },
-            { email: { contains: search } },
-          ],
-        } 
-      : {};
-    
-    // Get users with pagination
-    const users = await prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        createdAt: true,
-        // Only select role if it exists in the schema
-        ...(await prisma.$queryRaw`
-          SELECT COUNT(*) as count 
-          FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_NAME = 'User' AND COLUMN_NAME = 'role'
-        `.then((result: any) => result[0].count > 0 ? { role: true } : {}))
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip,
-      take: limit,
-    });
+    // Use raw SQL to get users with their roles
+    let users;
+    if (search) {
+      // With search condition
+      users = await prisma.$queryRaw`
+        SELECT id, name, email, image, createdAt, role 
+        FROM User 
+        WHERE name LIKE ${'%' + search + '%'} OR email LIKE ${'%' + search + '%'}
+        ORDER BY createdAt DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `;
+    } else {
+      // Without search condition
+      users = await prisma.$queryRaw`
+        SELECT id, name, email, image, createdAt, role 
+        FROM User 
+        ORDER BY createdAt DESC
+        LIMIT ${limit} OFFSET ${skip}
+      `;
+    }
     
     // Get total count for pagination
-    const total = await prisma.user.count({ where });
+    let total;
+    if (search) {
+      const countResult = await prisma.$queryRaw`
+        SELECT COUNT(*) as total FROM User
+        WHERE name LIKE ${'%' + search + '%'} OR email LIKE ${'%' + search + '%'}
+      `;
+      total = Number((countResult as any)[0].total);
+    } else {
+      const countResult = await prisma.$queryRaw`
+        SELECT COUNT(*) as total FROM User
+      `;
+      total = Number((countResult as any)[0].total);
+    }
     
     return NextResponse.json({
       users,
@@ -113,7 +128,7 @@ export async function POST(req: NextRequest) {
     }
     
     const body = await req.json();
-    const { name, email, password, role } = body;
+    const { name, email, password, role = 'CUSTOMER' } = body; // Default to CUSTOMER role if not provided
     
     // Validate required fields
     if (!email || !password) {
@@ -124,9 +139,11 @@ export async function POST(req: NextRequest) {
     }
     
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUserQuery = await prisma.$queryRaw`
+      SELECT id FROM User WHERE email = ${email}
+    `;
+    
+    const existingUser = Array.isArray(existingUserQuery) && existingUserQuery.length > 0;
     
     if (existingUser) {
       return NextResponse.json(
@@ -138,37 +155,40 @@ export async function POST(req: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
     
-    // Create the user
-    // Check if role field exists in the schema
-    const hasRoleField = await prisma.$queryRaw`
-      SELECT COUNT(*) as count 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_NAME = 'User' AND COLUMN_NAME = 'role'
-    `.then((result: any) => result[0].count > 0);
+    // Create the user with raw query to avoid type issues
+    const insertResult = await prisma.$executeRaw`
+      INSERT INTO User (id, name, email, password, role, createdAt, updatedAt)
+      VALUES (
+        CONCAT('clm', SUBSTR(MD5(RAND()), 1, 21)), 
+        ${name || null}, 
+        ${email}, 
+        ${hashedPassword}, 
+        ${role}, 
+        NOW(), 
+        NOW()
+      )
+    `;
     
-    const userData: any = {
-      name,
-      email,
-      password: hashedPassword,
-    };
-    
-    // Add role if the field exists
-    if (hasRoleField && role) {
-      userData.role = role;
+    if (insertResult !== 1) {
+      throw new Error('Failed to create user');
     }
     
-    const user = await prisma.user.create({
-      data: userData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        createdAt: true,
-        // Only select role if it exists in the schema
-        ...(hasRoleField ? { role: true } : {})
-      },
-    });
+    // Get the created user
+    const newUserResult = await prisma.$queryRaw`
+      SELECT id, name, email, image, createdAt, role
+      FROM User
+      WHERE email = ${email}
+      ORDER BY createdAt DESC
+      LIMIT 1
+    `;
+    
+    const user = Array.isArray(newUserResult) && newUserResult.length > 0 
+      ? newUserResult[0] 
+      : null;
+    
+    if (!user) {
+      throw new Error('User created but not found');
+    }
     
     return NextResponse.json(user, { status: 201 });
   } catch (error) {
