@@ -4,6 +4,8 @@ import BoothLayout from '@/components/layouts/BoothLayout';
 import PhotoBooth from '@/components/booth/PhotoBooth';
 import { prisma } from '@/lib/prisma';
 import { getThemeSettings } from '@/lib/theme-loader';
+import { EventUrl } from '@/types/event-url';
+import { redirect } from 'next/navigation';
 
 export const revalidate = 0; // Disable caching for this page
 
@@ -40,7 +42,15 @@ type Settings = {
 
 async function getBoothSettings(): Promise<Settings> {
   try {
-    const settings = await prisma.settings.findFirst();
+    // Using raw query to avoid TypeScript issues
+    const settingsResults = await prisma.$queryRaw`
+      SELECT * FROM Settings LIMIT 1
+    `;
+    
+    const settings = Array.isArray(settingsResults) && settingsResults.length > 0 
+      ? settingsResults[0] as Settings
+      : null;
+      
     return settings || {
       countdownTime: 3,
       resetTime: 60,
@@ -56,6 +66,25 @@ async function getBoothSettings(): Promise<Settings> {
   }
 }
 
+// Get event URL data if an ID is provided
+async function getEventUrl(eventUrlId: string): Promise<EventUrl | null> {
+  try {
+    if (!eventUrlId) return null;
+    
+    // Using raw query to avoid TypeScript issues
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${eventUrlId} AND isActive = 1
+    `;
+    
+    return Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] as EventUrl
+      : null;
+  } catch (error) {
+    console.error('Failed to fetch event URL:', error);
+    return null;
+  }
+}
+
 export default async function Home({
   searchParams,
 }: {
@@ -66,6 +95,15 @@ export default async function Home({
   
   // Check if we have an eventUrlId in the URL
   const eventUrlId = searchParams?.eventUrlId as string | undefined;
+  
+  let eventUrl = null;
+  if (eventUrlId) {
+    eventUrl = await getEventUrl(eventUrlId);
+    // If event URL ID was provided but not found or not active, redirect to home
+    if (!eventUrl) {
+      redirect('/');
+    }
+  }
   
   // Parse journey config from JSON if it exists
   let journeyPages = [];
@@ -85,7 +123,7 @@ export default async function Home({
 
   return (
     <BoothLayout
-      eventName={settings.eventName}
+      eventName={eventUrl?.eventName || settings.eventName}
       companyName={settings.companyName}
       companyLogo={settings.companyLogo}
       primaryColor={settings.primaryColor}
@@ -94,7 +132,7 @@ export default async function Home({
     >
       <div className="p-4">
         <h1 className="text-2xl font-bold text-center mb-6">
-          {settings.eventName}
+          {eventUrl?.eventName || settings.eventName}
         </h1>
         <PhotoBooth 
           countdownSeconds={settings.countdownTime}

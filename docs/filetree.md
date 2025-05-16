@@ -30,6 +30,7 @@ The subscription system provides tiered access and feature management:
 ```
 src/lib/
 ├── subscription-features.ts  # Subscription tiers, pricing, and feature definitions
+├── auth-utils.ts             # Authentication utilities for data ownership and access control
 └── email-templates/
     └── welcome.ts            # Welcome email template for new users
 ```
@@ -37,6 +38,28 @@ src/lib/
 ```
 src/components/providers/
 └── SubscriptionProvider.tsx  # Context provider for subscription feature access
+```
+
+**User-Based Routing System:**
+
+The new user-based routing system implements a multi-tenant architecture with username-specific routes:
+
+```
+src/app/u/
+├── [username]/                     # Username-specific routes
+│   ├── page.tsx                    # User account dashboard
+│   ├── admin/                      # User's admin area
+│   │   ├── layout.tsx              # Admin layout with sidebar navigation
+│   │   ├── page.tsx                # Admin dashboard
+│   │   ├── settings/               # User settings page
+│   │   │   └── page.tsx            # Settings management for user
+│   │   └── [section]/              # Section-specific admin pages
+│   │       └── page.tsx            # Section page component
+│   ├── change-password/            # Password management
+│   │   └── page.tsx                # Change password page
+│   ├── settings/                   # Customer-facing settings
+│   │   └── page.tsx                # Customer settings management
+│   └── layout.tsx                  # User route authentication layout
 ```
 
 **User Management System:**
@@ -55,6 +78,14 @@ src/app/api/admin/users/
         └── route.ts             # Bulk delete and data wipe
 ```
 
+```
+src/app/api/user/
+├── profile/                     # User profile data
+│   └── route.ts                 # Current user profile endpoint
+└── settings/                    # User settings API
+    └── route.ts                 # Get/update user settings
+```
+
 **Registration and Verification System:**
 
 The registration system provides user onboarding and verification:
@@ -67,6 +98,8 @@ src/app/
 │   └── page.tsx                 # Verification handler page
 ├── verify-success/              # Successful verification
 │   └── page.tsx                 # Verification success page
+├── forbidden/                   # Access denied page
+│   └── page.tsx                 # Forbidden access message
 └── account-setup/               # Account setup wizard
     └── page.tsx                 # Setup wizard page
 
@@ -88,8 +121,11 @@ src/app/api/
 ```
 
 ```
-src/components/onboarding/
-└── AccountSetupWizard.tsx       # Multi-step setup wizard for new users
+src/components/
+├── layouts/
+│   └── Navbar.tsx               # Main navigation with user profile
+└── onboarding/
+    └── AccountSetupWizard.tsx   # Multi-step setup wizard for new users
 ```
 
 **Custom URL Routing System:**
@@ -112,6 +148,23 @@ src/app/api/admin/
         └── route.ts             # Get, update, delete URLs
 ```
 
+**Types System:**
+
+```
+src/types/
+├── journey.ts                   # Journey type definitions
+├── event-url.ts                 # EventUrl type definitions
+└── next-auth.d.ts               # NextAuth type extensions
+```
+
+**Middleware and Authentication:**
+
+```
+middleware.ts                    # Next.js middleware for route protection and authentication
+src/auth.config.ts               # Authentication configuration settings
+src/auth.ts                      # Main authentication setup and utilities
+```
+
 ```
 booth-boss/                                      # Main project directory
 ├── .cursor/                                     # Cursor AI editor configuration
@@ -130,6 +183,7 @@ booth-boss/                                      # Main project directory
 │   ├── pipeline.md                              # Development workflow and pipeline documentation
 │   └── web-workers.md                           # Web Workers documentation
 ├── eslint.config.mjs                            # ESLint configuration module
+├── middleware.ts                                # Next.js middleware for route protection
 ├── next-env.d.ts                                # Next.js TypeScript declarations
 ├── next.config.js                               # Next.js configuration
 ├── next.config.ts                               # TypeScript version of Next.js config
@@ -196,66 +250,15 @@ booth-boss/                                      # Main project directory
 │   │   │       └── [id]/                        # User details page
 │   │   │           └── page.tsx                 # User editing and data management
 │   │   ├── api/                                 # API routes
-│   │   │   ├── account-setup/                   # Account setup API
-│   │   │   │   └── route.ts                     # Setup data endpoint
-│   │   │   ├── admin/                           # Admin-related API endpoints
-│   │   │   │   ├── analytics/                   # Analytics API
-│   │   │   │   │   └── dashboard/               # 
-│   │   │   │   │       └── route.ts             # Analytics dashboard API
-│   │   │   │   ├── check/                       # Admin status check
-│   │   │   │   │   └── route.ts                 # Admin setup check handler
-│   │   │   │   ├── journeys/                    # Journey management
-│   │   │   │   │   └── route.ts                 # Journey endpoint
-│   │   │   │   ├── sessions/                    # Session management
-│   │   │   │   │   └── route.ts                 # Sessions endpoint
-│   │   │   │   ├── settings/                    # Settings management
-│   │   │   │   │   └── route.ts                 # Settings endpoint
-│   │   │   │   ├── setup/                       # Admin account creation
-│   │   │   │   │   └── route.ts                 # Setup handler
-│   │   │   │   ├── test/                        # Test endpoints
-│   │   │   │   │   └── route.ts                 # Test API endpoints
-│   │   │   │   ├── upload/                      # File uploads
-│   │   │   │   │   └── route.ts                 # Upload endpoint
-│   │   │   │   └── users/                       # User management API
-│   │   │   │       ├── route.ts                 # List and create users
-│   │   │   │       ├── [id]/                    # User-specific operations
-│   │   │   │       │   └── route.ts             # Get, update, delete user
-│   │   │   │       └── sessions/                # Session management
-│   │   │   │           ├── [id]/                # Single session operations
-│   │   │   │           │   └── route.ts         # Delete/resend for specific session
-│   │   │   │           └── bulk/                # Bulk operations
-│   │   │   │               └── route.ts         # Bulk delete and data wipe
-│   │   │   ├── analytics/                       # Analytics API routes
-│   │   │   │   └── track/                       # Analytics tracking
-│   │   │   │       └── route.ts                 # Tracking handler
-│   │   │   ├── auth/                            # Authentication API
-│   │   │   │   ├── [...nextauth]/               # NextAuth.js dynamic route
-│   │   │   │   │   └── route.ts                 # NextAuth.js handler
-│   │   │   │   ├── error/                       # Auth error handling
-│   │   │   │   │   └── route.ts                 # Error redirect handler
-│   │   │   │   ├── register/                    # Registration API
-│   │   │   │   │   └── route.ts                 # User registration endpoint
-│   │   │   │   ├── user/                        # User data API
-│   │   │   │   │   └── route.ts                 # Current user data endpoint
-│   │   │   │   ├── verify-email/                # Email verification API
-│   │   │   │   │   └── route.ts                 # Verification endpoint
-│   │   │   │   └── route.ts                     # General auth handler
-│   │   │   ├── booth/                           # Booth endpoints
-│   │   │   │   ├── capture/                     # Photo/video capture
-│   │   │   │   │   └── route.ts                 # Capture handler
-│   │   │   │   └── settings/                    # Booth settings
-│   │   │   │       └── route.ts                 # Settings API
-│   │   │   ├── event-urls/                      # Custom URL management
-│   │   │   │   └── check/                       # URL availability checking
-│   │   │   │       └── route.ts                 # URL check endpoint
-│   │   │   ├── media/                           # Media endpoints (not in use)
-│   │   │   ├── send-video-email/                # Video email endpoint
-│   │   │   ├── subscription/                    # Subscription management
-│   │   │   │   └── route.ts                     # User subscription data endpoint
-│   │   │   ├── users/                           # User endpoints (not in use)
-│   │   │   └── video/                           # Video processing
-│   │   │       └── convert/                     # Video conversion
-│   │   │           └── route.ts                 # WebM to MP4 conversion
+│   │   ├── forbidden/                           # Access denied page
+│   │   │   └── page.tsx                         # Forbidden access message
+│   │   ├── u/                                   # User-specific routes
+│   │   │   └── [username]/                      # Username-specific routes
+│   │   │       ├── admin/                       # User's admin area
+│   │   │       │   ├── layout.tsx               # Admin layout with sidebar
+│   │   │       │   └── page.tsx                 # User admin dashboard
+│   │   │       ├── page.tsx                     # User account page
+│   │   │       └── layout.tsx                   # User route layout with auth checks
 │   │   ├── context/                             # Context providers
 │   │   │   ├── ThemeContext.tsx                 # Theme provider
 │   │   │   └── ToastContext.tsx                 # Toast notifications provider
@@ -303,34 +306,20 @@ booth-boss/                                      # Main project directory
 │   │   │   ├── SettingsForm.tsx                 # Settings form
 │   │   │   ├── UserInfoForm.tsx                 # User info form
 │   │   │   └── tabs/                            # Settings tabs
-│   │   │       ├── AdvancedTab.tsx              # Advanced settings
-│   │   │       ├── AppearanceTab.tsx            # Visual customization
-│   │   │       ├── CustomJourneyTab.tsx         # Journey editor
-│   │   │       ├── EmailTab.tsx                 # Email configuration
-│   │   │       ├── FiltersTab.tsx               # Filters settings
-│   │   │       ├── GeneralTab.tsx               # Basic settings
-│   │   │       ├── PhotoModeSettings.tsx        # Photo mode settings
-│   │   │       ├── SplashTab.tsx                # Splash page setup
-│   │   │       ├── TemplatesTab.tsx             # Theme selection
-│   │   │       └── VideoModeSettings.tsx        # Video mode settings
 │   │   ├── journey/                             # Journey components
 │   │   │   ├── JourneyContainer.tsx             # Journey manager
 │   │   │   ├── JourneyPageView.tsx              # Individual page component
 │   │   │   ├── JourneyPreview.tsx               # Interactive preview
 │   │   │   └── PreviewDeviceFrame.tsx           # Device frame
 │   │   ├── layouts/                             # Layout components
-│   │   │   └── BoothLayout.tsx                  # Booth layout wrapper
+│   │   │   ├── BoothLayout.tsx                  # Booth layout wrapper
+│   │   │   └── Navbar.tsx                       # Main navigation with user profile
 │   │   ├── onboarding/                          # Onboarding components
 │   │   │   └── AccountSetupWizard.tsx           # Multi-step setup wizard
 │   │   ├── providers/                           # Context providers
 │   │   │   ├── SessionProviderWrapper.tsx       # Auth session provider
 │   │   │   └── SubscriptionProvider.tsx         # Subscription context provider
 │   │   └── ui/                                  # UI components
-│   │       ├── DateRangePicker.tsx              # Date range selector
-│   │       ├── ErrorMessage.tsx                 # Error message component
-│   │       ├── OptimizedImage.tsx               # Image handler
-│   │       ├── Toast.tsx                        # Toast notifications
-│   │       └── Tooltip.tsx                      # Contextual help tooltip
 │   ├── hooks/                                   # Custom React hooks
 │   │   └── useCamera.ts                         # Camera access hook
 │   ├── lib/                                     # Utility libraries
@@ -338,6 +327,7 @@ booth-boss/                                      # Main project directory
 │   │   ├── analytics-server.ts                  # Server-side analytics
 │   │   ├── analytics.ts                         # Client-side analytics (deprecated)
 │   │   ├── auth-check.ts                        # Authentication checking
+│   │   ├── auth-utils.ts                        # Authentication utilities for RBAC
 │   │   ├── browser-compatibility.ts             # Browser capability detection
 │   │   ├── canvas-video-recorder.ts             # Video recording with filters
 │   │   ├── db-url.ts                            # Database URL utilities
@@ -353,46 +343,10 @@ booth-boss/                                      # Main project directory
 │   ├── middleware.ts                            # Next.js middleware
 │   └── types/                                   # TypeScript definitions
 │       ├── journey.ts                           # Journey type definitions
+│       ├── event-url.ts                         # EventUrl type definitions
 │       └── next-auth.d.ts                       # NextAuth type extensions
 ├── tailwind.config.js                           # Tailwind CSS configuration
 ├── temp/                                        # Temporary files
 ├── tsconfig.json                                # TypeScript configuration
 └── tsconfig.tsbuildinfo                         # TypeScript build info
 ```
-
-## Key Directories and Files
-
-### `/src/app`
-Contains Next.js App Router pages and API routes. Each folder represents a route with its associated page components.
-
-### `/src/components`
-React components organized by function:
-- `/booth`:        Core photo/video booth components including the main PhotoBooth.tsx component
-- `/forms`:        Form components for data collection
-- `/journey`:      Components for the custom user journey feature
-- `/onboarding`:   Components for user registration and onboarding
-- `/providers`:    Context providers for features like subscription access
-- `/ui`:           Reusable UI components like buttons, modals, etc.
-
-### `/src/lib`
-Utility functions and specialized libraries:
-- `analytics-server.ts`:       Server-side analytics processing
-- `analytics.ts`:              Client-side user interaction tracking
-- `browser-compatibility.ts`:  Detection of browser capabilities
-- `canvas-video-recorder.ts`:  Canvas-based video recording with filters
-- `email.ts`:                  Email sending functionality
-- `subscription-features.ts`:  Subscription tier definitions and feature access
-
-### `/src/app/api`
-API routes organized by function:
-- `/auth`:         Authentication, registration and verification endpoints
-- `/admin`:        Admin-specific operations and settings
-- `/booth`:        Booth configuration and capture endpoints
-- `/subscription`: Subscription management endpoints
-
-### Key New Files
-- `SubscriptionProvider.tsx`:    Context provider for subscription features
-- `subscription-features.ts`:    Definition of subscription tiers and features
-- `register/page.tsx`:           User registration form
-- `verify-email/page.tsx`:       Email verification handler
-- `AccountSetupWizard.tsx`:      Multi-step account setup wizard for new users

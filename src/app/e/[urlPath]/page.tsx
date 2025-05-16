@@ -4,6 +4,7 @@ import BoothLayout from '@/components/layouts/BoothLayout';
 import PhotoBooth from '@/components/booth/PhotoBooth';
 import { prisma } from '@/lib/prisma';
 import { getThemeSettings } from '@/lib/theme-loader';
+import { EventUrl } from '@/types/event-url';
 
 export const revalidate = 0; // Disable caching for this page
 
@@ -39,30 +40,37 @@ type Settings = {
   showBoothBossLogo?: boolean;
 };
 
-type EventUrl = {
-  id: string;
-  urlPath: string;
-  eventName: string;
-  isActive: boolean;
-  userId: string;
-};
-
 async function getEventSettings(urlPath: string): Promise<{ settings: Settings, eventUrl: EventUrl | null }> {
   try {
-    // Find the event URL
-    const eventUrl = await prisma.eventUrl.findUnique({
-      where: { urlPath: urlPath.toLowerCase() },
-    });
+    // Find the event URL using raw query
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE urlPath = ${urlPath.toLowerCase()} AND isActive = 1
+    `;
+    
+    const eventUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] as EventUrl
+      : null;
     
     // If not found or not active, return null
-    if (!eventUrl || !eventUrl.isActive) {
-      return { settings: { countdownTime: 3, resetTime: 60, eventName: 'Photo Booth Event' }, eventUrl: null };
+    if (!eventUrl) {
+      return { 
+        settings: { 
+          countdownTime: 3, 
+          resetTime: 60, 
+          eventName: 'Photo Booth Event' 
+        }, 
+        eventUrl: null 
+      };
     }
     
-    // Get settings for this user
-    const settings = await prisma.settings.findFirst({
-      where: { userId: eventUrl.userId },
-    });
+    // Get settings for this user using raw query
+    const settingsResults = await prisma.$queryRaw`
+      SELECT * FROM Settings WHERE userId = ${eventUrl.userId}
+    `;
+    
+    const settings = Array.isArray(settingsResults) && settingsResults.length > 0 
+      ? settingsResults[0] as Settings
+      : null;
     
     if (!settings) {
       // Use default settings but with event name from the URL
@@ -109,7 +117,8 @@ export default async function EventPage({ params }: { params: { urlPath: string 
     redirect('/');
   }
   
-  const themeSettings = await getThemeSettings(settings.userId);
+  // Get theme settings for this user
+  const themeSettings = await getThemeSettings();
   
   // Parse journey config from JSON if it exists
   let journeyPages = [];

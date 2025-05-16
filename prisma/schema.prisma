@@ -131,6 +131,9 @@ model EventUrl {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   
+  // Add relation to BoothSession
+  boothSessions   BoothSession[]
+  
   @@index([userId])
 }
 
@@ -155,8 +158,13 @@ model BoothSession {
   eventName    String?
   mediaType    String?  @default("photo")
   filter       String?  @default("normal")
-  eventUrl     String?  // Track which custom event URL this was created under
+  eventUrlId   String?  // Store the actual EventUrl ID for proper referencing
+  eventUrlPath String?  // Store the URL path for easy reference
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  eventUrl     EventUrl? @relation(fields: [eventUrlId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@index([eventUrlId])
 }
 
 model Settings {
@@ -181,6 +189,7 @@ model Settings {
   notes                String?  @db.Text
   textColor            String?
   theme                String   @default("custom")
+  isDefault            Boolean  @default(false)
   
   // Custom Journey Settings
   customJourneyEnabled Boolean  @default(false)

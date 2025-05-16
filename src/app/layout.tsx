@@ -7,6 +7,7 @@ import { generateThemeCssOverrides } from "@/lib/theme-css-injector";
 import { ToastProvider } from "@/context/ToastContext";
 import SessionProviderWrapper from "@/components/providers/SessionProviderWrapper";
 import { SubscriptionProvider } from "@/components/providers/SubscriptionProvider";
+import Navbar from "@/components/layouts/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,6 +54,7 @@ export default async function RootLayout({
         <SessionProviderWrapper>
           <SubscriptionProvider>
             <ToastProvider>
+              <Navbar />
               {children}
             </ToastProvider>
           </SubscriptionProvider>

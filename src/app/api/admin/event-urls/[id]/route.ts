@@ -19,9 +19,15 @@ export async function GET(
     }
 
     const { id } = params;
-    const eventUrl = await prisma.eventUrl.findUnique({
-      where: { id },
-    });
+    
+    // Get the event URL using raw query
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const eventUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] 
+      : null;
 
     if (!eventUrl) {
       return NextResponse.json(
@@ -60,10 +66,14 @@ export async function PATCH(
     const body = await req.json();
     const { urlPath, eventName, isActive, eventStartDate, eventEndDate } = body;
 
-    // Check if event URL exists
-    const existingUrl = await prisma.eventUrl.findUnique({
-      where: { id },
-    });
+    // Check if event URL exists using raw query
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const existingUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] 
+      : null;
 
     if (!existingUrl) {
       return NextResponse.json(
@@ -82,9 +92,13 @@ export async function PATCH(
 
     // If changing the URL path, check if the new path is already in use
     if (urlPath && urlPath !== existingUrl.urlPath) {
-      const duplicateUrl = await prisma.eventUrl.findUnique({
-        where: { urlPath },
-      });
+      const duplicateUrlResults = await prisma.$queryRaw`
+        SELECT id FROM EventUrl WHERE urlPath = ${urlPath}
+      `;
+      
+      const duplicateUrl = Array.isArray(duplicateUrlResults) && duplicateUrlResults.length > 0 
+        ? duplicateUrlResults[0] 
+        : null;
 
       if (duplicateUrl) {
         return NextResponse.json(
@@ -94,17 +108,61 @@ export async function PATCH(
       }
     }
 
-    // Update the event URL
-    const updatedEventUrl = await prisma.eventUrl.update({
-      where: { id },
-      data: {
-        ...(urlPath && { urlPath }),
-        ...(eventName && { eventName }),
-        ...(isActive !== undefined && { isActive }),
-        ...(eventStartDate && { eventStartDate: new Date(eventStartDate) }),
-        ...(eventEndDate && { eventEndDate: new Date(eventEndDate) }),
-      },
-    });
+    // Update the event URL using raw query
+    let updateParts = [];
+    let updateValues = [];
+    
+    if (urlPath !== undefined) {
+      updateParts.push("urlPath = ?");
+      updateValues.push(urlPath);
+    }
+    
+    if (eventName !== undefined) {
+      updateParts.push("eventName = ?");
+      updateValues.push(eventName);
+    }
+    
+    if (isActive !== undefined) {
+      updateParts.push("isActive = ?");
+      updateValues.push(isActive);
+    }
+    
+    if (eventStartDate !== undefined) {
+      updateParts.push("eventStartDate = ?");
+      updateValues.push(eventStartDate ? new Date(eventStartDate) : null);
+    }
+    
+    if (eventEndDate !== undefined) {
+      updateParts.push("eventEndDate = ?");
+      updateValues.push(eventEndDate ? new Date(eventEndDate) : null);
+    }
+    
+    // Add updatedAt
+    updateParts.push("updatedAt = ?");
+    updateValues.push(new Date());
+    
+    if (updateParts.length > 0) {
+      const updateQuery = `
+        UPDATE EventUrl
+        SET ${updateParts.join(", ")}
+        WHERE id = ?
+      `;
+      
+      await prisma.$executeRawUnsafe(
+        updateQuery,
+        ...updateValues,
+        id
+      );
+    }
+    
+    // Get the updated event URL
+    const updatedEventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const updatedEventUrl = Array.isArray(updatedEventUrlResults) && updatedEventUrlResults.length > 0 
+      ? updatedEventUrlResults[0] 
+      : null;
 
     return NextResponse.json({ eventUrl: updatedEventUrl });
   } catch (error) {
@@ -134,10 +192,14 @@ export async function DELETE(
 
     const { id } = params;
     
-    // Check if event URL exists
-    const existingUrl = await prisma.eventUrl.findUnique({
-      where: { id },
-    });
+    // Check if event URL exists using raw query
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const existingUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] 
+      : null;
 
     if (!existingUrl) {
       return NextResponse.json(
@@ -154,10 +216,10 @@ export async function DELETE(
       );
     }
 
-    // Delete the event URL
-    await prisma.eventUrl.delete({
-      where: { id },
-    });
+    // Delete the event URL using raw query
+    await prisma.$executeRaw`
+      DELETE FROM EventUrl WHERE id = ${id}
+    `;
 
     return NextResponse.json({ message: 'Event URL deleted successfully' });
   } catch (error) {

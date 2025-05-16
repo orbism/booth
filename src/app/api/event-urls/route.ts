@@ -3,26 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-
-// Reserved keywords that can't be used as URLs
-const RESERVED_KEYWORDS = [
-  'admin',
-  'api',
-  'auth',
-  'booth',
-  'dashboard',
-  'login',
-  'logout',
-  'register',
-  'setup',
-  'settings',
-  'subscription',
-  'support',
-  'verify',
-  'verify-email',
-  'verify-success',
-  'e',
-];
+import { RESERVED_KEYWORDS, getMaxEventUrlsForTier } from '@/types/event-url';
+import { SubscriptionTier } from '@/types/event-url';
 
 // Event URL validation schema
 const eventUrlSchema = z.object({
@@ -57,16 +39,18 @@ export async function GET(request: NextRequest) {
     // Get the user ID
     const userId = session.user.id;
     
-    // Get the user's event URLs
-    const eventUrls = await prisma.eventUrl.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Use raw query to get the user's event URLs due to TypeScript issues
+    const eventUrls = await prisma.$queryRaw`
+      SELECT id, urlPath, eventName, isActive, eventStartDate, eventEndDate, createdAt, updatedAt
+      FROM EventUrl
+      WHERE userId = ${userId}
+      ORDER BY createdAt DESC
+    `;
     
     // Return the event URLs
     return NextResponse.json({
       success: true,
-      eventUrls,
+      eventUrls: eventUrls || [],
     });
     
   } catch (error) {
@@ -126,12 +110,12 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if URL is already in use
-    const existingUrl = await prisma.eventUrl.findUnique({
-      where: { urlPath: urlPath.toLowerCase() }
-    });
+    // Check if URL is already in use - using raw query for TypeScript compatibility
+    const existingUrl = await prisma.$queryRaw`
+      SELECT id FROM EventUrl WHERE urlPath = ${urlPath.toLowerCase()}
+    `;
     
-    if (existingUrl) {
+    if (Array.isArray(existingUrl) && existingUrl.length > 0) {
       return NextResponse.json(
         { success: false, error: 'This URL is already taken' },
         { status: 400 }
@@ -141,10 +125,9 @@ export async function POST(request: NextRequest) {
     // Check subscription limits
     const userId = session.user.id;
     
-    // Get the user with their subscription data
+    // Get user data
     const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { subscription: true, eventUrls: true }
+      where: { id: userId }
     });
     
     if (!user) {
@@ -154,11 +137,27 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check for URL limits based on subscription tier
-    // Most tiers only allow 1 URL
-    const maxUrls = user.subscription?.tier === 'GOLD' || user.subscription?.tier === 'PLATINUM' || user.subscription?.tier === 'ADMIN' ? 5 : 1;
+    // Get subscription data using raw query
+    const subscriptionData = await prisma.$queryRaw`
+      SELECT tier FROM Subscription WHERE userId = ${userId} LIMIT 1
+    `;
     
-    if (user.eventUrls.length >= maxUrls) {
+    // Get count of existing event URLs
+    const urlCountResult = await prisma.$queryRaw`
+      SELECT COUNT(*) as count FROM EventUrl WHERE userId = ${userId}
+    `;
+    const urlCount = Array.isArray(urlCountResult) && urlCountResult.length > 0 
+      ? Number(urlCountResult[0].count) 
+      : 0;
+    
+    // Get max URLs for subscription tier
+    const tier = Array.isArray(subscriptionData) && subscriptionData.length > 0 
+      ? (subscriptionData[0].tier as SubscriptionTier)
+      : 'FREE';
+    
+    const maxUrls = getMaxEventUrlsForTier(tier);
+    
+    if (urlCount >= maxUrls) {
       return NextResponse.json(
         { 
           success: false, 
@@ -168,22 +167,30 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Create the event URL
-    const eventUrl = await prisma.eventUrl.create({
-      data: {
-        userId,
-        urlPath: urlPath.toLowerCase(),
-        eventName,
-        isActive,
-        eventStartDate: eventStartDate ? new Date(eventStartDate) : null,
-        eventEndDate: eventEndDate ? new Date(eventEndDate) : null,
-      }
-    });
+    // Create the event URL using raw query
+    await prisma.$executeRaw`
+      INSERT INTO EventUrl (
+        id, userId, urlPath, eventName, isActive,
+        eventStartDate, eventEndDate, createdAt, updatedAt
+      ) VALUES (
+        uuid(), ${userId}, ${urlPath.toLowerCase()}, ${eventName}, ${isActive},
+        ${eventStartDate ? new Date(eventStartDate) : null},
+        ${eventEndDate ? new Date(eventEndDate) : null},
+        NOW(), NOW()
+      )
+    `;
+    
+    // Get the newly created event URL
+    const newEventUrl = await prisma.$queryRaw`
+      SELECT * FROM EventUrl 
+      WHERE userId = ${userId} AND urlPath = ${urlPath.toLowerCase()}
+      LIMIT 1
+    `;
     
     // Return the created URL
     return NextResponse.json({
       success: true,
-      eventUrl,
+      eventUrl: Array.isArray(newEventUrl) && newEventUrl.length > 0 ? newEventUrl[0] : null,
     });
     
   } catch (error) {

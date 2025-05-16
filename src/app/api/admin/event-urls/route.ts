@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
+import { RESERVED_KEYWORDS } from '@/types/event-url';
 
 // GET /api/admin/event-urls - Get all event URLs
 export async function GET(req: NextRequest) {
@@ -15,9 +16,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const eventUrls = await prisma.eventUrl.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+    // Use raw query to get all event URLs
+    const eventUrls = await prisma.$queryRaw`
+      SELECT * FROM EventUrl
+      ORDER BY createdAt DESC
+    `;
 
     return NextResponse.json({ eventUrls });
   } catch (error) {
@@ -52,11 +55,23 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // Check if URL is a reserved keyword
+    if (RESERVED_KEYWORDS.includes(urlPath.toLowerCase())) {
+      return NextResponse.json(
+        { error: 'This URL is reserved and cannot be used' },
+        { status: 400 }
+      );
+    }
 
-    // Check if the URL path is already in use
-    const existingUrl = await prisma.eventUrl.findUnique({
-      where: { urlPath },
-    });
+    // Check if the URL path is already in use with raw query
+    const existingUrlResults = await prisma.$queryRaw`
+      SELECT id FROM EventUrl WHERE urlPath = ${urlPath}
+    `;
+    
+    const existingUrl = Array.isArray(existingUrlResults) && existingUrlResults.length > 0 
+      ? existingUrlResults[0] 
+      : null;
 
     if (existingUrl) {
       return NextResponse.json(
@@ -65,17 +80,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create the new event URL
-    const eventUrl = await prisma.eventUrl.create({
-      data: {
-        urlPath,
-        eventName,
-        isActive: isActive === undefined ? true : isActive,
-        eventStartDate: eventStartDate ? new Date(eventStartDate) : null,
-        eventEndDate: eventEndDate ? new Date(eventEndDate) : null,
-        userId: session.user.id, // Associate with the current admin user
-      },
-    });
+    // Create the new event URL with raw query
+    await prisma.$executeRaw`
+      INSERT INTO EventUrl (
+        id, userId, urlPath, eventName, isActive,
+        eventStartDate, eventEndDate, createdAt, updatedAt
+      ) VALUES (
+        uuid(), ${session.user.id}, ${urlPath}, ${eventName},
+        ${isActive === undefined ? true : isActive},
+        ${eventStartDate ? new Date(eventStartDate) : null},
+        ${eventEndDate ? new Date(eventEndDate) : null},
+        NOW(), NOW()
+      )
+    `;
+    
+    // Get the newly created event URL
+    const newEventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl 
+      WHERE urlPath = ${urlPath}
+      LIMIT 1
+    `;
+    
+    const eventUrl = Array.isArray(newEventUrlResults) && newEventUrlResults.length > 0 
+      ? newEventUrlResults[0] 
+      : null;
 
     return NextResponse.json({ eventUrl }, { status: 201 });
   } catch (error) {

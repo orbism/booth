@@ -37,10 +37,14 @@ export async function GET(
     // Get the user ID
     const userId = session.user.id;
     
-    // Get the specified event URL
-    const eventUrl = await prisma.eventUrl.findUnique({
-      where: { id },
-    });
+    // Get the specified event URL using raw query
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const eventUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] 
+      : null;
     
     if (!eventUrl) {
       return NextResponse.json(
@@ -102,10 +106,14 @@ export async function PATCH(
     // Get the user ID
     const userId = session.user.id;
     
-    // Check if the event URL exists and belongs to the user
-    const eventUrl = await prisma.eventUrl.findUnique({
-      where: { id },
-    });
+    // Check if the event URL exists and belongs to the user using raw query
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const eventUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] 
+      : null;
     
     if (!eventUrl) {
       return NextResponse.json(
@@ -140,17 +148,56 @@ export async function PATCH(
     
     const { eventName, eventStartDate, eventEndDate, isActive } = result.data;
     
-    // Update the event URL
-    const updatedEventUrl = await prisma.eventUrl.update({
-      where: { id },
-      data: {
-        eventName,
-        eventStartDate: eventStartDate ? new Date(eventStartDate) : undefined,
-        eventEndDate: eventEndDate ? new Date(eventEndDate) : undefined,
-        isActive,
-        updatedAt: new Date(),
-      },
-    });
+    // Update the event URL using raw query
+    let updateParts = [];
+    let updateValues = [];
+    
+    if (eventName !== undefined) {
+      updateParts.push("eventName = ?");
+      updateValues.push(eventName);
+    }
+    
+    if (eventStartDate !== undefined) {
+      updateParts.push("eventStartDate = ?");
+      updateValues.push(eventStartDate ? new Date(eventStartDate) : null);
+    }
+    
+    if (eventEndDate !== undefined) {
+      updateParts.push("eventEndDate = ?");
+      updateValues.push(eventEndDate ? new Date(eventEndDate) : null);
+    }
+    
+    if (isActive !== undefined) {
+      updateParts.push("isActive = ?");
+      updateValues.push(isActive);
+    }
+    
+    // Add updatedAt
+    updateParts.push("updatedAt = ?");
+    updateValues.push(new Date());
+    
+    if (updateParts.length > 0) {
+      const updateQuery = `
+        UPDATE EventUrl
+        SET ${updateParts.join(", ")}
+        WHERE id = ?
+      `;
+      
+      await prisma.$executeRawUnsafe(
+        updateQuery,
+        ...updateValues,
+        id
+      );
+    }
+    
+    // Get the updated event URL
+    const updatedEventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const updatedEventUrl = Array.isArray(updatedEventUrlResults) && updatedEventUrlResults.length > 0 
+      ? updatedEventUrlResults[0] 
+      : null;
     
     // Return the updated event URL
     return NextResponse.json({
@@ -197,10 +244,14 @@ export async function DELETE(
     // Get the user ID
     const userId = session.user.id;
     
-    // Check if the event URL exists
-    const eventUrl = await prisma.eventUrl.findUnique({
-      where: { id },
-    });
+    // Check if the event URL exists using raw query
+    const eventUrlResults = await prisma.$queryRaw`
+      SELECT * FROM EventUrl WHERE id = ${id}
+    `;
+    
+    const eventUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
+      ? eventUrlResults[0] 
+      : null;
     
     if (!eventUrl) {
       return NextResponse.json(
@@ -217,10 +268,10 @@ export async function DELETE(
       );
     }
     
-    // Delete the event URL
-    await prisma.eventUrl.delete({
-      where: { id },
-    });
+    // Delete the event URL using raw query
+    await prisma.$executeRaw`
+      DELETE FROM EventUrl WHERE id = ${id}
+    `;
     
     // Return success
     return NextResponse.json({
