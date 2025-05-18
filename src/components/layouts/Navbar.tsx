@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
+import { getUserRoute } from '@/lib/route-utils';
 
 export default function Navbar() {
   const { data: session, status } = useSession();
@@ -56,18 +57,22 @@ export default function Navbar() {
   ];
   
   // Check if current path is admin
-  const isAdminRoute = pathname.startsWith('/admin');
+  const isAdminRoute = pathname.startsWith('/admin') || (pathname.startsWith('/u/') && pathname.includes('/admin'));
   
   // Check if the current path is a user route
   const isUserRoute = pathname.startsWith('/u/');
   
   // User menu items
   const userMenuItems = username ? [
-    { name: 'Account Dashboard', href: `/u/${username}` },
-    { name: 'Admin Dashboard', href: `/u/${username}/admin` },
-    { name: 'Settings', href: `/u/${username}/admin/settings` },
-    { name: 'Event URLs', href: `/u/${username}/admin/event-urls` },
-    { name: 'Booth Sessions', href: `/u/${username}/admin/sessions` },
+    { name: 'Account Dashboard', href: getUserRoute(username) },
+    { name: 'Analytics', href: getUserRoute(username, 'analytics') },
+    { name: 'Booth Sessions', href: getUserRoute(username, 'admin/sessions') },
+    { name: 'Event URLs', href: getUserRoute(username, 'admin/event-urls') },
+    { name: 'Settings', href: getUserRoute(username, 'settings') },
+    // Admin-specific items
+    ...(session?.user?.role === 'ADMIN' ? [
+      { name: 'Admin Dashboard', href: '/admin' },
+    ] : [])
   ] : [];
   
   // Check if the user is an admin

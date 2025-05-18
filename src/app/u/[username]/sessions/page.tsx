@@ -16,6 +16,7 @@ type BoothSession = {
   status: 'complete' | 'incomplete' | 'error';
 };
 
+// Note: For client components like this, we don't need to await params
 export default function CustomerSessionsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();

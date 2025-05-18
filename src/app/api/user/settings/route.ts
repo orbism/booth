@@ -37,7 +37,7 @@ const settingsSchema = z.object({
   textColor: z.string().regex(/^#([0-9A-F]{3}){1,2}$/i, "Invalid hex color").optional().nullable(),
 
   // Custom Journey Settings
-  customJourneyEnabled: z.boolean().default(false),
+  customJourneyEnabled: z.coerce.boolean().default(false),
   journeyName: z.string().optional(),
   journeyId: z.string().optional(),
   journeyPages: z.array(
@@ -52,7 +52,7 @@ const settingsSchema = z.object({
   ).optional().default([]),
 
   // Splash Page settings
-  splashPageEnabled: z.boolean().default(false),
+  splashPageEnabled: z.coerce.boolean().default(false),
   splashPageTitle: z.string().optional(),
   splashPageContent: z.string().optional(),
   splashPageImage: z.string().optional().nullable(),
@@ -66,8 +66,8 @@ const settingsSchema = z.object({
   photoDevice: z.string().default("ipad"),
   photoResolution: z.string().default("medium"),
   photoEffect: z.string().default("none"),
-  printerEnabled: z.boolean().default(false),
-  aiImageCorrection: z.boolean().default(false),
+  printerEnabled: z.coerce.boolean().default(false),
+  aiImageCorrection: z.coerce.boolean().default(false),
   
   // Video Mode Settings
   videoOrientation: z.string().default("portrait-standard"),
@@ -77,12 +77,12 @@ const settingsSchema = z.object({
   videoDuration: z.coerce.number().int().min(5).max(60).default(10),
 
   // Photo Filters/Effects
-  filtersEnabled: z.boolean().default(false),
+  filtersEnabled: z.coerce.boolean().default(false),
   enabledFilters: z.string().optional().nullable(),
 
   // Storage settings
   storageProvider: z.enum(["auto", "local", "vercel"]).default("auto"),
-  blobVercelEnabled: z.boolean().default(true),
+  blobVercelEnabled: z.coerce.boolean().default(true),
   localUploadPath: z.string().default("uploads"),
   storageBaseUrl: z.string().optional().nullable(),
 });
@@ -119,8 +119,46 @@ function safelyParseJourneyConfig(journeyConfig: any): any[] {
 }
 
 /**
+ * Fetch user by username or email
+ * If a username parameter is provided, it will be used to look up the user
+ * If no username is provided, the session user will be used
+ */
+async function getUserForSettings(session: any, usernameParam?: string | null) {
+  // If username is provided in query params and user is an admin, look up that user
+  if (usernameParam && (session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN')) {
+    console.log(`Admin user looking up settings for username: ${usernameParam}`);
+    
+    // Look up user by username or email (could be either)
+    const users = await prisma.$queryRaw`
+      SELECT id, name, email, username FROM User 
+      WHERE username = ${usernameParam} OR email = ${usernameParam}
+      LIMIT 1
+    `;
+    
+    const user = Array.isArray(users) && users.length > 0 ? users[0] : null;
+    
+    if (!user) {
+      console.log(`User with username/email ${usernameParam} not found`);
+      return null;
+    }
+    
+    return user;
+  }
+  
+  // Regular case: get the current user by session email
+  console.log(`Regular user lookup by session email: ${session?.user?.email}`);
+  const users = await prisma.$queryRaw`
+    SELECT id, name, email, username FROM User 
+    WHERE email = ${session.user.email}
+    LIMIT 1
+  `;
+  
+  return Array.isArray(users) && users.length > 0 ? users[0] : null;
+}
+
+/**
  * GET /api/user/settings
- * Get booth settings for the current user
+ * Get booth settings for the current user or a specific user if admin
  */
 export async function GET(request: NextRequest) {
   try {
@@ -132,12 +170,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Get user by email using raw query to avoid TypeScript issues
-    const users = await prisma.$queryRaw`
-      SELECT id, name, email FROM User WHERE email = ${session.user.email} LIMIT 1
-    `;
+    // Get username from query params if provided
+    const url = new URL(request.url);
+    const usernameParam = url.searchParams.get('username');
     
-    const user = Array.isArray(users) && users.length > 0 ? users[0] : null;
+    // Get the user - either by username param (if admin) or by session email
+    const user = await getUserForSettings(session, usernameParam);
     
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -221,177 +259,191 @@ export async function GET(request: NextRequest) {
 
 /**
  * PATCH /api/user/settings
- * Update booth settings for the current user
+ * Update booth settings for the current user or a specific user if admin
  */
 export async function PATCH(request: NextRequest) {
   try {
+    console.log('Processing PATCH request to /api/user/settings');
+    
     // Get the current user session
     const session = await getServerSession(authOptions);
     
     // Check if user is authenticated
     if (!session?.user?.email) {
+      console.log('Unauthorized: No valid session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Get user by email using raw query
-    const users = await prisma.$queryRaw`
-      SELECT id, name, email FROM User WHERE email = ${session.user.email} LIMIT 1
-    `;
+    console.log(`Authenticated user: ${session.user.email}`);
     
-    const user = Array.isArray(users) && users.length > 0 ? users[0] : null;
+    // Get username from query params if provided
+    const url = new URL(request.url);
+    const usernameParam = url.searchParams.get('username');
+    
+    // Get the user - either by username param (if admin) or by session email
+    const user = await getUserForSettings(session, usernameParam);
     
     if (!user) {
+      console.log('User not found in database');
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    // Parse and validate request body
-    const body = await request.json();
-    const validatedData = settingsSchema.parse(body);
-    
-    // Check if the user already has settings
-    const existingSettings = await prisma.$queryRaw`
-      SELECT id FROM Settings WHERE userId = ${user.id} LIMIT 1
-    `;
-    
-    const settingsExists = Array.isArray(existingSettings) && existingSettings.length > 0;
-    
-    // Ensure journeyConfig is properly serialized as JSON string before saving
-    const journeyConfig = validatedData.journeyPages?.length 
-      ? JSON.stringify(validatedData.journeyPages)  // Explicitly stringify to ensure it's a JSON string
-      : null;
-    
-    let updatedSettings;
-    
-    if (settingsExists) {
-      // Update existing settings
-      updatedSettings = await prisma.settings.update({
-        where: {
-          userId: user.id,
-        },
-        data: {
-          eventName: validatedData.eventName,
-          adminEmail: validatedData.adminEmail || session.user.email,
-          countdownTime: validatedData.countdownTime,
-          resetTime: validatedData.resetTime,
-          emailSubject: validatedData.emailSubject,
-          emailTemplate: validatedData.emailTemplate,
-          smtpHost: validatedData.smtpHost,
-          smtpPort: validatedData.smtpPort,
-          smtpUser: validatedData.smtpUser,
-          smtpPassword: validatedData.smtpPassword,
-          companyName: validatedData.companyName,
-          companyLogo: validatedData.companyLogo,
-          primaryColor: validatedData.primaryColor,
-          secondaryColor: validatedData.secondaryColor,
-          theme: validatedData.theme,
-          backgroundColor: validatedData.backgroundColor,
-          borderColor: validatedData.borderColor,
-          buttonColor: validatedData.buttonColor,
-          textColor: validatedData.textColor,
-          notes: validatedData.notes,
-          customJourneyEnabled: validatedData.customJourneyEnabled,
-          activeJourneyId: validatedData.journeyId || null,
-          journeyConfig, // Use our explicitly stringified value
-          splashPageEnabled: validatedData.splashPageEnabled,
-          splashPageTitle: validatedData.splashPageTitle,
-          splashPageContent: validatedData.splashPageContent,
-          splashPageImage: validatedData.splashPageImage,
-          splashPageButtonText: validatedData.splashPageButtonText,
-          captureMode: validatedData.captureMode,
-          photoOrientation: validatedData.photoOrientation,
-          photoDevice: validatedData.photoDevice,
-          photoResolution: validatedData.photoResolution,
-          photoEffect: validatedData.photoEffect,
-          printerEnabled: validatedData.printerEnabled,
-          aiImageCorrection: validatedData.aiImageCorrection,
-          videoOrientation: validatedData.videoOrientation,
-          videoDevice: validatedData.videoDevice,
-          videoResolution: validatedData.videoResolution,
-          videoEffect: validatedData.videoEffect,
-          videoDuration: validatedData.videoDuration,
-          filtersEnabled: validatedData.filtersEnabled,
-          enabledFilters: validatedData.enabledFilters,
-          storageProvider: validatedData.storageProvider,
-          blobVercelEnabled: validatedData.blobVercelEnabled,
-          localUploadPath: validatedData.localUploadPath,
-          storageBaseUrl: validatedData.storageBaseUrl,
-        }
-      });
-    } else {
-      // Create new settings
-      updatedSettings = await prisma.settings.create({
-        data: {
-          userId: user.id,
-          eventName: validatedData.eventName,
-          adminEmail: validatedData.adminEmail || session.user.email,
-          countdownTime: validatedData.countdownTime,
-          resetTime: validatedData.resetTime,
-          emailSubject: validatedData.emailSubject,
-          emailTemplate: validatedData.emailTemplate,
-          smtpHost: validatedData.smtpHost,
-          smtpPort: validatedData.smtpPort,
-          smtpUser: validatedData.smtpUser,
-          smtpPassword: validatedData.smtpPassword,
-          companyName: validatedData.companyName,
-          companyLogo: validatedData.companyLogo,
-          primaryColor: validatedData.primaryColor,
-          secondaryColor: validatedData.secondaryColor,
-          theme: validatedData.theme,
-          backgroundColor: validatedData.backgroundColor,
-          borderColor: validatedData.borderColor,
-          buttonColor: validatedData.buttonColor,
-          textColor: validatedData.textColor,
-          notes: validatedData.notes,
-          customJourneyEnabled: validatedData.customJourneyEnabled,
-          activeJourneyId: validatedData.journeyId || null,
-          journeyConfig, // Use our explicitly stringified value
-          splashPageEnabled: validatedData.splashPageEnabled,
-          splashPageTitle: validatedData.splashPageTitle,
-          splashPageContent: validatedData.splashPageContent,
-          splashPageImage: validatedData.splashPageImage,
-          splashPageButtonText: validatedData.splashPageButtonText,
-          captureMode: validatedData.captureMode,
-          photoOrientation: validatedData.photoOrientation,
-          photoDevice: validatedData.photoDevice,
-          photoResolution: validatedData.photoResolution,
-          photoEffect: validatedData.photoEffect,
-          printerEnabled: validatedData.printerEnabled,
-          aiImageCorrection: validatedData.aiImageCorrection,
-          videoOrientation: validatedData.videoOrientation,
-          videoDevice: validatedData.videoDevice,
-          videoResolution: validatedData.videoResolution,
-          videoEffect: validatedData.videoEffect,
-          videoDuration: validatedData.videoDuration,
-          filtersEnabled: validatedData.filtersEnabled,
-          enabledFilters: validatedData.enabledFilters,
-          storageProvider: validatedData.storageProvider,
-          blobVercelEnabled: validatedData.blobVercelEnabled,
-          localUploadPath: validatedData.localUploadPath,
-          storageBaseUrl: validatedData.storageBaseUrl,
-        }
-      });
-    }
-    
-    // Process settings to include journeyPages for client
-    const processedSettings = {
-      ...updatedSettings,
-      journeyPages: safelyParseJourneyConfig(updatedSettings.journeyConfig)
-    };
-    
-    // Return directly without nesting
-    return NextResponse.json(processedSettings);
-  } catch (error) {
-    console.error('Error updating user settings:', error);
-    
-    if (error instanceof z.ZodError) {
+    // Parse request body
+    let requestData;
+    try {
+      requestData = await request.json();
+      console.log('Request data parsed successfully');
+    } catch (error) {
+      console.error('Error parsing request body:', error);
       return NextResponse.json(
-        { error: 'Validation error', details: error.errors },
+        { error: 'Invalid request data' },
         { status: 400 }
       );
     }
     
+    // Validate settings data
+    let validatedData;
+    try {
+      // Special handling for journeyPages, moving them from the journeyPages property to journeyConfig
+      const { journeyPages, ...otherData } = requestData;
+      // Convert journeyPages to a string for storage if it exists
+      const journeyConfig = journeyPages ? JSON.stringify(journeyPages) : null;
+      
+      // Validate with zod schema
+      validatedData = settingsSchema.parse({
+        ...otherData,
+        journeyPages: journeyPages || [],
+      });
+      
+      // Update with the parsed journeyConfig
+      validatedData.journeyConfig = journeyConfig;
+      
+      console.log('Settings data validated successfully');
+    } catch (error) {
+      console.error('Validation error:', error);
+      return NextResponse.json(
+        { error: 'Invalid settings data', details: error },
+        { status: 400 }
+      );
+    }
+    
+    // Check if settings exist for this user
+    const existingSettings = await prisma.$queryRaw`
+      SELECT id FROM Settings WHERE userId = ${user.id} LIMIT 1
+    `;
+    
+    const settingsExist = Array.isArray(existingSettings) && existingSettings.length > 0;
+    
+    // Convert validated data to the format needed for the database
+    const {
+      journeyPages, // Remove journeyPages from the data as it's now in journeyConfig
+      ...settingsData
+    } = validatedData;
+    
+    // Update or create settings
+    let updatedSettings;
+    
+    try {
+      if (settingsExist) {
+        // Update existing settings
+        await prisma.$executeRaw`
+          UPDATE Settings
+          SET 
+            eventName = ${settingsData.eventName},
+            adminEmail = ${settingsData.adminEmail},
+            countdownTime = ${settingsData.countdownTime},
+            resetTime = ${settingsData.resetTime},
+            emailSubject = ${settingsData.emailSubject},
+            emailTemplate = ${settingsData.emailTemplate},
+            smtpHost = ${settingsData.smtpHost},
+            smtpPort = ${settingsData.smtpPort},
+            smtpUser = ${settingsData.smtpUser},
+            smtpPassword = ${settingsData.smtpPassword},
+            companyName = ${settingsData.companyName},
+            companyLogo = ${settingsData.companyLogo},
+            notes = ${settingsData.notes},
+            theme = ${settingsData.theme},
+            primaryColor = ${settingsData.primaryColor},
+            secondaryColor = ${settingsData.secondaryColor},
+            backgroundColor = ${settingsData.backgroundColor},
+            borderColor = ${settingsData.borderColor},
+            buttonColor = ${settingsData.buttonColor},
+            textColor = ${settingsData.textColor},
+            customJourneyEnabled = ${settingsData.customJourneyEnabled},
+            journeyName = ${settingsData.journeyName},
+            journeyConfig = ${settingsData.journeyConfig},
+            splashPageEnabled = ${settingsData.splashPageEnabled},
+            splashPageTitle = ${settingsData.splashPageTitle},
+            splashPageContent = ${settingsData.splashPageContent},
+            splashPageImage = ${settingsData.splashPageImage},
+            splashPageButtonText = ${settingsData.splashPageButtonText},
+            captureMode = ${settingsData.captureMode},
+            photoOrientation = ${settingsData.photoOrientation},
+            photoDevice = ${settingsData.photoDevice},
+            photoResolution = ${settingsData.photoResolution},
+            photoEffect = ${settingsData.photoEffect},
+            printerEnabled = ${settingsData.printerEnabled},
+            aiImageCorrection = ${settingsData.aiImageCorrection},
+            videoOrientation = ${settingsData.videoOrientation},
+            videoDevice = ${settingsData.videoDevice},
+            videoResolution = ${settingsData.videoResolution},
+            videoEffect = ${settingsData.videoEffect},
+            videoDuration = ${settingsData.videoDuration},
+            filtersEnabled = ${settingsData.filtersEnabled},
+            enabledFilters = ${settingsData.enabledFilters},
+            storageProvider = ${settingsData.storageProvider},
+            blobVercelEnabled = ${settingsData.blobVercelEnabled},
+            localUploadPath = ${settingsData.localUploadPath},
+            storageBaseUrl = ${settingsData.storageBaseUrl},
+            updatedAt = CURRENT_TIMESTAMP
+          WHERE userId = ${user.id}
+        `;
+        
+        // Fetch the updated settings
+        const updatedSettingsResult = await prisma.$queryRaw`
+          SELECT * FROM Settings WHERE userId = ${user.id} LIMIT 1
+        `;
+        
+        updatedSettings = Array.isArray(updatedSettingsResult) && updatedSettingsResult.length > 0 
+          ? updatedSettingsResult[0] 
+          : null;
+        
+        console.log('Settings updated successfully');
+      } else {
+        // Create new settings if they don't exist
+        updatedSettings = await prisma.settings.create({
+          data: {
+            userId: user.id,
+            ...settingsData
+          }
+        });
+        
+        console.log('Settings created successfully');
+      }
+      
+      // Return success response with the updated settings
+      return NextResponse.json({
+        success: true,
+        message: 'Settings updated successfully',
+        settings: {
+          ...updatedSettings,
+          // Add back the journeyPages for the response
+          journeyPages,
+          // Ensure customJourneyEnabled is a boolean
+          customJourneyEnabled: Boolean(updatedSettings.customJourneyEnabled)
+        }
+      });
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      return NextResponse.json(
+        { error: 'Failed to update settings', details: error },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error('Unhandled error in PATCH /api/user/settings:', error);
     return NextResponse.json(
-      { error: 'Failed to update user settings' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -54,13 +54,16 @@ async function getUserDetails(username: string) {
   }
 }
 
-export default async function UserAccountPage({ params }: { params: { username: string } }) {
+export default async function UserAccountPage({ params }: { params: Promise<{ username: string }> }) {
+  // Await the params to get the username
+  const { username } = await params;
+  
   // Get the current user session
   const session = await getServerSession(authOptions);
   
   // Redirect to login if not authenticated
   if (!session?.user) {
-    return redirect('/login?callbackUrl=/u/' + params.username);
+    return redirect('/login?callbackUrl=/u/' + username);
   }
   
   // Get the authenticated user's details from the database
@@ -102,7 +105,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
   // Check if the URL username matches the authenticated user's username
   // or if the user is an admin (can access any user's pages)
   const isAuthorized = 
-    params.username === user.username || 
+    username === user.username || 
     user.role === 'ADMIN' || 
     user.role === 'SUPER_ADMIN';
   
@@ -223,7 +226,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <a
-            href={`/u/${params.username}/admin/settings`}
+            href={`/u/${username}/admin/settings`}
             className="block p-4 bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow transition-all"
           >
             <div className="flex items-center gap-3">
@@ -241,7 +244,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
           </a>
           
           <a
-            href={`/u/${params.username}/admin/event-urls`}
+            href={`/u/${username}/admin/event-urls`}
             className="block p-4 bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow transition-all"
           >
             <div className="flex items-center gap-3">
@@ -258,7 +261,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
           </a>
           
           <a
-            href={`/u/${params.username}/admin/sessions`}
+            href={`/u/${username}/admin/sessions`}
             className="block p-4 bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow transition-all"
           >
             <div className="flex items-center gap-3">
@@ -318,7 +321,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
           </div>
           
           <Link 
-            href={`/u/${params.username}/admin/event-urls`}
+            href={`/u/${username}/admin/event-urls`}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >
             Manage event URLs →
@@ -346,7 +349,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
           </div>
           
           <Link 
-            href={`/u/${params.username}/admin/sessions`}
+            href={`/u/${username}/admin/sessions`}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >
             View booth sessions →
@@ -375,7 +378,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
           </div>
           
           <Link 
-            href={`/u/${params.username}/admin/settings`}
+            href={`/u/${username}/admin/settings`}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >
             Configure email settings →
@@ -392,7 +395,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
             <div className="space-y-4">
               <p className="text-gray-500">You have {sessionCount} recorded photo/video sessions.</p>
               <Link 
-                href={`/u/${params.username}/admin/sessions`}
+                href={`/u/${username}/admin/sessions`}
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
                 View all sessions →
@@ -407,7 +410,7 @@ export default async function UserAccountPage({ params }: { params: { username: 
               <p className="text-gray-600 mb-2">No booth sessions yet</p>
               <p className="text-gray-500 text-sm mb-4">Create an event URL to get started</p>
               <Link 
-                href={`/u/${params.username}/admin/event-urls/new`}
+                href={`/u/${username}/admin/event-urls/new`}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Create Event URL

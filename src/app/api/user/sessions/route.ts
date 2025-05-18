@@ -1,25 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth-utils';
+import { getUserByIdentifier, hasUserAccess } from '@/lib/user-utils';
 
 /**
  * GET /api/user/sessions
- * List all booth sessions for the current user with optional filtering
+ * List all booth sessions for the current user or a specific user (for admins)
+ * with optional filtering
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get user from auth utils
-    const user = await getCurrentUser();
+    console.log("[SESSIONS API] Processing GET request");
+    
+    // Get authenticated user from auth utils
+    const currentUser = await getCurrentUser();
     
     // Check if user is authenticated
-    if (!user) {
+    if (!currentUser) {
+      console.log("[SESSIONS API] Unauthorized - No current user found");
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
     
-    // Get query parameters for pagination and filtering
+    console.log(`[SESSIONS API] User authenticated: ${currentUser.id}, username: ${currentUser.username}, role: ${currentUser.role}`);
+    
+    // Get query parameters for pagination, filtering, and target user
     const { searchParams } = request.nextUrl;
     const page = Number(searchParams.get('page') || '1');
     const limit = Number(searchParams.get('limit') || '20');
@@ -27,12 +34,55 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const eventUrlId = searchParams.get('eventUrlId');
+    const username = searchParams.get('username'); // Added username parameter
+    
+    console.log(`[SESSIONS API] Requested username param: ${username || 'none'}`);
+    
+    // Determine which user's sessions to fetch
+    let targetUserId = currentUser.id;
+    let targetUsername = currentUser.username;
+    
+    // If username is provided and it's different from the current user's
+    if (username && username !== currentUser.username) {
+      console.log(`[SESSIONS API] Username provided (${username}) differs from current user (${currentUser.username})`);
+      
+      const targetUser = await getUserByIdentifier(username);
+      
+      if (!targetUser) {
+        console.log(`[SESSIONS API] Target user not found: ${username}`);
+        return NextResponse.json(
+          { success: false, error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      
+      console.log(`[SESSIONS API] Target user found: ${targetUser.id}, checking access`);
+      
+      // Check if current user has access to target user's data
+      const hasAccess = await hasUserAccess(currentUser.id, targetUser.id, currentUser.role);
+      
+      if (!hasAccess) {
+        console.log(`[SESSIONS API] Access denied for user ${currentUser.id} to access sessions for ${targetUser.id}`);
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: You do not have access to this user\'s sessions' },
+          { status: 403 }
+        );
+      }
+      
+      console.log(`[SESSIONS API] Access granted for user ${currentUser.id} to access sessions for ${targetUser.id}`);
+      targetUserId = targetUser.id;
+      targetUsername = targetUser.username;
+    } else {
+      console.log(`[SESSIONS API] Using current user's ID: ${currentUser.id}`);
+    }
+    
+    console.log(`[SESSIONS API] Fetching sessions for user ID: ${targetUserId}, username: ${targetUsername}`);
     
     const skip = (page - 1) * limit;
     
     // Build the where clause
-    let whereClause = `userId = ${user.id}`;
-    const whereParams: any[] = [];
+    let whereClause = `userId = ?`;
+    const whereParams: any[] = [targetUserId];
     
     // Add media type filter if provided
     if (mediaType) {
@@ -66,6 +116,8 @@ export async function GET(request: NextRequest) {
     
     const totalCount = countResult[0]?.count || 0;
     
+    console.log(`[SESSIONS API] Total sessions found: ${totalCount}`);
+    
     // Get the sessions with pagination
     const sessionsQuery = `
       SELECT 
@@ -98,6 +150,8 @@ export async function GET(request: NextRequest) {
       skip
     );
     
+    console.log(`[SESSIONS API] Fetched ${Array.isArray(sessions) ? sessions.length : 0} sessions for page ${page}`);
+    
     return NextResponse.json({
       success: true,
       sessions: sessions || [],
@@ -110,7 +164,7 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error fetching sessions:', error);
+    console.error('[SESSIONS API] Error fetching sessions:', error);
     
     return NextResponse.json(
       { 

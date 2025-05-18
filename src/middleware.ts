@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getToken } from 'next-auth/jwt';
+import { getUserRoute, getAdminRoute, mapUserToAdminRoute } from '@/lib/route-utils';
 
 // Enable detailed debugging logs
 const DEBUG = true;
@@ -104,6 +105,70 @@ function createSecureResponse(response = NextResponse.next()): NextResponse {
   });
 }
 
+/**
+ * Check if a user path should be redirected to an admin path
+ */
+function shouldRedirectToAdmin(pathname: string): boolean {
+  // Split the path into segments
+  const segments = pathname.split('/').filter(Boolean);
+  
+  // If path doesn't start with /u/ or has less than 2 segments, not a candidate for redirect
+  if (segments.length < 2 || segments[0] !== 'u') {
+    return false;
+  }
+  
+  // If already contains /admin/, not a candidate for redirect
+  if (pathname.includes('/admin/')) {
+    return false;
+  }
+  
+  // If path is just /u/[username], redirect to /u/[username]/admin
+  if (segments.length === 2) {
+    return true;
+  }
+  
+  // Check for specific patterns that should be redirected to admin routes
+  const adminPages = [
+    'analytics', 'sessions', 'account', 'settings', 
+    'event-urls', 'billing', 'support', 'profile'
+  ];
+  
+  // If path is /u/[username]/page and page is in adminPages list, redirect
+  if (segments.length === 3 && adminPages.includes(segments[2])) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Get the admin equivalent of a user route
+ */
+function getAdminEquivalent(pathname: string): string {
+  const segments = pathname.split('/').filter(Boolean);
+  
+  // Must be a /u/[username] path
+  if (segments.length < 2 || segments[0] !== 'u') {
+    return pathname;
+  }
+  
+  const username = segments[1];
+  
+  // Case: /u/[username] -> /u/[username]/admin
+  if (segments.length === 2) {
+    return `/u/${username}/admin`;
+  }
+  
+  // Case: /u/[username]/page -> /u/[username]/admin/page
+  if (segments.length >= 3) {
+    // Get all path segments after the username
+    const restOfPath = segments.slice(2).join('/');
+    return `/u/${username}/admin/${restOfPath}`;
+  }
+  
+  return pathname;
+}
+
 export async function middleware(request: NextRequest) {
   const startTime = Date.now();
   const { pathname } = request.nextUrl;
@@ -126,6 +191,13 @@ export async function middleware(request: NextRequest) {
     username,
     tokenSub: token?.sub
   });
+  
+  // Handle booth URL redirects - Redirect /booth/[urlPath] to /e/[urlPath]
+  if (pathname.startsWith('/booth/')) {
+    const urlPath = pathname.replace('/booth/', '');
+    debugLog(`BOOTH URL REDIRECT - Redirecting from ${pathname} to /e/${urlPath}`);
+    return NextResponse.redirect(new URL(`/e/${urlPath}`, request.url));
+  }
   
   // Handle root path redirection for authenticated users
   if (pathname === '/' && isAuthenticated) {
@@ -181,28 +253,46 @@ export async function middleware(request: NextRequest) {
   
   // Handle user-specific routes
   if (pathname.startsWith('/u/')) {
-    const pathUsername = pathname.split('/')[2];
+    const pathParts = pathname.split('/');
+    const pathUsername = pathParts.length > 2 ? pathParts[2] : null;
     
     if (!pathUsername) {
       return NextResponse.redirect(new URL('/404', request.url));
     }
     
-    // Check if accessing admin section
-    if (pathname.includes('/admin')) {
+    // Implement redirects from standalone routes to admin routes
+    if (shouldRedirectToAdmin(pathname)) {
+      debugLog(`REDIRECTING from standalone route to admin route: ${pathname}`);
+      const adminPath = getAdminEquivalent(pathname);
+      debugLog(`Redirecting to: ${adminPath}`);
+      return NextResponse.redirect(new URL(adminPath, request.url));
+    }
+    
+    // Check if the path contains 'admin' or 'settings'
+    const isAdminPath = pathname.includes('/admin');
+    const isSettingsPath = pathname.includes('/settings');
+    
+    // Determine if this is a protected path that requires authentication
+    const isProtectedPath = isAdminPath || isSettingsPath;
+    
+    // Handle authentication for protected paths
+    if (isProtectedPath) {
       // Unauthenticated users go to login
       if (!isAuthenticated) {
         return redirectToLogin(request, pathname);
       }
       
-      // Only allow access if admin or own account
-      const hasAccess = isAdmin || (username === pathUsername);
-      if (!hasAccess) {
-        debugLog(`User ${username} attempted to access ${pathUsername}'s admin area`);
-        return redirectToForbidden(request);
+      // For admin paths, only allow access if admin or own account
+      if (isAdminPath) {
+        const hasAccess = isAdmin || (username === pathUsername);
+        if (!hasAccess) {
+          debugLog(`User ${username} attempted to access ${pathUsername}'s admin area`);
+          return redirectToForbidden(request);
+        }
       }
     }
     
-    // Check if username exists (for public profile views)
+    // Check if username exists (for all user paths)
     try {
       // Use raw query instead of count with TypeScript issues
       const users = await prisma.$queryRaw`
@@ -214,6 +304,7 @@ export async function middleware(request: NextRequest) {
       const userCount = Array.isArray(users) && users.length > 0 ? users[0].count : 0;
       
       if (userCount === 0) {
+        debugLog(`Username ${pathUsername} does not exist`);
         return NextResponse.redirect(new URL('/404', request.url));
       }
     } catch (error) {
@@ -254,7 +345,8 @@ export const config = {
     '/',                       // Root route for redirections
     '/admin',                  // Admin root (exact match)
     '/admin/:path*',           // Admin routes with paths
-    '/booth/:path*',           // Booth routes
+    '/booth/:path*',           // Legacy booth routes for redirecting
+    '/e/:path*',               // New booth routes
     '/api/booth/:path*',       // Booth API routes
     '/api/admin/:path*',       // Admin API routes
     '/u/:path*',               // Username-based routes

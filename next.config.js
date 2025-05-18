@@ -30,6 +30,13 @@ const nextConfig = {
       },
     ];
   },
+  
+  // Fix for route parameters in Next.js 15
+  experimental: {
+    staleTimes: {
+      dynamic: 0 // Disable caching for dynamic routes
+    }
+  },
 };
 
 module.exports = nextConfig; 

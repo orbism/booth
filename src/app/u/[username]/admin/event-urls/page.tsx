@@ -1,565 +1,275 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter, useParams } from 'next/navigation';
+import { FiPlusCircle, FiTrash, FiLink, FiEye } from 'react-icons/fi';
+import { useToast } from '@/context/ToastContext';
 
-interface EventUrl {
+type EventUrl = {
   id: string;
   urlPath: string;
+  userId: string;
   eventName: string;
   isActive: boolean;
-  eventStartDate: string | null;
-  eventEndDate: string | null;
   createdAt: string;
-}
+  updatedAt: string;
+  sessionsCount?: number;
+};
 
-interface EventUrlFormData {
-  urlPath: string;
-  eventName: string;
-  isActive: boolean;
-  eventStartDate: string;
-  eventEndDate: string;
-}
-
-export default function UserEventUrlsPage({ params }: { params: { username: string } }) {
-  const { username } = params;
+export default function AdminEventUrlsPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const params = useParams();
+  const username = params.username as string;
+  const { showToast } = useToast();
   const [eventUrls, setEventUrls] = useState<EventUrl[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Form state
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [newUrl, setNewUrl] = useState<EventUrlFormData>({
-    urlPath: '',
-    eventName: '',
-    isActive: true,
-    eventStartDate: '',
-    eventEndDate: '',
-  });
-  const [editingUrl, setEditingUrl] = useState<EventUrl | null>(null);
-  const [urlToDelete, setUrlToDelete] = useState<EventUrl | null>(null);
-  
-  // Fetch event URLs on component mount
+  const [newUrl, setNewUrl] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedUrlId, setSelectedUrlId] = useState<string | null>(null);
+
   useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+      return;
+    }
+
     fetchEventUrls();
-  }, []);
-  
-  // Fetch event URLs from the API
+  }, [status, router, username]);
+
   const fetchEventUrls = async () => {
-    setLoading(true);
-    setError(null);
-    
     try {
-      const response = await fetch('/api/user/event-urls');
+      setIsLoading(true);
+      setError(null);
+
+      // For admin view, fetch specific user event URLs by username
+      const response = await fetch(`/api/user/event-urls?username=${encodeURIComponent(username)}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch event URLs');
+      }
+
       const data = await response.json();
       
-      if (!response.ok) {
-        throw new Error(data.error || `Error: ${response.status}`);
+      // Check if we got valid data structure
+      if (!data.success) {
+        throw new Error(data.error || 'Invalid response from server');
       }
       
       setEventUrls(data.eventUrls || []);
     } catch (err) {
-      setError(`Failed to fetch event URLs: ${err instanceof Error ? err.message : 'Unknown error'}`);
       console.error('Error fetching event URLs:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
-  
-  // Handle form submission for new event URL
-  const handleCreateUrl = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    
+
+  const createEventUrl = async () => {
+    if (!newUrl.trim()) {
+      showToast('Please enter a URL', 'error');
+      return;
+    }
+
     try {
+      setIsCreating(true);
+      setError(null);
+
       const response = await fetch('/api/user/event-urls', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newUrl),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        setFormError(data.error || `Error: ${response.status}`);
-        return;
-      }
-      
-      // Success - close modal and refresh the list
-      setIsCreateModalOpen(false);
-      setNewUrl({
-        urlPath: '',
-        eventName: '',
-        isActive: true,
-        eventStartDate: '',
-        eventEndDate: '',
-      });
-      
-      fetchEventUrls();
-    } catch (err) {
-      setFormError(`Failed to create event URL: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error('Error creating event URL:', err);
-    }
-  };
-  
-  // Handle form submission for updating an event URL
-  const handleUpdateUrl = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    
-    if (!editingUrl) return;
-    
-    try {
-      const response = await fetch(`/api/user/event-urls/${editingUrl.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          urlPath: editingUrl.urlPath,
-          eventName: editingUrl.eventName,
-          isActive: editingUrl.isActive,
-          eventStartDate: editingUrl.eventStartDate,
-          eventEndDate: editingUrl.eventEndDate,
+        body: JSON.stringify({ 
+          urlPath: newUrl.trim(), 
+          eventName: newUrl.trim(),
+          isActive: true 
         }),
       });
-      
-      const data = await response.json();
-      
+
       if (!response.ok) {
-        setFormError(data.error || `Error: ${response.status}`);
-        return;
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create event URL');
       }
-      
-      // Success - close modal and refresh the list
-      setIsEditModalOpen(false);
-      setEditingUrl(null);
-      
-      fetchEventUrls();
+
+      await fetchEventUrls();
+      setNewUrl('');
+      showToast('Event URL created successfully', 'success');
     } catch (err) {
-      setFormError(`Failed to update event URL: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      console.error('Error updating event URL:', err);
+      console.error('Error creating event URL:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      showToast(err instanceof Error ? err.message : 'Failed to create event URL', 'error');
+    } finally {
+      setIsCreating(false);
     }
   };
-  
-  // Handle delete confirmation
-  const handleDeleteUrl = async () => {
-    if (!urlToDelete) return;
-    
+
+  const deleteEventUrl = async (id: string) => {
     try {
-      const response = await fetch(`/api/user/event-urls/${urlToDelete.id}`, {
+      setIsDeleting(true);
+      setSelectedUrlId(id);
+      setError(null);
+
+      const response = await fetch(`/api/user/event-urls/${id}?username=${username}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Error: ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete event URL');
       }
-      
-      // Remove the deleted URL from the list
-      setEventUrls(eventUrls.filter(url => url.id !== urlToDelete.id));
-      
-      // Close the modal
-      setIsDeleteModalOpen(false);
-      setUrlToDelete(null);
+
+      await fetchEventUrls();
+      showToast('Event URL deleted successfully', 'success');
     } catch (err) {
-      setError(`Failed to delete event URL: ${err instanceof Error ? err.message : 'Unknown error'}`);
       console.error('Error deleting event URL:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      showToast(err instanceof Error ? err.message : 'Failed to delete event URL', 'error');
+    } finally {
+      setIsDeleting(false);
+      setSelectedUrlId(null);
     }
   };
-  
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString();
+
+  const copyUrlToClipboard = (urlPath: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/e/${urlPath}`);
+    showToast('URL copied to clipboard', 'success');
   };
-  
-  return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Event URLs</h1>
-          <p className="text-gray-600">Create and manage your photo booth event URLs</p>
-        </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
-        >
-          Create New URL
-        </button>
+
+  const previewBooth = (urlPath: string) => {
+    window.open(`/e/${urlPath}`, '_blank');
+  };
+
+  if (isLoading && eventUrls.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-full py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
       </div>
-      
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Event URLs</h1>
+        <p className="text-gray-600">
+          Manage custom event URLs for {username}
+        </p>
+      </div>
+
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <p>{error}</p>
-        </div>
-      )}
-      
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : eventUrls.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-6 text-center">
-          <h3 className="text-lg font-medium text-gray-900">No Event URLs Found</h3>
-          <p className="mt-2 text-gray-600">
-            Create your first custom event URL to get started.
-          </p>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
-          >
-            Create New URL
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Event Name
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  URL Path
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Active Dates
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {eventUrls.map((url) => (
-                <tr key={url.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{url.eventName}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-blue-600 hover:underline">
-                      <Link href={`/e/${url.urlPath}`} target="_blank">
-                        {url.urlPath}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${url.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {url.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(url.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {url.eventStartDate ? (
-                      <>
-                        {formatDate(url.eventStartDate)}
-                        {url.eventEndDate ? ` - ${formatDate(url.eventEndDate)}` : ''}
-                      </>
-                    ) : (
-                      'No date restrictions'
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => {
-                        setEditingUrl(url);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setUrlToDelete(url);
-                        setIsDeleteModalOpen(true);
-                      }}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      
-      {/* Create Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-bold mb-4">Create New Event URL</h2>
-            
-            {formError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <p>{formError}</p>
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
               </div>
-            )}
-            
-            <form onSubmit={handleCreateUrl}>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="eventName">
-                  Event Name
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="eventName"
-                  type="text"
-                  placeholder="Enter event name"
-                  value={newUrl.eventName}
-                  onChange={(e) => setNewUrl({ ...newUrl, eventName: e.target.value })}
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="urlPath">
-                  URL Path
-                </label>
-                <div className="flex items-center">
-                  <span className="text-gray-500 mr-2">/e/</span>
-                  <input
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    id="urlPath"
-                    type="text"
-                    placeholder="your-event-url"
-                    value={newUrl.urlPath}
-                    onChange={(e) => setNewUrl({ ...newUrl, urlPath: e.target.value })}
-                    pattern="[a-z0-9-]+"
-                    title="Only lowercase letters, numbers, and hyphens are allowed"
-                    required
-                  />
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  Only lowercase letters, numbers, and hyphens. No spaces or special characters.
-                </p>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Status
-                </label>
-                <div className="flex items-center">
-                  <input
-                    id="isActive"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                    checked={newUrl.isActive}
-                    onChange={(e) => setNewUrl({ ...newUrl, isActive: e.target.checked })}
-                  />
-                  <label htmlFor="isActive" className="ml-2 block text-gray-700">
-                    Active
-                  </label>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="eventStartDate">
-                  Start Date (Optional)
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="eventStartDate"
-                  type="date"
-                  value={newUrl.eventStartDate}
-                  onChange={(e) => setNewUrl({ ...newUrl, eventStartDate: e.target.value })}
-                />
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="eventEndDate">
-                  End Date (Optional)
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="eventEndDate"
-                  type="date"
-                  value={newUrl.eventEndDate}
-                  onChange={(e) => setNewUrl({ ...newUrl, eventEndDate: e.target.value })}
-                />
-              </div>
-              
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded mr-2"
-                  onClick={() => setIsCreateModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* Edit Modal */}
-      {isEditModalOpen && editingUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-bold mb-4">Edit Event URL</h2>
-            
-            {formError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                <p>{formError}</p>
-              </div>
-            )}
-            
-            <form onSubmit={handleUpdateUrl}>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editEventName">
-                  Event Name
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="editEventName"
-                  type="text"
-                  placeholder="Enter event name"
-                  value={editingUrl.eventName}
-                  onChange={(e) => setEditingUrl({ ...editingUrl, eventName: e.target.value })}
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editUrlPath">
-                  URL Path
-                </label>
-                <div className="flex items-center">
-                  <span className="text-gray-500 mr-2">/e/</span>
-                  <input
-                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    id="editUrlPath"
-                    type="text"
-                    placeholder="your-event-url"
-                    value={editingUrl.urlPath}
-                    onChange={(e) => setEditingUrl({ ...editingUrl, urlPath: e.target.value })}
-                    pattern="[a-z0-9-]+"
-                    title="Only lowercase letters, numbers, and hyphens are allowed"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Status
-                </label>
-                <div className="flex items-center">
-                  <input
-                    id="editIsActive"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                    checked={editingUrl.isActive}
-                    onChange={(e) => setEditingUrl({ ...editingUrl, isActive: e.target.checked })}
-                  />
-                  <label htmlFor="editIsActive" className="ml-2 block text-gray-700">
-                    Active
-                  </label>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editEventStartDate">
-                  Start Date (Optional)
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="editEventStartDate"
-                  type="date"
-                  value={editingUrl.eventStartDate || ''}
-                  onChange={(e) => setEditingUrl({ ...editingUrl, eventStartDate: e.target.value })}
-                />
-              </div>
-              
-              <div className="mb-6">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="editEventEndDate">
-                  End Date (Optional)
-                </label>
-                <input
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  id="editEventEndDate"
-                  type="date"
-                  value={editingUrl.eventEndDate || ''}
-                  onChange={(e) => setEditingUrl({ ...editingUrl, eventEndDate: e.target.value })}
-                />
-              </div>
-              
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded mr-2"
-                  onClick={() => {
-                    setIsEditModalOpen(false);
-                    setEditingUrl(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                >
-                  Update
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && urlToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-bold mb-4">Delete Event URL</h2>
-            <p className="mb-6">
-              Are you sure you want to delete the event URL <strong>{urlToDelete.eventName}</strong> ({urlToDelete.urlPath})? This action cannot be undone.
-            </p>
-            
-            <div className="flex justify-end">
-              <button
-                type="button"
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded mr-2"
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setUrlToDelete(null);
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                onClick={handleDeleteUrl}
-              >
-                Delete
-              </button>
             </div>
           </div>
         </div>
       )}
+
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Create New Event URL</h2>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="Enter a unique event name (e.g., company-event-2023)"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isCreating}
+            />
+          </div>
+          <button
+            onClick={createEventUrl}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:hover:bg-blue-600"
+            disabled={isCreating || !newUrl.trim()}
+          >
+            {isCreating ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
+              <FiPlusCircle className="h-5 w-5" />
+            )}
+            Create URL
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mt-2">
+          Note: URLs can only contain lowercase letters, numbers, and hyphens. No spaces or special characters.
+        </p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold">Event URLs for {username}</h2>
+        </div>
+
+        {eventUrls.length === 0 ? (
+          <div className="p-6 text-center">
+            <p className="text-gray-500">No event URLs have been created yet.</p>
+            <p className="mt-2 text-sm text-gray-400">
+              Create a unique URL to share the photo booth with event attendees.
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-200">
+            {eventUrls.map((eventUrl) => (
+              <li key={eventUrl.id} className="flex items-center justify-between p-6 hover:bg-gray-50">
+                <div>
+                  <h3 className="font-medium">{eventUrl.urlPath}</h3>
+                  <p className="text-sm text-gray-500">
+                    Created: {new Date(eventUrl.createdAt).toLocaleDateString()}
+                    {eventUrl.sessionsCount !== undefined && (
+                      <span className="ml-3">
+                        Sessions: <span className="font-medium">{eventUrl.sessionsCount}</span>
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => copyUrlToClipboard(eventUrl.urlPath)}
+                    className="p-2 text-gray-500 hover:text-blue-600"
+                    title="Copy URL"
+                  >
+                    <FiLink className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => previewBooth(eventUrl.urlPath)}
+                    className="p-2 text-gray-500 hover:text-green-600"
+                    title="Preview Booth"
+                  >
+                    <FiEye className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => deleteEventUrl(eventUrl.id)}
+                    className="p-2 text-gray-500 hover:text-red-600"
+                    title="Delete URL"
+                    disabled={isDeleting && selectedUrlId === eventUrl.id}
+                  >
+                    {isDeleting && selectedUrlId === eventUrl.id ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                    ) : (
+                      <FiTrash className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 } 

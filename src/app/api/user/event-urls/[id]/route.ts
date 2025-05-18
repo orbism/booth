@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { getCurrentUser, checkResourceOwnership } from '@/lib/auth-utils';
 import { RESERVED_KEYWORDS } from '@/types/event-url';
+import { getUserByIdentifier, hasUserAccess } from '@/lib/user-utils';
 
 // Event URL update validation schema
 const eventUrlUpdateSchema = z.object({
@@ -267,48 +268,73 @@ export async function DELETE(
   try {
     const { id } = params;
     
-    // Get user from auth utils
-    const user = await getCurrentUser();
+    // Get URL parameters
+    const { searchParams } = request.nextUrl;
+    const username = searchParams.get('username');
+    
+    console.log(`[DELETE Event URL] Request to delete URL ID: ${id}, username param: ${username || 'none'}`);
+    
+    // Get the current user
+    const currentUser = await getCurrentUser();
     
     // Check if user is authenticated
-    if (!user) {
+    if (!currentUser) {
+      console.log(`[DELETE Event URL] Unauthorized - No current user found`);
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
     
-    // Check if the user owns this event URL or is an admin
-    const hasAccess = await checkResourceOwnership('eventUrl', id);
+    console.log(`[DELETE Event URL] User authenticated: ${currentUser.id}, role: ${currentUser.role}`);
     
-    if (!hasAccess) {
-      return NextResponse.json(
-        { success: false, error: 'You do not have permission to delete this event URL' },
-        { status: 403 }
-      );
-    }
-    
-    // Check if event URL exists
-    const eventUrlResults = await prisma.$queryRaw`
-      SELECT * FROM EventUrl WHERE id = ${id}
+    // Get the URL to check ownership
+    const urlResults = await prisma.$queryRaw`
+      SELECT e.id, e.userId, u.username
+      FROM EventUrl e
+      JOIN User u ON e.userId = u.id
+      WHERE e.id = ${id}
     `;
     
-    const existingUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
-      ? eventUrlResults[0] 
+    const urlData = Array.isArray(urlResults) && urlResults.length > 0 
+      ? urlResults[0] 
       : null;
     
-    if (!existingUrl) {
+    if (!urlData) {
+      console.log(`[DELETE Event URL] URL not found with ID: ${id}`);
       return NextResponse.json(
         { success: false, error: 'Event URL not found' },
         { status: 404 }
       );
     }
     
-    // Delete the event URL
+    console.log(`[DELETE Event URL] URL belongs to user ID: ${urlData.userId}, username: ${urlData.username}`);
+    
+    // Check if current user has access to this URL
+    const hasAccess = await hasUserAccess(
+      currentUser.id,
+      urlData.userId,
+      currentUser.role
+    );
+    
+    if (!hasAccess) {
+      console.log(`[DELETE Event URL] Access denied for user ${currentUser.id} to delete URL owned by ${urlData.userId}`);
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not have access to this user\'s data' },
+        { status: 403 }
+      );
+    }
+    
+    console.log(`[DELETE Event URL] Access granted for user ${currentUser.id} to delete URL ${id}`);
+    
+    // Delete the URL
     await prisma.$executeRaw`
       DELETE FROM EventUrl WHERE id = ${id}
     `;
     
+    console.log(`[DELETE Event URL] Successfully deleted URL ${id}`);
+    
+    // Return success response
     return NextResponse.json({
       success: true,
       message: 'Event URL deleted successfully'

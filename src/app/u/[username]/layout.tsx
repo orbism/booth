@@ -8,14 +8,17 @@ export default async function UserLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { username: string };
+  params: Promise<{ username: string }>;
 }) {
   // Get the current user session
   const session = await getServerSession(authOptions);
   
+  // Await the params to get the username
+  const { username } = await params;
+  
   // If user is not authenticated, redirect to login
   if (!session?.user) {
-    return redirect('/login?callbackUrl=/u/' + params.username);
+    return redirect('/login?callbackUrl=/u/' + username);
   }
   
   // Get the authenticated user's details from the database
@@ -37,7 +40,7 @@ export default async function UserLayout({
   // Check if the URL username matches the authenticated user's username
   // or if the user is an admin (can access any user's pages)
   const isAuthorized = 
-    params.username === authUser.username || 
+    username === authUser.username || 
     authUser.role === 'ADMIN' || 
     authUser.role === 'SUPER_ADMIN';
   

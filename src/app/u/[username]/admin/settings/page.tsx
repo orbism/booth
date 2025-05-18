@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import SettingsForm from '@/components/forms/SettingsForm';
+import { useToast } from '@/context/ToastContext';
 
 type Settings = {
   id: string;
@@ -27,9 +28,11 @@ type Settings = {
   buttonColor?: string | null;
   textColor?: string | null;
   notes?: string | null;
+  showBoothBossLogo: boolean;
   customJourneyEnabled: boolean;
   journeyName?: string;
   activeJourneyId?: string | null;
+  journeyConfig?: any;
   journeyPages?: Array<{
     id: string;
     title: string;
@@ -57,17 +60,23 @@ type Settings = {
   videoDuration?: number;
   filtersEnabled: boolean;
   enabledFilters?: string | null;
-  storageProvider: string;
-  blobVercelEnabled: boolean;
-  localUploadPath: string;
-  storageBaseUrl: string | null;
+  storageProvider?: string;
+  blobVercelEnabled?: boolean;
+  localUploadPath?: string;
+  storageBaseUrl?: string | null;
+  enablePreviewStep?: boolean;
+  enableEffectsStep?: boolean;
+  enableSocialStep?: boolean;
 };
 
 type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
 
-export default function SettingsPage() {
-  const { status } = useSession();
+export default function AdminSettingsPage() {
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const params = useParams();
+  const username = params.username as string;
+  const { showToast } = useToast();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,45 +87,43 @@ export default function SettingsPage() {
       return;
     }
     
-    async function fetchSettings() {
-      try {
-        setIsLoading(true);
-        
-        const response = await fetch('/api/user/settings');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch settings');
-        }
-        
-        const data = await response.json();
-        
-        // Set settings directly from response data without assuming nested structure
-        setSettings(data);
-      } catch (err) {
-        console.error('Error fetching settings:', err);
-        setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    
     fetchSettings();
-  }, [status, router]);
+  }, [status, router, username]);
   
-  const handleUpdateSettings = async (updatedSettings: Partial<Settings>) => {
+  const fetchSettings = async () => {
     try {
-      // Show loading UI
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/user/settings', {
+      const response = await fetch(`/api/user/settings?username=${username}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch settings');
+      }
+      
+      const data = await response.json();
+      
+      setSettings(data);
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleUpdateSettings = async (updatedSettings: Partial<Settings>) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/user/settings?username=${username}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           ...updatedSettings,
-          // Ensure theme-related fields are included with defaults if not provided
           theme: updatedSettings.theme || 'custom',
           backgroundColor: updatedSettings.backgroundColor || '#ffffff',
           borderColor: updatedSettings.borderColor || '#e5e7eb',
@@ -131,41 +138,26 @@ export default function SettingsPage() {
       }
       
       const data = await response.json();
-      
-      // Update local state with new settings (directly from response)
-      setSettings(data);
 
-      await refreshSettings();
+      setSettings(data.settings);
+      
+      showToast('Booth settings have been updated successfully.', 'success', 5000);
+
+      await fetchSettings();
       
       return data;
     } catch (err) {
       console.error('Error updating settings:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      
+      showToast(err instanceof Error ? err.message : 'An unexpected error occurred', 'error', 5000);
+      
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const refreshSettings = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/user/settings');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch settings');
-      }
-      
-      const data = await response.json();
-      setSettings(data);
-    } catch (err) {
-      console.error('Error refreshing settings:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-  
   if (isLoading && !settings) {
     return (
       <div className="flex justify-center items-center h-full py-12">
@@ -176,7 +168,7 @@ export default function SettingsPage() {
   
   if (error && !settings) {
     return (
-      <div className="p-6">
+      <div>
         <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -192,7 +184,7 @@ export default function SettingsPage() {
               <div className="mt-4">
                 <button
                   type="button"
-                  onClick={refreshSettings}
+                  onClick={fetchSettings}
                   className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   Try again
@@ -207,10 +199,10 @@ export default function SettingsPage() {
   
   if (!settings) {
     return (
-      <div className="p-6">
+      <div>
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
           <p className="text-yellow-700">
-            Settings not found. Please check your account or contact support.
+            Settings not found for {username}. Please check the account or contact support.
           </p>
         </div>
       </div>
@@ -218,8 +210,14 @@ export default function SettingsPage() {
   }
   
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Booth Settings</h1>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Booth Settings</h1>
+        <p className="text-gray-600">
+          Configure booth settings for {username}
+        </p>
+      </div>
+      
       <SettingsForm 
         initialSettings={{
           id: settings.id || '',
@@ -251,8 +249,8 @@ export default function SettingsPage() {
           splashPageTitle: settings.splashPageTitle || '',
           splashPageContent: settings.splashPageContent || '',
           splashPageImage: settings.splashPageImage || null,
-          splashPageButtonText: settings.splashPageButtonText || 'Start',
-          captureMode: settings.captureMode as 'photo' | 'video' || 'photo',
+          splashPageButtonText: settings.splashPageButtonText || '',
+          captureMode: (settings.captureMode as 'photo' | 'video') || 'photo',
           photoOrientation: settings.photoOrientation || 'portrait-standard',
           photoDevice: settings.photoDevice || 'ipad',
           photoResolution: settings.photoResolution || 'medium',
@@ -266,12 +264,15 @@ export default function SettingsPage() {
           videoDuration: settings.videoDuration || 10,
           filtersEnabled: settings.filtersEnabled || false,
           enabledFilters: settings.enabledFilters || null,
-          storageProvider: settings.storageProvider as 'auto' | 'local' | 'vercel' || 'auto',
-          blobVercelEnabled: settings.blobVercelEnabled || true,
+          storageProvider: settings.storageProvider || 'auto',
+          blobVercelEnabled: settings.blobVercelEnabled !== undefined ? settings.blobVercelEnabled : true,
           localUploadPath: settings.localUploadPath || 'uploads',
           storageBaseUrl: settings.storageBaseUrl || null,
+          showBoothBossLogo: settings.showBoothBossLogo !== undefined ? settings.showBoothBossLogo : true
         }}
         onSubmit={handleUpdateSettings}
+        isAdmin={true}
+        isLoading={isLoading}
       />
     </div>
   );

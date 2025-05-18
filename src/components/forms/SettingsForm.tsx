@@ -185,7 +185,7 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     setValue,
     reset,
     control,
-    formState: { errors }
+    formState: { errors, isValid, isSubmitting: isFormSubmitting }
   } = useForm<SettingsFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(settingsSchema) as unknown as Resolver<SettingsFormValues, any>,
@@ -237,7 +237,8 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       blobVercelEnabled: initialSettings.blobVercelEnabled || true,
       localUploadPath: initialSettings.localUploadPath || 'uploads',
       storageBaseUrl: initialSettings.storageBaseUrl || null,
-    }
+    },
+    mode: 'onBlur'
   });
 
   // Watch theme and color values for preview
@@ -284,7 +285,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
     }
   }, [watch('theme'), setValue]);
 
+  // Add effect to log validation errors
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log('Form validation errors:', errors);
+    }
+  }, [errors]);
+
   const handleFormSubmit = async (data: SettingsFormValues) => {
+    console.log('Form submission started', { formData: data });
     try {
       setIsSubmitting(true);
       setError(null);
@@ -299,8 +308,11 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
         textColor: data.textColor || '#111827',
       };
     
+      console.log('Calling onSubmit with formatted data', { formattedData });
       await onSubmit(formattedData);
       
+      // Only show success message if we successfully get here
+      console.log('onSubmit succeeded, showing success message');
       showToast('Settings saved successfully!', 'success');
       setSuccessMessage('Settings saved successfully!');
       
@@ -310,10 +322,12 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       }, 3000);
     } catch (err) {
       console.error('Settings update error:', err);
-      showToast('Settings saved successfully!', 'success');
-      // setError(err instanceof Error ? err.message : 'Failed to save settings');
+      // Show the actual error message in the toast
+      showToast(err instanceof Error ? err.message : 'Failed to save settings', 'error');
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setIsSubmitting(false);
+      console.log('Form submission completed');
     }
   };
 
@@ -416,7 +430,15 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            console.log('Form submit event triggered', e);
+            console.log('Current form values:', watch());
+            handleFormSubmit(watch());
+          }} 
+          className="p-6"
+        >
           {/* Error and success messages */}
           {error && (
             <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
@@ -551,9 +573,35 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
               Cancel
             </button>
             <button
+              type="button"
+              onClick={() => {
+                console.log('Save Settings button clicked');
+                console.log('Form state:', { isValid, isSubmitting, formErrors: errors, formValues: watch() });
+                
+                // Try both methods
+                try {
+                  console.log('Trying manual form submission...');
+                  const formElement = document.querySelector('form');
+                  if (formElement) {
+                    console.log('Form element found, submitting...');
+                    formElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                  } else {
+                    console.log('Form element not found');
+                  }
+                } catch (e) {
+                  console.error('Error in manual form submission:', e);
+                }
+              }}
+              disabled={isSubmitting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center mr-4"
+            >
+              Manual Submit
+            </button>
+            <button
               type="submit"
               disabled={isSubmitting}
               className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 flex items-center"
+              onClick={() => console.log('Save Settings button clicked')}
             >
               {isSubmitting ? (
                 <>

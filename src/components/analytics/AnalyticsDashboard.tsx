@@ -1,7 +1,7 @@
 // src/components/analytics/AnalyticsDashboard.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type FC } from 'react';
 import { useRouter } from 'next/navigation';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Legend, ArcElement } from 'chart.js';
 import { Bar, Line, Doughnut } from 'react-chartjs-2';
@@ -44,7 +44,9 @@ interface AnalyticsEvent {
   } | null;
 }
 
-interface AnalyticsDashboardProps {
+export interface AnalyticsDashboardProps {
+  userId?: string;
+  isCustomerView?: boolean;
   initialDaily?: AnalyticsSummary;
   initialWeekly?: AnalyticsSummary;
   initialMonthly?: AnalyticsSummary;
@@ -71,7 +73,9 @@ interface MediaTypeStats {
     videoApprovalRate: number;
 }
 
-const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
+const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({
+    userId,
+    isCustomerView = false,
     initialDaily,
     initialWeekly,
     initialMonthly,
@@ -102,6 +106,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     const [customJourneyFunnelData, setCustomJourneyFunnelData] = useState<JourneyStep[]>([]);
     const [customConversionTrendData, setCustomConversionTrendData] = useState<DailyMetric[]>([]);
     const [mediaTypeStats, setMediaTypeStats] = useState<MediaTypeStats | null>(null);
+    const [days, setDays] = useState(30); // Default to 30 days
 
     // Date range change handler
     const handleDateRangeChange = async (start: Date, end: Date) => {
@@ -220,7 +225,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
         
         if (autoRefresh) {
         timer = setInterval(() => {
-            refreshData();
+            refreshAnalytics();
         }, refreshInterval * 1000);
         }
         
@@ -230,52 +235,72 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
     }, [autoRefresh, refreshInterval]);
 
     // Refresh dashboard data
-    const refreshData = async () => {
-        try {
+    const refreshAnalytics = async () => {
+        setIsLoading(true);
         setIsRefreshing(true);
         
-        const response = await fetch('/api/admin/analytics/dashboard?format=json');
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch analytics data');
-        }
-        
-        const data = await response.json();
-        console.log('Dashboard data received:', data);
-        
-        setDaily(data.daily);
-        setWeekly(data.weekly);
-        setMonthly(data.monthly);
-        setEvents(data.events || []);
-        setEventTypes(data.eventTypes || []);
-        setJourneyFunnelData(data.journeyFunnel || []);
-        setConversionTrendData(data.conversionTrend || []);
-        
-        if (customPeriodActive) {
-          if (data.customJourneyFunnel) {
-            console.log('Setting journey funnel data:', data.journeyFunnel);
-            setCustomJourneyFunnelData(data.customJourneyFunnel);
-          }
-          
-          if (data.customConversionTrend) {
-            console.log('Setting conversion trend data:', data.conversionTrend);
-            setCustomConversionTrendData(data.customConversionTrend);
-          }
-        }
-
-        setMediaTypeStats(data.mediaTypeStats || {
-            photoEvents: 0,
-            videoEvents: 0,
-            photoApprovalRate: 0,
-            videoApprovalRate: 0
-        });
-        
-        // Update the router to refresh SSR data as well (optional)
-        router.refresh();
+        try {
+            const apiUrl = userId 
+                ? `/api/user/analytics/dashboard?days=${days}` 
+                : `/api/admin/analytics/dashboard?days=${days}`;
+            
+            console.log(`Fetching analytics from ${apiUrl}${userId ? ` for user ${userId}` : ''}`);
+            
+            if (customPeriodActive && startDate && endDate) {
+                const customRangeUrl = userId
+                    ? `/api/user/analytics/dashboard?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+                    : `/api/admin/analytics/dashboard?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+                
+                const response = await fetch(customRangeUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch custom range analytics: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                setCustomData(data);
+                
+                if (data.journeyFunnel) {
+                    setCustomJourneyFunnelData(data.journeyFunnel);
+                }
+                
+                if (data.conversionTrend) {
+                    setCustomConversionTrendData(data.conversionTrend);
+                }
+            } else {
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch analytics: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data) {
+                    setDaily(data.daily || data.summary);
+                    setWeekly(data.weekly);
+                    setMonthly(data.monthly);
+                    setEvents(data.events || []);
+                    setEventTypes(data.eventTypes || []);
+                    setJourneyFunnelData(data.journeyFunnel || []);
+                    setConversionTrendData(data.conversionTrend || []);
+                    setMediaTypeStats(data.mediaTypeStats || {
+                        photoEvents: 0,
+                        videoEvents: 0,
+                        photoApprovalRate: 0,
+                        videoApprovalRate: 0
+                    });
+                    
+                    // Update the router to refresh SSR data as well (optional)
+                    router.refresh();
+                }
+            }
         } catch (error) {
-        console.error('Error refreshing analytics data:', error);
+            console.error('Error refreshing analytics data:', error);
+            setIsLoading(false);
         } finally {
-        setIsRefreshing(false);
+            setIsRefreshing(false);
+            setIsLoading(false);
         }
     };
 
@@ -350,7 +375,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 
                 <div className="flex flex-wrap gap-2">
                 <button
-                    onClick={refreshData}
+                    onClick={refreshAnalytics}
                     disabled={isRefreshing}
                     className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-1"
                 >
@@ -825,6 +850,14 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({
                 </table>
                 </div>
             </div>
+
+            {/* Add a small indicator if viewing customer analytics */}
+            {isCustomerView && (
+                <div className="mb-4 px-3 py-2 bg-blue-50 text-blue-700 text-sm rounded-md">
+                    <span className="font-medium">Customer Analytics View</span>
+                    {userId && <span className="ml-2">- User ID: {userId.substring(0, 8)}...</span>}
+                </div>
+            )}
         </div>
     );
 };

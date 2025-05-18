@@ -6,14 +6,15 @@ import Link from 'next/link';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-  params: { username: string };
+  params: Promise<{ username: string }>;
 }
 
 export default async function AdminLayout({
   children,
   params,
 }: AdminLayoutProps) {
-  const username = params.username;
+  // Await params to get the username
+  const { username } = await params;
   
   // Get the current user session
   const session = await getServerSession(authOptions);
@@ -79,6 +80,18 @@ export default async function AdminLayout({
           </Link>
           
           <Link 
+            href={`/u/${username}/admin/account`} 
+            className="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100"
+          >
+            <span className="mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+            </span>
+            Account
+          </Link>
+          
+          <Link 
             href={`/u/${username}/admin/event-urls`} 
             className="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100"
           >
@@ -100,6 +113,18 @@ export default async function AdminLayout({
               </svg>
             </span>
             Sessions
+          </Link>
+          
+          <Link 
+            href={`/u/${username}/admin/analytics`} 
+            className="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100"
+          >
+            <span className="mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+              </svg>
+            </span>
+            Analytics
           </Link>
           
           <Link 

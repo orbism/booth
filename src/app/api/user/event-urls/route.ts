@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { RESERVED_KEYWORDS } from '@/types/event-url';
 import { getCurrentUser } from '@/lib/auth-utils';
+import { getUserByIdentifier, hasUserAccess } from '@/lib/user-utils';
 
 // Event URL validation schema
 const eventUrlSchema = z.object({
@@ -22,27 +23,81 @@ const eventUrlSchema = z.object({
 /**
  * GET /api/user/event-urls
  * List all event URLs for the specific user
+ * Can filter by username for admin users
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get user from auth utils
-    const user = await getCurrentUser();
+    console.log("[EVENT URLS API] Processing GET request");
+    
+    // Get authenticated user
+    const currentUser = await getCurrentUser();
     
     // Check if user is authenticated
-    if (!user) {
+    if (!currentUser) {
+      console.log("[EVENT URLS API] Unauthorized - No current user found");
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
     
-    // Use raw query to get the user's event URLs
+    console.log(`[EVENT URLS API] User authenticated: ${currentUser.id}, username: ${currentUser.username}, role: ${currentUser.role}`);
+    
+    // Get query parameters
+    const { searchParams } = request.nextUrl;
+    const username = searchParams.get('username');
+    
+    console.log(`[EVENT URLS API] Requested username param: ${username || 'none'}`);
+    
+    // Determine which user's event URLs to fetch
+    let targetUserId = currentUser.id;
+    let targetUsername = currentUser.username;
+    
+    // If username is provided and it's different from the current user's
+    if (username && username !== currentUser.username) {
+      console.log(`[EVENT URLS API] Username provided (${username}) differs from current user (${currentUser.username})`);
+      
+      const targetUser = await getUserByIdentifier(username);
+      
+      if (!targetUser) {
+        console.log(`[EVENT URLS API] Target user not found: ${username}`);
+        return NextResponse.json(
+          { success: false, error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      
+      console.log(`[EVENT URLS API] Target user found: ${targetUser.id}, checking access`);
+      
+      // Check if current user has access to target user's data
+      const hasAccess = await hasUserAccess(currentUser.id, targetUser.id, currentUser.role);
+      
+      if (!hasAccess) {
+        console.log(`[EVENT URLS API] Access denied for user ${currentUser.id} to access event URLs for ${targetUser.id}`);
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: You do not have access to this user\'s event URLs' },
+          { status: 403 }
+        );
+      }
+      
+      console.log(`[EVENT URLS API] Access granted for user ${currentUser.id} to access event URLs for ${targetUser.id}`);
+      targetUserId = targetUser.id;
+      targetUsername = targetUser.username;
+    } else {
+      console.log(`[EVENT URLS API] Using current user's ID: ${currentUser.id}`);
+    }
+    
+    console.log(`[EVENT URLS API] Fetching event URLs for user ID: ${targetUserId}, username: ${targetUsername}`);
+    
+    // Use raw query to get the target user's event URLs
     const eventUrls = await prisma.$queryRaw`
       SELECT id, urlPath, eventName, isActive, eventStartDate, eventEndDate, createdAt, updatedAt
       FROM EventUrl
-      WHERE userId = ${user.id}
+      WHERE userId = ${targetUserId}
       ORDER BY createdAt DESC
     `;
+    
+    console.log(`[EVENT URLS API] Found ${Array.isArray(eventUrls) ? eventUrls.length : 0} event URLs`);
     
     // Return the event URLs
     return NextResponse.json({
@@ -51,7 +106,7 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error fetching event URLs:', error);
+    console.error('[EVENT URLS API] Error fetching event URLs:', error);
     
     return NextResponse.json(
       { 

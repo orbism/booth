@@ -8,132 +8,76 @@ datasource db {
   relationMode = "prisma"
 }
 
-enum UserRole {
-  ADMIN
-  CUSTOMER
-}
-
-// Added enums for subscription tiers and durations
-enum SubscriptionTier {
-  FREE
-  BRONZE
-  SILVER
-  GOLD
-  PLATINUM
-  ADMIN
-}
-
-enum SubscriptionDuration {
-  MONTHLY
-  QUARTERLY
-  ANNUAL
-  TRIAL
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  PAST_DUE
-  CANCELED
-  EXPIRED
-  TRIAL
-}
-
 model User {
-  id            String       @id @default(cuid())
-  name          String?
-  email         String       @unique
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  password      String?
-  role          UserRole     @default(CUSTOMER)
-  
-  // Added SaaS fields for multi-tenant functionality
-  username      String?      @unique // Used for custom URLs
-  organizationName String?   // Name of the organization/business
-  organizationSize String?   // Size of organization (small, medium, large)
-  industry      String?      // Industry category
-  onboardingCompleted Boolean @default(false) // Whether account setup is completed
-  
-  // Email verification fields
-  verificationToken      String?   // Token for email verification
-  verificationTokenExpires DateTime? // When the token expires
-  
-  // Password reset fields
-  resetToken      String?   // Token for password reset
-  resetTokenExpires DateTime? // When the token expires
-  
-  // Subscription management
-  subscription  Subscription?
-  eventUrls     EventUrl[]   // Custom event URLs
-  
-  sessions      Session[]
-  boothSessions BoothSession[]
-  settings      Settings?
-  
-  // Limits/usage tracking
-  mediaCount    Int          @default(0) // Number of media items created
-  emailsSent    Int          @default(0) // Number of emails sent
+  id                       String         @id @default(cuid())
+  name                     String?
+  email                    String         @unique
+  emailVerified            DateTime?
+  image                    String?
+  createdAt                DateTime       @default(now())
+  updatedAt                DateTime       @updatedAt
+  password                 String?
+  emailsSent               Int            @default(0)
+  industry                 String?
+  mediaCount               Int            @default(0)
+  organizationName         String?
+  organizationSize         String?
+  role                     UserRole       @default(CUSTOMER)
+  username                 String?        @unique
+  resetToken               String?
+  resetTokenExpires        DateTime?
+  verificationToken        String?
+  verificationTokenExpires DateTime?
+  onboardingCompleted      Boolean        @default(false)
+  subscription             Subscription?
+  eventUrls                EventUrl[]
+  sessions                 Session[]
+  boothSessions            BoothSession[]
+  settings                 Settings?
 }
 
-// New model for subscription management
 model Subscription {
-  id              String              @id @default(cuid())
-  userId          String              @unique
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  tier            SubscriptionTier    @default(FREE)
-  duration        SubscriptionDuration @default(TRIAL)
-  status          SubscriptionStatus  @default(TRIAL)
-  
-  startDate       DateTime            @default(now())
-  endDate         DateTime            @default(now()) // When subscription expires
-  trialEndDate    DateTime?           // When free trial ends
-  
-  // Stripe integration fields
-  stripeCustomerId String?            @unique
+  id                   String               @id @default(cuid())
+  userId               String               @unique
+  tier                 SubscriptionTier     @default(FREE)
+  duration             SubscriptionDuration @default(TRIAL)
+  status               SubscriptionStatus   @default(TRIAL)
+  startDate            DateTime             @default(now())
+  endDate              DateTime             @default(now())
+  trialEndDate         DateTime?
+  stripeCustomerId     String?              @unique
   stripeSubscriptionId String?
-  stripePriceId    String?
-  
-  // Subscription limits (pulled from tier but can be customized)
-  maxMedia        Int                 @default(10)
-  maxEmails       Int                 @default(5)
-  maxVideoDuration Int                @default(10)
-  maxDays         Int                 @default(1)
-  
-  // Feature flags
-  customDomain    Boolean             @default(false)
-  analyticsAccess Boolean             @default(false)
-  filterAccess    Boolean             @default(false)
-  videoAccess     Boolean             @default(true)
-  aiEnhancement   Boolean             @default(false)
-  journeyBuilder  Boolean             @default(false)
-  brandingRemoval Boolean             @default(false)
-  prioritySupport Boolean             @default(false)
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  stripePriceId        String?
+  maxMedia             Int                  @default(10)
+  maxEmails            Int                  @default(5)
+  maxVideoDuration     Int                  @default(10)
+  maxDays              Int                  @default(1)
+  customDomain         Boolean              @default(false)
+  analyticsAccess      Boolean              @default(false)
+  filterAccess         Boolean              @default(false)
+  videoAccess          Boolean              @default(true)
+  aiEnhancement        Boolean              @default(false)
+  journeyBuilder       Boolean              @default(false)
+  brandingRemoval      Boolean              @default(false)
+  prioritySupport      Boolean              @default(false)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// New model for custom event URLs
 model EventUrl {
-  id              String              @id @default(cuid())
-  userId          String
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  urlPath         String              @unique // The custom path (e.g., "wedding")
-  isActive        Boolean             @default(true)
-  eventName       String              // Display name for the event
-  eventStartDate  DateTime?
-  eventEndDate    DateTime?
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  
-  // Add relation to BoothSession
-  boothSessions   BoothSession[]
-  
+  id             String         @id @default(cuid())
+  userId         String
+  urlPath        String         @unique
+  isActive       Boolean        @default(true)
+  eventName      String
+  eventStartDate DateTime?
+  eventEndDate   DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boothSessions  BoothSession[]
+
   @@index([userId])
 }
 
@@ -146,23 +90,23 @@ model Session {
 }
 
 model BoothSession {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   userId       String?
   userName     String
   userEmail    String
   photoPath    String
-  createdAt    DateTime @default(now())
-  shared       Boolean  @default(false)
-  emailSent    Boolean  @default(false)
+  createdAt    DateTime  @default(now())
+  shared       Boolean   @default(false)
+  emailSent    Boolean   @default(false)
   templateUsed String?
   eventName    String?
-  mediaType    String?  @default("photo")
-  filter       String?  @default("normal")
-  eventUrlId   String?  // Store the actual EventUrl ID for proper referencing
-  eventUrlPath String?  // Store the URL path for easy reference
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  mediaType    String?   @default("photo")
+  filter       String?   @default("normal")
+  eventUrlId   String?
+  eventUrlPath String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   eventUrl     EventUrl? @relation(fields: [eventUrlId], references: [id], onDelete: SetNull)
-  
+
   @@index([userId])
   @@index([eventUrlId])
 }
@@ -189,21 +133,14 @@ model Settings {
   notes                String?  @db.Text
   textColor            String?
   theme                String   @default("custom")
-  isDefault            Boolean  @default(false)
-  
-  // Custom Journey Settings
   customJourneyEnabled Boolean  @default(false)
   journeyConfig        Json?
-  activeJourneyId      String?  // ID of the currently active journey
-  
-  // Splash Page Settings
+  activeJourneyId      String?
   splashPageButtonText String?  @default("Start")
   splashPageContent    String?
   splashPageEnabled    Boolean  @default(false)
   splashPageImage      String?
   splashPageTitle      String?
-  
-  // Photo Mode Settings
   aiImageCorrection    Boolean  @default(false)
   captureMode          String   @default("photo")
   photoDevice          String   @default("ipad")
@@ -211,37 +148,24 @@ model Settings {
   photoOrientation     String   @default("portrait-standard")
   photoResolution      String   @default("medium")
   printerEnabled       Boolean  @default(false)
-  
-  // Video Mode Settings
   videoDevice          String   @default("ipad")
   videoDuration        Int      @default(10)
   videoEffect          String   @default("none")
   videoOrientation     String   @default("portrait-standard")
   videoResolution      String   @default("medium")
-  
-  // Photo Filters/Effects
   enabledFilters       String?
   filtersEnabled       Boolean  @default(false)
-  
-  // Storage Settings
-  storageProvider       String  @default("auto") // "auto", "local", "vercel" 
-  blobVercelEnabled     Boolean @default(true)
-  localUploadPath       String  @default("uploads")
-  storageBaseUrl        String?
-  
-  // SaaS Branding
-  showBoothBossLogo   Boolean @default(true) // Hide branding for higher tiers
-  customCss           String? @db.Text  // Custom CSS for white-label
-  
-  // Relationship with User
-  userId              String?  // Initially optional, will be linked to admin
-  user                User?    @relation(fields: [userId], references: [id])
-  
-  // Timestamps
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @default(now()) @updatedAt
-  
-  @@unique([userId])
+  blobVercelEnabled    Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  customCss            String?  @db.Text
+  localUploadPath      String   @default("uploads")
+  showBoothBossLogo    Boolean  @default(true)
+  storageBaseUrl       String?
+  storageProvider      String   @default("auto")
+  updatedAt            DateTime @default(now()) @updatedAt
+  userId               String?  @unique
+  isDefault            Boolean  @default(false)
+  user                 User?    @relation(fields: [userId], references: [id])
 }
 
 model Journey {
@@ -264,8 +188,8 @@ model BoothAnalytics {
   durationMs     Int?
   mediaType      String?         @default("photo")
   filter         String?         @default("normal")
-  userId         String?         // Link to the user who owns this data
-  eventUrl       String?         // Track which custom event URL this was created under
+  eventUrl       String?
+  userId         String?
   events         BoothEventLog[]
 }
 
@@ -278,4 +202,33 @@ model BoothEventLog {
   analytics   BoothAnalytics? @relation(fields: [analyticsId], references: [id], onDelete: Cascade)
 
   @@index([analyticsId])
+}
+
+enum UserRole {
+  ADMIN
+  CUSTOMER
+}
+
+enum SubscriptionTier {
+  FREE
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  ADMIN
+}
+
+enum SubscriptionDuration {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  TRIAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  TRIAL
 }

@@ -54,6 +54,26 @@ The application includes a comprehensive user management system with role-based 
 - **Bulk Operations**: Support for bulk deletion of sessions and secure data wiping
 - **Data Isolation**: Multi-tenant system with proper data segregation between users
 
+### Custom URL System
+
+The application provides a flexible event URL system:
+
+- **Simplified URL Structure**: Updated URL structure using `/e/[urlPath]` for all event URLs
+- **Legacy URL Support**: Automatic redirection from `/booth/[urlPath]` to `/e/[urlPath]`
+- **Custom Event Settings**: Each URL has its own unique settings for branding and functionality
+- **Analytics Tracking**: Track usage patterns for each unique URL
+- **Permissions**: Only owners and administrators can manage event URLs
+
+### Permission System
+
+The application features a comprehensive role-based access control system:
+
+- **Role-Based Access**: Different access levels for Admin and Customer roles
+- **Resource Ownership**: Users can only access and modify their own resources
+- **Middleware Protection**: Route protection at the middleware level for all sensitive routes
+- **API Access Control**: Fine-grained permission checks for all API endpoints
+- **Detailed Logging**: Comprehensive logging of permission checks and access attempts
+
 ### Email System
 
 - **Configurable Email Templates**: Customize email templates for photo/video sharing
@@ -226,6 +246,22 @@ The application includes an admin dashboard for managing booth sessions and sett
 
 Access to these routes is protected by authentication middleware.
 
+## User-Specific Routes
+
+The application features a comprehensive user-specific route structure for multi-tenant access:
+
+### Route Structure
+- `/u/[username]/admin` - User-specific dashboard with statistics and quick actions
+- `/u/[username]/admin/event-urls` - Manage event URLs for specific user
+- `/u/[username]/admin/sessions` - View and manage booth sessions for specific user
+- `/u/[username]/admin/settings` - Configure settings for specific user
+
+### Route Protection
+- Authentication checks for all user routes
+- Ownership verification to ensure users can only access their own data
+- Admin override to allow administrators to access any user's data
+- Automatic redirection from legacy routes to the new admin structure
+
 ## Custom User Journey
 
 The application includes a powerful Custom User Journey builder for creating personalized photo booth experiences:
@@ -366,6 +402,27 @@ The application uses a unified storage interface that abstracts the details of t
 - **Vercel Blob Storage**: Files are stored in Vercel's Blob storage service, which provides CDN-backed storage
 
 For Vercel Blob storage, you'll need to set up a Vercel project and set the `BLOB_READ_WRITE_TOKEN` environment variable.
+
+## Recent Improvements
+
+### Event URL Structure
+The application now uses a simplified URL structure for event URLs:
+- Primary route pattern: `/e/[urlPath]` for all event URLs
+- Automatic redirection from legacy `/booth/[urlPath]` pattern to the new structure
+- Updated all frontend components to use the new URL format
+- Improved debugging logging in middleware for URL routing
+
+### Route Structure Standardization
+- All user administration routes follow the pattern: `/u/[username]/admin/[section]`
+- Legacy routes (e.g., `/u/[username]/settings`) automatically redirect to admin equivalents
+- Middleware now properly handles nested paths when redirecting
+
+### Permission System Enhancements
+- Improved role-based access control with stricter permissions checking
+- Better resource ownership verification in API endpoints
+- Enhanced user lookup with support for various identifier types
+- Added detailed logging for permission checks and access attempts
+- Standardized error responses for permission failures
 
 ## License
 TBD

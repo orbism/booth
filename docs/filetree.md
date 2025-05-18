@@ -40,9 +40,19 @@ src/components/providers/
 └── SubscriptionProvider.tsx  # Context provider for subscription feature access
 ```
 
+**Permission System:**
+
+The permission system provides role-based access control and resource ownership verification:
+
+```
+src/lib/
+├── auth-utils.ts             # Authentication and permission checking utilities
+└── user-utils.ts             # User lookup and access control functions
+```
+
 **User-Based Routing System:**
 
-The new user-based routing system implements a multi-tenant architecture with username-specific routes:
+The application implements a multi-tenant architecture with username-specific routes:
 
 ```
 src/app/u/
@@ -53,13 +63,45 @@ src/app/u/
 │   │   ├── page.tsx                # Admin dashboard
 │   │   ├── settings/               # User settings page
 │   │   │   └── page.tsx            # Settings management for user
+│   │   ├── event-urls/             # Event URL management
+│   │   │   └── page.tsx            # Event URL creation and listing
+│   │   ├── sessions/               # Session management
+│   │   │   └── page.tsx            # Session listing and operations
 │   │   └── [section]/              # Section-specific admin pages
 │   │       └── page.tsx            # Section page component
 │   ├── change-password/            # Password management
 │   │   └── page.tsx                # Change password page
-│   ├── settings/                   # Customer-facing settings
+│   ├── settings/                   # Customer-facing settings (redirected to admin)
 │   │   └── page.tsx                # Customer settings management
 │   └── layout.tsx                  # User route authentication layout
+```
+
+**Event URL Routing System:**
+
+The application supports custom event URLs with two access patterns:
+
+```
+src/app/
+├── e/                              # Primary event URL routes
+│   └── [urlPath]/                  # Dynamic path component for events
+│       └── page.tsx                # Event-specific booth page
+└── middleware.ts                   # Handles redirects from /booth/[urlPath] to /e/[urlPath]
+```
+
+**Booth Session Management:**
+
+```
+src/app/u/[username]/admin/sessions/
+└── page.tsx                        # User-specific session management
+```
+
+```
+src/app/api/user/sessions/
+├── route.ts                        # List sessions API
+├── [id]/                           # Session-specific operations
+│   ├── route.ts                    # Get/delete session API
+│   └── email/                      # Email operations
+│       └── route.ts                # Resend email API
 ```
 
 **User Management System:**
@@ -134,7 +176,7 @@ The custom URL routing system allows for event-specific booth experiences:
 
 ```
 src/app/
-├── e/                           # Custom event URL routes
+├── e/                           # Custom event URL routes (primary pattern)
 │   └── [urlPath]/               # Dynamic URL path routes
 │       └── page.tsx             # Event-specific booth page
 ├── admin/                       # Admin section
@@ -160,7 +202,7 @@ src/types/
 **Middleware and Authentication:**
 
 ```
-middleware.ts                    # Next.js middleware for route protection and authentication
+middleware.ts                    # Next.js middleware for route protection, authentication, and URL redirection
 src/auth.config.ts               # Authentication configuration settings
 src/auth.ts                      # Main authentication setup and utilities
 ```
@@ -280,6 +322,9 @@ booth-boss/                                      # Main project directory
 │   │   │       └── [id]/                        # User details page
 │   │   │           └── page.tsx                 # User editing and data management
 │   │   ├── api/                                 # API routes
+│   │   ├── e/                                   # Primary event URL routes (replaces /booth/)
+│   │   │   └── [urlPath]/                       # Dynamic URL path component
+│   │   │       └── page.tsx                     # Event-specific booth page
 │   │   ├── forbidden/                           # Access denied page
 │   │   │   └── page.tsx                         # Forbidden access message
 │   │   ├── u/                                   # User-specific routes
@@ -317,66 +362,38 @@ booth-boss/                                      # Main project directory
 │   ├── auth.config.ts                           # Authentication configuration
 │   ├── auth.ts                                  # Authentication utilities
 │   ├── components/                              # React components
-│   │   ├── analytics/                           # Analytics components
-│   │   │   ├── AnalyticsDashboard.tsx           # Analytics dashboard
-│   │   │   ├── ConversionTrendChart.tsx         # Conversion trends chart
-│   │   │   ├── ImprovementSuggestions.tsx       # Analytics suggestions
-│   │   │   ├── MediaTypeChart.tsx               # Media type tracking chart
-│   │   │   └── UserJourneyFunnel.tsx            # User journey visualization
-│   │   ├── booth/                               # Booth components
-│   │   │   ├── CountdownTimer.tsx               # Countdown timer
-│   │   │   ├── FiltersSelector.tsx              # Filters UI
-│   │   │   ├── PhotoBooth.tsx                   # Main booth component
-│   │   │   ├── PhotoPreview.tsx                 # Photo review component
-│   │   │   ├── SplashPage.tsx                   # Welcome screen
-│   │   │   └── VideoPreview.tsx                 # Video preview component
-│   │   ├── ErrorBoundary.tsx                    # Error handling component
-│   │   ├── forms/                               # Form components
-│   │   │   ├── FileUploadField.tsx              # File upload component
-│   │   │   ├── SettingsForm.tsx                 # Settings form
-│   │   │   ├── UserInfoForm.tsx                 # User info form
-│   │   │   └── tabs/                            # Settings tabs
-│   │   ├── journey/                             # Journey components
-│   │   │   ├── JourneyContainer.tsx             # Journey manager
-│   │   │   ├── JourneyPageView.tsx              # Individual page component
-│   │   │   ├── JourneyPreview.tsx               # Interactive preview
-│   │   │   └── PreviewDeviceFrame.tsx           # Device frame
-│   │   ├── layouts/                             # Layout components
-│   │   │   ├── BoothLayout.tsx                  # Booth layout wrapper
-│   │   │   └── Navbar.tsx                       # Main navigation with user profile
-│   │   ├── onboarding/                          # Onboarding components
-│   │   │   └── AccountSetupWizard.tsx           # Multi-step setup wizard
-│   │   ├── providers/                           # Context providers
-│   │   │   ├── SessionProviderWrapper.tsx       # Auth session provider
-│   │   │   └── SubscriptionProvider.tsx         # Subscription context provider
-│   │   └── ui/                                  # UI components
 │   ├── hooks/                                   # Custom React hooks
-│   │   └── useCamera.ts                         # Camera access hook
 │   ├── lib/                                     # Utility libraries
 │   │   ├── admin.ts                             # Admin utilities
-│   │   ├── analytics-server.ts                  # Server-side analytics
-│   │   ├── analytics.ts                         # Client-side analytics (deprecated)
-│   │   ├── auth-check.ts                        # Authentication checking
 │   │   ├── auth-utils.ts                        # Authentication utilities for RBAC
-│   │   ├── browser-compatibility.ts             # Browser capability detection
-│   │   ├── canvas-video-recorder.ts             # Video recording with filters
-│   │   ├── db-url.ts                            # Database URL utilities
-│   │   ├── email-templates/                     # Email templates
-│   │   │   └── welcome.ts                       # Welcome email for new users
-│   │   ├── email.ts                             # Email sending utilities
-│   │   ├── errors.ts                            # Error handling utilities
-│   │   ├── prisma.ts                            # Prisma client setup
-│   │   ├── subscription-features.ts             # Subscription tiers and features
-│   │   ├── theme-css-injector.ts                # Theme CSS injection
-│   │   ├── theme-loader.ts                      # Theme loading utilities
-│   │   └── themes.ts                            # Theme definitions
+│   │   ├── route-utils.ts                       # Route generation utilities
+│   │   ├── user-utils.ts                        # User lookup and access control
+│   │   └── permission-utils.ts                  # Permission checking (planned)
 │   ├── middleware.ts                            # Next.js middleware
 │   └── types/                                   # TypeScript definitions
-│       ├── journey.ts                           # Journey type definitions
-│       ├── event-url.ts                         # EventUrl type definitions
-│       └── next-auth.d.ts                       # NextAuth type extensions
 ├── tailwind.config.js                           # Tailwind CSS configuration
 ├── temp/                                        # Temporary files
 ├── tsconfig.json                                # TypeScript configuration
 └── tsconfig.tsbuildinfo                         # TypeScript build info
 ```
+
+## Recent Changes and Improvements
+
+### URL Routing
+
+- Updated event URL routing to use `/e/[urlPath]` as the primary route pattern
+- Added middleware redirection from `/booth/[urlPath]` to `/e/[urlPath]` for backward compatibility
+- Updated frontend components to use the new URL format
+
+### User Route Structure
+
+- Standardized route structure with `/u/[username]/admin/` for all user administration
+- Added redirection from legacy routes (e.g., `/u/[username]/settings`) to admin routes
+- Enhanced middleware to handle nested path redirections
+
+### Permission System
+
+- Improved permission checking in API routes
+- Updated user lookup functionality to support various identifier types
+- Enhanced role-based access control with better error messages
+- Added detailed logging for permission verification
