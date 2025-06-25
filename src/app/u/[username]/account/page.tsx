@@ -23,8 +23,8 @@ interface UserProfile {
   } | null;
 }
 
-export default function UserAccountPage({ params }: { params: { username: string } }) {
-  const { username } = params;
+export default function UserAccountPage({ params }: { params: Promise<{ username: string }> }) {
+  const [username, setUsername] = useState<string>('');
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,10 +38,26 @@ export default function UserAccountPage({ params }: { params: { username: string
   });
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch user profile on component mount
+  // Extract username from params once rendered on client
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
+    const loadParams = async () => {
+      try {
+        const resolvedParams = await params;
+        setUsername(resolvedParams.username);
+      } catch (error) {
+        console.error('Error resolving params:', error);
+      }
+    };
+    
+    loadParams();
+  }, [params]);
+
+  // Fetch user profile when username is available
+  useEffect(() => {
+    if (username) {
+      fetchUserProfile();
+    }
+  }, [username]);
 
   // Fetch user profile from the API
   const fetchUserProfile = async () => {

@@ -5,6 +5,7 @@ import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
 import { handleApiError, unauthorizedResponse } from '@/lib/errors';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 // Helper function to safely parse journey config
 function safelyParseJourneyConfig(journeyConfig: any): any[] {
@@ -301,9 +302,14 @@ export async function PUT(request: NextRequest) {
     }
     
     // Ensure journeyConfig is properly serialized as JSON string before saving
-    const journeyConfig = validatedData.journeyPages?.length 
-      ? JSON.stringify(validatedData.journeyPages)  // Explicitly stringify to ensure it's a JSON string
-      : null;
+    let journeyConfig = null;
+    if (validatedData.journeyPages?.length) {
+      // Explicitly stringify to ensure it's a JSON string
+      journeyConfig = JSON.stringify(validatedData.journeyPages);
+    } else {
+      // Using Prisma.JsonNull to properly set null for JSON fields
+      journeyConfig = Prisma.JsonNull;
+    }
     
     // Make sure adminEmail is set
     const adminEmail = validatedData.adminEmail || session.user.email;

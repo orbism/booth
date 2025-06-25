@@ -46,8 +46,9 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = request.nextUrl;
     const username = searchParams.get('username');
+    const includeSettings = searchParams.get('includeSettings') === 'true';
     
-    console.log(`[EVENT URLS API] Requested username param: ${username || 'none'}`);
+    console.log(`[EVENT URLS API] Requested username param: ${username || 'none'}, includeSettings: ${includeSettings}`);
     
     // Determine which user's event URLs to fetch
     let targetUserId = currentUser.id;
@@ -89,21 +90,26 @@ export async function GET(request: NextRequest) {
     
     console.log(`[EVENT URLS API] Fetching event URLs for user ID: ${targetUserId}, username: ${targetUsername}`);
     
-    // Use raw query to get the target user's event URLs
-    const eventUrls = await prisma.$queryRaw`
-      SELECT id, urlPath, eventName, isActive, eventStartDate, eventEndDate, createdAt, updatedAt
-      FROM EventUrl
-      WHERE userId = ${targetUserId}
-      ORDER BY createdAt DESC
-    `;
+    // Use Prisma to get the target user's event URLs
+    const eventUrls = await prisma.eventUrl.findMany({
+      where: {
+        userId: targetUserId
+      },
+      include: includeSettings ? {
+        eventUrlSettings: {
+          where: { active: true },
+          include: { settings: true }
+        }
+      } : undefined,
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
     
-    console.log(`[EVENT URLS API] Found ${Array.isArray(eventUrls) ? eventUrls.length : 0} event URLs`);
+    console.log(`[EVENT URLS API] Found ${eventUrls.length} event URLs`);
     
     // Return the event URLs
-    return NextResponse.json({
-      success: true,
-      eventUrls: eventUrls || [],
-    });
+    return NextResponse.json(eventUrls);
     
   } catch (error) {
     console.error('[EVENT URLS API] Error fetching event URLs:', error);
@@ -125,23 +131,30 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log("[EVENT URLS API] Processing POST request to create new event URL");
+    
     // Get user from auth utils
     const user = await getCurrentUser();
     
     // Check if user is authenticated
     if (!user) {
+      console.log("[EVENT URLS API] Unauthorized - No current user found");
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
     
+    console.log(`[EVENT URLS API] User authenticated: ${user.id}, role: ${user.role}`);
+    
     // Parse and validate request body
     const body = await request.json();
+    console.log("[EVENT URLS API] Request body:", body);
     
     // Validate with zod
     const validationResult = eventUrlSchema.safeParse(body);
     if (!validationResult.success) {
+      console.log("[EVENT URLS API] Validation failed:", validationResult.error.format());
       return NextResponse.json(
         { 
           success: false, 
@@ -153,28 +166,29 @@ export async function POST(request: NextRequest) {
     }
     
     const { urlPath, eventName, isActive, eventStartDate, eventEndDate } = validationResult.data;
+    console.log(`[EVENT URLS API] Validated data: urlPath=${urlPath}, eventName=${eventName}, isActive=${isActive}`);
     
     // Check if URL is a reserved keyword
     if (RESERVED_KEYWORDS.includes(urlPath.toLowerCase())) {
+      console.log(`[EVENT URLS API] URL path "${urlPath}" is a reserved keyword`);
       return NextResponse.json(
         { success: false, error: 'This URL is reserved and cannot be used' },
         { status: 400 }
       );
     }
     
-    // Check if user has subscription features
-    // This would be a good place to check subscription limits
-    // For now, we'll just limit URLs based on whether the user has a subscription
+    // Check user URL limits (using Prisma instead of raw query)
+    const urlCount = await prisma.eventUrl.count({
+      where: { userId: user.id }
+    });
     
-    // Check how many URLs the user already has
-    const urlCountResult = await prisma.$queryRaw<{ count: number }[]>`
-      SELECT COUNT(*) as count FROM EventUrl WHERE userId = ${user.id}
-    `;
+    console.log(`[EVENT URLS API] User ${user.id} has ${urlCount} existing URLs`);
     
-    const urlCount = urlCountResult[0]?.count || 0;
     const urlLimit = user.subscription?.maxEventUrls || 3; // Default to 3 for free users
+    console.log(`[EVENT URLS API] User URL limit is ${urlLimit}`);
     
     if (urlCount >= urlLimit) {
+      console.log(`[EVENT URLS API] User has reached URL limit (${urlCount}/${urlLimit})`);
       return NextResponse.json(
         { 
           success: false, 
@@ -185,55 +199,66 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if the URL path is already in use with raw query
-    const existingUrlResults = await prisma.$queryRaw`
-      SELECT id FROM EventUrl WHERE urlPath = ${urlPath}
-    `;
-    
-    const existingUrl = Array.isArray(existingUrlResults) && existingUrlResults.length > 0 
-      ? existingUrlResults[0] 
-      : null;
+    // Check if the URL path is already in use (using Prisma)
+    const existingUrl = await prisma.eventUrl.findFirst({
+      where: { urlPath }
+    });
     
     if (existingUrl) {
+      console.log(`[EVENT URLS API] URL path "${urlPath}" is already in use`);
       return NextResponse.json(
         { success: false, error: 'URL path is already in use' },
         { status: 400 }
       );
     }
     
-    // Create the new event URL with raw query
-    await prisma.$executeRaw`
-      INSERT INTO EventUrl (
-        id, userId, urlPath, eventName, isActive,
-        eventStartDate, eventEndDate, createdAt, updatedAt
-      ) VALUES (
-        uuid(), ${user.id}, ${urlPath}, ${eventName},
-        ${isActive},
-        ${eventStartDate ? new Date(eventStartDate) : null},
-        ${eventEndDate ? new Date(eventEndDate) : null},
-        NOW(), NOW()
-      )
-    `;
+    console.log(`[EVENT URLS API] Creating new event URL for user ${user.id}: ${urlPath}`);
     
-    // Get the newly created event URL
-    const newEventUrlResults = await prisma.$queryRaw`
-      SELECT * FROM EventUrl 
-      WHERE urlPath = ${urlPath}
-      AND userId = ${user.id}
-      LIMIT 1
-    `;
+    // Create the new event URL with Prisma
+    const eventUrl = await prisma.eventUrl.create({
+      data: {
+        userId: user.id,
+        urlPath,
+        eventName,
+        isActive,
+        eventStartDate: eventStartDate ? new Date(eventStartDate) : null,
+        eventEndDate: eventEndDate ? new Date(eventEndDate) : null
+      }
+    });
     
-    const eventUrl = Array.isArray(newEventUrlResults) && newEventUrlResults.length > 0 
-      ? newEventUrlResults[0] 
-      : null;
+    console.log(`[EVENT URLS API] Successfully created event URL: ${eventUrl.id}`);
     
-    return NextResponse.json({ 
-      success: true, 
-      eventUrl 
-    }, { status: 201 });
+    // Get or create user settings
+    const userSettings = await prisma.settings.findFirst({
+      where: { userId: user.id }
+    });
+    
+    if (userSettings) {
+      console.log(`[EVENT URLS API] Found existing settings for user ${user.id}: ${userSettings.id}`);
+      
+      try {
+        // Link the user's settings to this event URL
+        const eventUrlSettings = await prisma.eventUrlSettings.create({
+          data: {
+            eventUrlId: eventUrl.id,
+            settingsId: userSettings.id,
+            active: true
+          }
+        });
+        console.log(`[EVENT URLS API] Created junction for eventUrl ${eventUrl.id} and settings ${userSettings.id}`);
+      } catch (junctionError) {
+        console.error(`[EVENT URLS API] Error creating junction:`, junctionError);
+        // Don't fail the creation if we can't create the junction
+      }
+    } else {
+      console.log(`[EVENT URLS API] No settings found for user ${user.id} - will use defaults`);
+    }
+    
+    console.log(`[EVENT URLS API] Returning new event URL: ${eventUrl.id}`);
+    return NextResponse.json(eventUrl, { status: 201 });
     
   } catch (error) {
-    console.error('Error creating event URL:', error);
+    console.error('[EVENT URLS API] Error creating event URL:', error);
     
     return NextResponse.json(
       { 

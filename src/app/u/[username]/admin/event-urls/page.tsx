@@ -114,19 +114,79 @@ export default function AdminEventUrlsPage() {
       setSelectedUrlId(id);
       setError(null);
 
-      const response = await fetch(`/api/user/event-urls/${id}?username=${username}`, {
+      console.log(`[CLIENT] Starting deletion of event URL ${id} for username ${username}`);
+      
+      // Add a delay to ensure any database operations have time to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // First attempt - try with username param first since that's the most likely to work
+      console.log(`[CLIENT] First attempt - with username param: ${username}`);
+      let response = await fetch(`/api/user/event-urls/${id}?username=${username}`, {
         method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete event URL');
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        console.error('[CLIENT] Failed to parse JSON response:', e);
       }
 
+      // If first attempt fails, try without username param
+      if (!response.ok) {
+        console.error('[CLIENT] First deletion attempt failed:', responseData);
+        
+        // Try again without username parameter
+        console.log(`[CLIENT] Second attempt - without username parameter`);
+        response = await fetch(`/api/user/event-urls/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        try {
+          responseData = await response.json();
+        } catch (e) {
+          console.error('[CLIENT] Failed to parse JSON response (second attempt):', e);
+        }
+      }
+
+      if (!response.ok) {
+        console.error('[CLIENT] Second deletion attempt failed:', responseData);
+        
+        // Final attempt - try the direct endpoint
+        console.log(`[CLIENT] Final attempt - using direct endpoint`);
+        response = await fetch(`/api/event-urls/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        try {
+          responseData = await response.json();
+        } catch (e) {
+          console.error('[CLIENT] Failed to parse JSON response (final attempt):', e);
+        }
+        
+        if (!response.ok) {
+          console.error('[CLIENT] All deletion attempts failed. Final error:', responseData);
+          throw new Error(responseData?.error || `Failed to delete event URL: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      console.log('[CLIENT] Event URL deleted successfully');
       await fetchEventUrls();
       showToast('Event URL deleted successfully', 'success');
     } catch (err) {
-      console.error('Error deleting event URL:', err);
+      console.error('[CLIENT] Error deleting event URL:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       showToast(err instanceof Error ? err.message : 'Failed to delete event URL', 'error');
     } finally {
@@ -154,11 +214,27 @@ export default function AdminEventUrlsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Event URLs</h1>
-        <p className="text-gray-600">
-          Manage custom event URLs for {username}
-        </p>
+      <div className="mb-6 flex flex-wrap items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Event URLs</h1>
+          <p className="text-gray-600">
+            Manage custom event URLs for {username}
+          </p>
+        </div>
+        <div className="flex gap-2 mt-2 md:mt-0">
+          <a 
+            href="/api/debug/test-url-routing"
+            target="_blank"
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 text-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <path d="M20.8 14.2L16 19.5H4a2 2 0 0 1-2-2v-7.8L8.5 13l4.1-3.1 8.2 4.3z"></path>
+            </svg>
+            Test URL Routing
+          </a>
+        </div>
       </div>
 
       {error && (
@@ -251,6 +327,17 @@ export default function AdminEventUrlsPage() {
                     title="Preview Booth"
                   >
                     <FiEye className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => window.open(`/api/debug/url-check?urlPath=${eventUrl.urlPath}`, '_blank')}
+                    className="p-2 text-gray-500 hover:text-purple-600"
+                    title="Test URL Access"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <path d="M15 3h6v6"></path>
+                      <path d="M10 14L21 3"></path>
+                    </svg>
                   </button>
                   <button
                     onClick={() => deleteEventUrl(eventUrl.id)}

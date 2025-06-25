@@ -209,19 +209,20 @@ export function getFeatureComparison() {
 /**
  * Check if a user has a specific feature
  */
-export function hasFeature(subscription: any, featureName: keyof typeof subscriptionFeatures[SubscriptionTier.FREE]) {
+export function hasFeature(subscription: { tier?: SubscriptionTier } | null | undefined, featureName: keyof typeof subscriptionFeatures[SubscriptionTier.FREE]) {
   if (!subscription) {
     // Default to free tier features
     return subscriptionFeatures[SubscriptionTier.FREE][featureName];
   }
   
   // If the feature was manually overridden in the subscription record, use that value
-  if (typeof subscription[featureName] !== 'undefined') {
-    return subscription[featureName];
+  if (typeof subscription[featureName as keyof typeof subscription] !== 'undefined') {
+    return subscription[featureName as keyof typeof subscription];
   }
   
   // Otherwise, use the default value for this tier
-  return subscriptionFeatures[subscription.tier]?.[featureName] ??
+  const tier = subscription.tier || SubscriptionTier.FREE;
+  return subscriptionFeatures[tier]?.[featureName] ??
     subscriptionFeatures[SubscriptionTier.FREE][featureName];
 }
 

@@ -74,6 +74,46 @@ The application features a comprehensive role-based access control system:
 - **API Access Control**: Fine-grained permission checks for all API endpoints
 - **Detailed Logging**: Comprehensive logging of permission checks and access attempts
 
+#### Permission Utilities
+
+The application implements a centralized permission system through `permission-utils.ts` that provides:
+
+- **Unified Permission Interface**: A standardized approach to checking permissions across all resources
+- **Granular Action Control**: Permissions for specific actions (read, create, update, delete, email)
+- **Detailed Error Messages**: User-friendly error messages when permission is denied
+- **Comprehensive Logging**: Detailed logs for all permission checks to aid debugging
+- **Type Safety**: TypeScript interfaces ensure consistency across the application
+
+#### Permission Implementation
+
+Permissions are implemented using the following pattern:
+
+```typescript
+// Check if the user can perform an action on a resource
+const permissionResult = await canManageResource(currentUser, resourceId, 'action');
+
+if (!permissionResult.allowed) {
+  return NextResponse.json(
+    { 
+      success: false, 
+      error: permissionResult.reason || 'Permission denied'
+    },
+    { status: 403 }
+  );
+}
+
+// Proceed with the authorized operation...
+```
+
+#### Backward Compatibility
+
+The new permission system is designed for backward compatibility:
+
+- Legacy permission checks continue to work alongside the new system
+- Gradual migration path for all API endpoints
+- Dual permission checks to ensure no functionality is broken during transition
+- Detailed logging to identify and troubleshoot any permission issues
+
 ### Email System
 
 - **Configurable Email Templates**: Customize email templates for photo/video sharing
@@ -453,3 +493,48 @@ The application uses a role-based access control system:
 - **CUSTOMER**: Regular user access with limited administrative capabilities
 
 The role system ensures proper separation of concerns and data security across the application.
+
+## Troubleshooting Common Issues
+
+### Settings Not Reflecting Correctly
+
+If settings changes in the admin panel aren't showing up in the booth, try the following:
+
+1. **Use the Debug Panel**: In development mode, use the Debug Panel accessible from the bottom-right corner of the booth page to force a refresh and clear cache.
+
+2. **Check Database References**: Ensure that event URLs are associated with valid user IDs. Invalid references can cause settings to not load properly.
+
+3. **Verify API Responses**: Make sure `/api/booth/settings` is returning the expected data with proper cache-busting headers:
+   ```
+   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+   Pragma: no-cache
+   Expires: 0
+   ```
+
+4. **Clear Browser Cache**: Try a hard reload (Ctrl+Shift+R or Cmd+Shift+R) to bypass browser cache.
+
+5. **Database Diagnostics**: Run the diagnostic scripts in the root directory:
+   ```
+   node check-eventurl.js <urlPath>
+   node fix-cache-issues.js
+   ```
+
+### URL and Settings Relationships
+
+Event URLs in the database must reference a valid user with associated settings. If an EventUrl references a non-existent user ID, settings will fail to load.
+
+To fix this issue, you can run:
+```
+node fix-url-settings.js <urlPath>
+```
+
+This will:
+1. Check if the URL exists and is associated with a valid user
+2. If not, reassign the URL to a valid user
+3. Ensure the user has proper settings
+
+## Development Notes
+
+- **Cache Prevention**: All API routes related to booth settings use aggressive cache prevention headers
+- **Timestamp Parameters**: Always include a timestamp parameter `t=${Date.now()}` in API requests to prevent caching
+- **Dynamic Routing**: All pages in `app/e/[urlPath]/` have `dynamic = 'force-dynamic'` and `revalidate = 0` to prevent caching

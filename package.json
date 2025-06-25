@@ -11,8 +11,10 @@
     "setup": "node scripts/setup-env.js && prisma generate",
     "migrate-theme": "node scripts/migrate-theme-fields.js",
     "migrate-capture": "node scripts/migrate-capture-mode.js",
+    "migrate-event-url-settings": "node prisma/scripts/migrate-event-url-settings.js",
     "db:push": "node scripts/setup-env.js && prisma db push",
-    "db:seed": "node scripts/setup-env.js && node scripts/seed.js"
+    "db:seed": "node scripts/setup-env.js && node scripts/seed.js",
+    "test": "jest"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",

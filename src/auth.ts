@@ -1,6 +1,6 @@
 // src/auth.ts
 
-import { PrismaAdapter } from "@auth/prisma-adapter";
+// import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { authOptions } from "./auth.config";
@@ -10,11 +10,16 @@ import bcryptjs from "bcryptjs";
 
 async function getUser(email: string) {
   try {
-    return await prisma.user.findUnique({
-      where: {
-        email,
-      },
-    });
+    // Get user with role using raw query to ensure we have the role field
+    const users = await prisma.$queryRaw`
+      SELECT id, name, email, emailVerified, image, password, role
+      FROM User
+      WHERE email = ${email}
+    `;
+    
+    // Raw query returns an array
+    const user = Array.isArray(users) && users.length > 0 ? users[0] : null;
+    return user;
   } catch (error) {
     console.error("Failed to fetch user:", error);
     throw new Error("Failed to fetch user.");
@@ -23,7 +28,8 @@ async function getUser(email: string) {
 
 export const { auth, signIn, signOut } = NextAuth({
   ...authOptions,
-  adapter: PrismaAdapter(prisma),
+  // Remove the adapter
+  // adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
@@ -58,6 +64,7 @@ export const { auth, signIn, signOut } = NextAuth({
               name: user.name,
               email: user.email,
               image: user.image,
+              role: user.role || 'CUSTOMER', // Ensure role is included
             };
           }
         }

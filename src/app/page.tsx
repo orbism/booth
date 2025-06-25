@@ -88,13 +88,14 @@ async function getEventUrl(eventUrlId: string): Promise<EventUrl | null> {
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const settings = await getBoothSettings();
   const themeSettings = await getThemeSettings();
   
   // Check if we have an eventUrlId in the URL
-  const eventUrlId = searchParams?.eventUrlId as string | undefined;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const eventUrlId = resolvedSearchParams?.eventUrlId as string | undefined;
   
   let eventUrl = null;
   if (eventUrlId) {

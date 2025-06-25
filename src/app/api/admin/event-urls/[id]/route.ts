@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth.config';
 
 // GET /api/admin/event-urls/[id] - Get a specific event URL
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     
     // Check if user is authenticated and is an admin
     if (!session || session.user.role !== 'ADMIN') {
@@ -18,7 +19,7 @@ export async function GET(
       );
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     
     // Get the event URL using raw query
     const eventUrlResults = await prisma.$queryRaw`
@@ -49,10 +50,10 @@ export async function GET(
 // PATCH /api/admin/event-urls/[id] - Update a specific event URL
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     
     // Check if user is authenticated and is an admin
     if (!session || session.user.role !== 'ADMIN') {
@@ -62,7 +63,7 @@ export async function PATCH(
       );
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     const body = await req.json();
     const { urlPath, eventName, isActive, eventStartDate, eventEndDate } = body;
 
@@ -177,10 +178,10 @@ export async function PATCH(
 // DELETE /api/admin/event-urls/[id] - Delete a specific event URL
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     
     // Check if user is authenticated and is an admin
     if (!session || session.user.role !== 'ADMIN') {
@@ -190,7 +191,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     
     // Check if event URL exists using raw query
     const eventUrlResults = await prisma.$queryRaw`

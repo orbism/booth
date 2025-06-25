@@ -29,23 +29,59 @@ async function checkAdminAccess() {
 }
 
 /**
- * DELETE handler - Delete a specific booth session
+ * GET /api/admin/users/sessions/[id]
+ * Get details of a specific session for admin
  */
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
+    
     const isAdmin = await checkAdminAccess();
     if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const sessionId = params.id;
+    // Check if the session exists
+    const session = await prisma.boothSession.findUnique({
+      where: { id: id },
+    });
+
+    if (!session) {
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(session);
+  } catch (error) {
+    console.error('Error getting session:', error);
+    return NextResponse.json(
+      { error: 'Failed to get session' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/admin/users/sessions/[id]
+ * Delete a specific session for admin
+ */
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    
+    const isAdmin = await checkAdminAccess();
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     // Check if the session exists
     const session = await prisma.boothSession.findUnique({
-      where: { id: sessionId },
+      where: { id: id },
     });
 
     if (!session) {
@@ -54,7 +90,7 @@ export async function DELETE(
 
     // Delete the session
     await prisma.boothSession.delete({
-      where: { id: sessionId },
+      where: { id: id },
     });
 
     return NextResponse.json(
@@ -71,11 +107,12 @@ export async function DELETE(
 }
 
 /**
- * POST handler - Resend email for a specific booth session
+ * POST /api/admin/users/sessions/[id]/email
+ * Resend email for a specific booth session
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const isAdmin = await checkAdminAccess();
@@ -83,7 +120,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const sessionId = params.id;
+    const { id: sessionId } = await context.params;
 
     // Get the session
     const session = await prisma.boothSession.findUnique({

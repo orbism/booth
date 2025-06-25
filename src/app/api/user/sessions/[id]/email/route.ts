@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, checkResourceOwnership } from '@/lib/auth-utils';
+import { canManageSession, UserInfo } from '@/lib/permission-utils';
 import nodemailer from 'nodemailer';
 
 /**
@@ -9,11 +10,11 @@ import nodemailer from 'nodemailer';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-    console.log(`[SESSION EMAIL] Request to resend email for session ID: ${id}`);
+    const { id: sessionId } = await context.params;
+    console.log(`[SESSION EMAIL] Request to resend email for session ID: ${sessionId}`);
     
     // Get user from auth utils
     const user = await getCurrentUser();
@@ -29,13 +30,29 @@ export async function POST(
     
     console.log(`[SESSION EMAIL] User authenticated: ${user.id}, role: ${user.role}`);
     
-    // Check if the user owns this booth session or is an admin
-    const hasAccess = await checkResourceOwnership('boothSession', id);
+    // Check permission using both systems for backward compatibility
+    // 1. Legacy permission check
+    const hasLegacyAccess = await checkResourceOwnership('boothSession', sessionId);
+    
+    // 2. New permission system check
+    const currentUser: UserInfo = {
+      id: user.id,
+      role: user.role,
+      username: user.username
+    };
+    
+    const permissionResult = await canManageSession(currentUser, sessionId, 'email');
+    
+    // Only grant access if at least one system approves
+    const hasAccess = hasLegacyAccess || permissionResult.allowed;
     
     if (!hasAccess) {
-      console.log(`[SESSION EMAIL] Access denied for user ${user.id} to send email for session ${id}`);
+      console.log(`[SESSION EMAIL] Access denied for user ${user.id} to send email for session ${sessionId}: ${permissionResult.reason || 'Unknown reason'}`);
       return NextResponse.json(
-        { success: false, error: 'You do not have permission to send email for this session' },
+        { 
+          success: false, 
+          error: permissionResult.reason || 'You do not have permission to send email for this session' 
+        },
         { status: 403 }
       );
     }
@@ -54,14 +71,14 @@ export async function POST(
       WHERE b.id = ?
     `;
     
-    const sessionResults = await prisma.$queryRawUnsafe(sessionQuery, id);
+    const sessionResults = await prisma.$queryRawUnsafe(sessionQuery, sessionId);
     
     const session = Array.isArray(sessionResults) && sessionResults.length > 0 
       ? sessionResults[0] 
       : null;
     
     if (!session) {
-      console.log(`[SESSION EMAIL] Session not found with ID: ${id}`);
+      console.log(`[SESSION EMAIL] Session not found with ID: ${sessionId}`);
       return NextResponse.json(
         { success: false, error: 'Session not found' },
         { status: 404 }
@@ -69,7 +86,7 @@ export async function POST(
     }
     
     if (!session.userEmail) {
-      console.log(`[SESSION EMAIL] No email associated with session ${id}`);
+      console.log(`[SESSION EMAIL] No email associated with session ${sessionId}`);
       return NextResponse.json(
         { success: false, error: 'No email associated with this session' },
         { status: 400 }
@@ -94,7 +111,7 @@ export async function POST(
       : null;
     
     if (!settings) {
-      console.log(`[SESSION EMAIL] No email settings found for session ${id}`);
+      console.log(`[SESSION EMAIL] No email settings found for session ${sessionId}`);
       return NextResponse.json(
         { success: false, error: 'Email settings not configured' },
         { status: 400 }
@@ -132,7 +149,7 @@ export async function POST(
     await prisma.$executeRaw`
       UPDATE BoothSession 
       SET emailSent = true 
-      WHERE id = ${id}
+      WHERE id = ${sessionId}
     `;
     
     // Return success response

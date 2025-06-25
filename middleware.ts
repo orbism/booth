@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
+// Define a type for the token
+type UserToken = {
+  name?: string;
+  email?: string;
+  username?: string;
+  role?: string;
+  sub?: string;
+  // Add other fields as needed
+};
+
 // Routes that require authentication
 const protectedRoutes = [
   '/dashboard',
@@ -60,7 +70,7 @@ export async function middleware(request: NextRequest) {
   // For protected routes, check auth
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   if (isProtectedRoute) {
-    const token = await getToken({ req: request });
+    const token = await getToken({ req: request }) as UserToken | null;
     
     // If not authenticated, redirect to login
     if (!token) {
@@ -80,7 +90,7 @@ export async function middleware(request: NextRequest) {
         // If we have a username in the URL and user email in token
         if (urlUsername && tokenEmail && token.name) {
           // Admin users can access any user page
-          if (token.role === 'ADMIN' || token.role === 'SUPER_ADMIN') {
+          if (token.role === 'ADMIN' || token.role === 'SUPER_ADMIN' || token.role === 'admin') {
             return NextResponse.next();
           }
           

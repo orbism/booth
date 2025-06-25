@@ -4,6 +4,9 @@ import { authOptions } from '@/auth.config';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
+// Define allowed role types
+type UserRole = 'USER' | 'CUSTOMER' | 'ADMIN' | 'SUPER_ADMIN' | 'admin';
+
 // Event URL update validation schema
 const eventUrlUpdateSchema = z.object({
   eventName: z.string().min(2, "Event name is required").optional(),
@@ -18,18 +21,25 @@ const eventUrlUpdateSchema = z.object({
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
+    
+    console.log(`[API EVENT URL] GET request for ID: ${id}`);
     
     // Get user session
     const session = await getServerSession(authOptions);
     
     // Check if user is authenticated
     if (!session || !session.user) {
+      console.log(`[API EVENT URL] Unauthorized GET attempt for ID: ${id}`);
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { 
+          success: false, 
+          error: 'Unauthorized',
+          code: 'UNAUTHORIZED_ACCESS'
+        },
         { status: 401 }
       );
     }
@@ -48,7 +58,11 @@ export async function GET(
     
     if (!eventUrl) {
       return NextResponse.json(
-        { success: false, error: 'Event URL not found' },
+        { 
+          success: false, 
+          error: 'Event URL not found',
+          code: 'EVENT_URL_NOT_FOUND'
+        },
         { status: 404 }
       );
     }
@@ -56,7 +70,11 @@ export async function GET(
     // Check if the event URL belongs to the user or if user is admin
     if (eventUrl.userId !== userId && session.user.role !== 'ADMIN') {
       return NextResponse.json(
-        { success: false, error: 'You do not have permission to access this event URL' },
+        { 
+          success: false, 
+          error: 'You do not have permission to access this event URL',
+          code: 'FORBIDDEN_ACCESS'
+        },
         { status: 403 }
       );
     }
@@ -68,13 +86,14 @@ export async function GET(
     });
     
   } catch (error) {
-    console.error('Error fetching event URL:', error);
+    console.error('[API EVENT URL] Error fetching event URL:', error);
     
     return NextResponse.json(
       { 
         success: false, 
         error: 'Failed to fetch event URL',
-        message: error instanceof Error ? error.message : 'Unknown error' 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        code: 'EVENT_URL_FETCH_ERROR'
       },
       { status: 500 }
     );
@@ -87,10 +106,12 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
+    
+    console.log(`[API EVENT URL] PATCH request for ID: ${id}`);
     
     // Get user session
     const session = await getServerSession(authOptions);
@@ -225,62 +246,106 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
+    
+    console.log(`[API EVENT URL] Deletion requested for ID: ${id}`);
     
     // Get user session
     const session = await getServerSession(authOptions);
     
     // Check if user is authenticated
     if (!session || !session.user) {
+      console.log(`[API EVENT URL] Unauthorized deletion attempt for ID: ${id}`);
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
     
-    // Get the user ID
+    // Get the user ID and role
     const userId = session.user.id;
+    const userRole = session.user.role as UserRole;
     
-    // Check if the event URL exists using raw query
-    const eventUrlResults = await prisma.$queryRaw`
-      SELECT * FROM EventUrl WHERE id = ${id}
+    console.log(`[API EVENT URL] Deletion attempt by user ${userId} with role ${userRole}`);
+    
+    // First check if the URL exists at all (without joins)
+    const urlExistsCheck = await prisma.$queryRaw`
+      SELECT id FROM EventUrl WHERE id = ${id}
     `;
     
-    const eventUrl = Array.isArray(eventUrlResults) && eventUrlResults.length > 0 
-      ? eventUrlResults[0] 
-      : null;
+    const urlExists = Array.isArray(urlExistsCheck) && urlExistsCheck.length > 0;
     
-    if (!eventUrl) {
+    if (!urlExists) {
+      console.log(`[API EVENT URL] URL with ID ${id} not found in database`);
       return NextResponse.json(
-        { success: false, error: 'Event URL not found' },
+        { success: false, error: 'Event URL not found', code: 'URL_NOT_EXISTS' },
         { status: 404 }
       );
     }
     
-    // Check if the event URL belongs to the user or if user is admin
-    if (eventUrl.userId !== userId && session.user.role !== 'ADMIN') {
+    // URL exists - now check if it belongs to the user or if user is admin
+    let hasAccess = false;
+    
+    // Admin bypass - admin can delete any URL
+    if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'admin') {
+      console.log(`[API EVENT URL] Admin override for URL ${id} deletion`);
+      hasAccess = true;
+    } else {
+      // Check ownership without join
+      const ownershipCheck = await prisma.$queryRaw`
+        SELECT userId FROM EventUrl WHERE id = ${id}
+      `;
+      
+      if (Array.isArray(ownershipCheck) && ownershipCheck.length > 0) {
+        const urlOwnerId = ownershipCheck[0].userId;
+        console.log(`[API EVENT URL] URL ${id} belongs to user ${urlOwnerId}, requester is ${userId}`);
+        
+        // Check if current user is the owner
+        hasAccess = urlOwnerId === userId;
+      }
+    }
+    
+    // If user doesn't have access, deny permission
+    if (!hasAccess) {
+      console.log(`[API EVENT URL] Access denied for user ${userId} to delete URL ${id}`);
       return NextResponse.json(
         { success: false, error: 'You do not have permission to delete this event URL' },
         { status: 403 }
       );
     }
     
-    // Delete the event URL using raw query
-    await prisma.$executeRaw`
-      DELETE FROM EventUrl WHERE id = ${id}
-    `;
+    // User has access, proceed with deletion
+    console.log(`[API EVENT URL] Performing deletion for URL ${id}`);
     
-    // Return success
-    return NextResponse.json({
-      success: true,
-      message: 'Event URL deleted successfully',
-    });
-    
+    try {
+      // Delete the event URL using raw query
+      await prisma.$executeRaw`
+        DELETE FROM EventUrl WHERE id = ${id}
+      `;
+      
+      console.log(`[API EVENT URL] Successfully deleted URL ${id}`);
+      
+      // Return success
+      return NextResponse.json({
+        success: true,
+        message: 'Event URL deleted successfully',
+      });
+    } catch (dbError) {
+      console.error(`[API EVENT URL] Database error during deletion:`, dbError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database error during URL deletion',
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('Error deleting event URL:', error);
+    console.error('[API EVENT URL] Error deleting event URL:', error);
     
     return NextResponse.json(
       { 

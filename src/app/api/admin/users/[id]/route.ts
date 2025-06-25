@@ -49,7 +49,7 @@ async function checkAdminAccess() {
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const isAdmin = await checkAdminAccess();
@@ -57,7 +57,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const userId = params.id;
+    const { id: userId } = await context.params;
     
     // Get the user with raw SQL
     const userResults = await prisma.$queryRaw`
@@ -110,7 +110,7 @@ export async function GET(
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const isAdmin = await checkAdminAccess();
@@ -118,7 +118,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const userId = params.id;
+    const { id: userId } = await context.params;
     const body = await req.json();
     const { name, email, password, role } = body;
 
@@ -198,7 +198,7 @@ export async function PUT(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const isAdmin = await checkAdminAccess();
@@ -206,7 +206,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const userId = params.id;
+    const { id: userId } = await context.params;
 
     // Check if user exists
     const user = await prisma.user.findUnique({

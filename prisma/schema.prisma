@@ -66,17 +66,18 @@ model Subscription {
 }
 
 model EventUrl {
-  id             String         @id @default(cuid())
-  userId         String
-  urlPath        String         @unique
-  isActive       Boolean        @default(true)
-  eventName      String
-  eventStartDate DateTime?
-  eventEndDate   DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  boothSessions  BoothSession[]
+  id               String            @id @default(cuid())
+  userId           String
+  urlPath          String            @unique
+  isActive         Boolean           @default(true)
+  eventName        String
+  eventStartDate   DateTime?
+  eventEndDate     DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boothSessions    BoothSession[]
+  eventUrlSettings EventUrlSettings[]
 
   @@index([userId])
 }
@@ -112,60 +113,61 @@ model BoothSession {
 }
 
 model Settings {
-  id                   String   @id @default(cuid())
-  eventName            String   @default("Photo Booth Event")
+  id                   String             @id @default(cuid())
+  eventName            String             @default("Photo Booth Event")
   adminEmail           String
-  countdownTime        Int      @default(3)
-  resetTime            Int      @default(60)
-  emailSubject         String   @default("Your Photo Booth Picture")
-  emailTemplate        String   @default("Thank you for using our photo booth! Here's your picture.")
+  countdownTime        Int                @default(3)
+  resetTime            Int                @default(60)
+  emailSubject         String             @default("Your Photo Booth Picture")
+  emailTemplate        String             @default("Thank you for using our photo booth! Here's your picture.")
   smtpHost             String
   smtpPort             Int
   smtpUser             String
   smtpPassword         String
-  companyName          String   @default("BoothBoss")
+  companyName          String             @default("BoothBoss")
   companyLogo          String?
-  primaryColor         String   @default("#3B82F6")
-  secondaryColor       String   @default("#1E40AF")
+  primaryColor         String             @default("#3B82F6")
+  secondaryColor       String             @default("#1E40AF")
   backgroundColor      String?
   borderColor          String?
   buttonColor          String?
-  notes                String?  @db.Text
+  notes                String?            @db.Text
   textColor            String?
-  theme                String   @default("custom")
-  customJourneyEnabled Boolean  @default(false)
+  theme                String             @default("custom")
+  customJourneyEnabled Boolean            @default(false)
   journeyConfig        Json?
   activeJourneyId      String?
-  splashPageButtonText String?  @default("Start")
+  splashPageButtonText String?            @default("Start")
   splashPageContent    String?
-  splashPageEnabled    Boolean  @default(false)
+  splashPageEnabled    Boolean            @default(false)
   splashPageImage      String?
   splashPageTitle      String?
-  aiImageCorrection    Boolean  @default(false)
-  captureMode          String   @default("photo")
-  photoDevice          String   @default("ipad")
-  photoEffect          String   @default("none")
-  photoOrientation     String   @default("portrait-standard")
-  photoResolution      String   @default("medium")
-  printerEnabled       Boolean  @default(false)
-  videoDevice          String   @default("ipad")
-  videoDuration        Int      @default(10)
-  videoEffect          String   @default("none")
-  videoOrientation     String   @default("portrait-standard")
-  videoResolution      String   @default("medium")
+  aiImageCorrection    Boolean            @default(false)
+  captureMode          String             @default("photo")
+  photoDevice          String             @default("ipad")
+  photoEffect          String             @default("none")
+  photoOrientation     String             @default("portrait-standard")
+  photoResolution      String             @default("medium")
+  printerEnabled       Boolean            @default(false)
+  videoDevice          String             @default("ipad")
+  videoDuration        Int                @default(10)
+  videoEffect          String             @default("none")
+  videoOrientation     String             @default("portrait-standard")
+  videoResolution      String             @default("medium")
   enabledFilters       String?
-  filtersEnabled       Boolean  @default(false)
-  blobVercelEnabled    Boolean  @default(true)
-  createdAt            DateTime @default(now())
-  customCss            String?  @db.Text
-  localUploadPath      String   @default("uploads")
-  showBoothBossLogo    Boolean  @default(true)
+  filtersEnabled       Boolean            @default(false)
+  blobVercelEnabled    Boolean            @default(true)
+  createdAt            DateTime           @default(now())
+  customCss            String?            @db.Text
+  localUploadPath      String             @default("uploads")
+  showBoothBossLogo    Boolean            @default(true)
   storageBaseUrl       String?
-  storageProvider      String   @default("auto")
-  updatedAt            DateTime @default(now()) @updatedAt
-  userId               String?  @unique
-  isDefault            Boolean  @default(false)
-  user                 User?    @relation(fields: [userId], references: [id])
+  storageProvider      String             @default("auto")
+  updatedAt            DateTime           @default(now()) @updatedAt
+  userId               String?            @unique
+  isDefault            Boolean            @default(false)
+  user                 User?              @relation(fields: [userId], references: [id])
+  eventUrlSettings     EventUrlSettings[]
 }
 
 model Journey {
@@ -231,4 +233,19 @@ enum SubscriptionStatus {
   CANCELED
   EXPIRED
   TRIAL
+}
+
+// New junction model for event URL specific settings
+model EventUrlSettings {
+  id         String   @id @default(cuid())
+  eventUrlId String
+  settingsId String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  eventUrl   EventUrl @relation(fields: [eventUrlId], references: [id], onDelete: Cascade)
+  settings   Settings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+
+  @@index([eventUrlId])
+  @@index([settingsId])
 }

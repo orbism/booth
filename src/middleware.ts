@@ -192,6 +192,32 @@ export async function middleware(request: NextRequest) {
     tokenSub: token?.sub
   });
   
+  // ✅✅✅ CRITICAL PROTECTION: ALWAYS CHECK EVENT URL ROUTES FIRST ✅✅✅
+  // This must be checked before any other conditions to ensure event URLs are never redirected
+  if (pathname.startsWith('/e/')) {
+    debugLog(`🔴 CRITICAL EVENT URL ACCESS - ${pathname} - ENSURING DIRECT ACCESS`);
+    
+    // Log query parameters for debugging
+    const queryParams = Object.fromEntries(request.nextUrl.searchParams.entries());
+    if (Object.keys(queryParams).length > 0) {
+      debugLog(`EVENT URL query parameters:`, queryParams);
+    }
+    
+    // Create a pass-through response with security headers but NO redirects
+    const response = NextResponse.next();
+    
+    // Add security headers
+    addSecurityHeaders(response.headers);
+    
+    // Extra protection: add cache control headers to prevent caching issues
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    debugLog(`🔴 EVENT URL direct access preserved for ${pathname} - returning Next() response`);
+    return response;
+  }
+  
   // Handle booth URL redirects - Redirect /booth/[urlPath] to /e/[urlPath]
   if (pathname.startsWith('/booth/')) {
     const urlPath = pathname.replace('/booth/', '');
@@ -349,6 +375,7 @@ export const config = {
     '/e/:path*',               // New booth routes
     '/api/booth/:path*',       // Booth API routes
     '/api/admin/:path*',       // Admin API routes
+    '/api/debug/:path*',       // Debug API routes
     '/u/:path*',               // Username-based routes
     '/login',                  // Login page for redirection
   ],

@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mkdir, writeFile } from 'fs/promises';
+import { createHash } from 'crypto';
 import { existsSync } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { getCurrentUser } from '@/lib/auth-utils';
+
+// Set bodyParser config
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 // Ensure videos directory exists in public
 async function ensurePublicVideosDir() {
@@ -18,100 +27,136 @@ async function ensurePublicVideosDir() {
 
 export async function POST(request: NextRequest) {
   try {
-    // Process the form data from the request
+    // Start debug logging
+    console.log('[VIDEO EMAIL API] Received video email request');
+    
+    // Get the current user - this is critical for associating the session with the right user
+    const currentUser = await getCurrentUser();
+    console.log(`[VIDEO EMAIL API] Current user: ${currentUser?.id || 'Not authenticated'}`);
+    
+    const sessionId = uuidv4();
+    const timestamp = Date.now();
+    const videoId = `video_${sessionId}_${timestamp}`;
+    
+    // Parse the form data
     const formData = await request.formData();
-    const videoFile = formData.get('video') as File;
+    console.log(`[VIDEO EMAIL API] Form data entries: ${Array.from(formData.entries()).map(([key]) => key).join(', ')}`);
+    
+    // Get form fields
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
-    const sessionId = formData.get('sessionId') as string || uuidv4();
-    const analyticsId = formData.get('analyticsId') as string || null;
+    const webmFile = formData.get('video') as File; 
+    const eventUrlId = formData.get('eventUrlId') as string;
+    const eventUrlPath = formData.get('eventUrlPath') as string;
     
-    if (!videoFile) {
+    // Debug log the values
+    console.log(`[VIDEO EMAIL API] Extracted data:
+- Name: ${name}
+- Email: ${email}
+- File name: ${webmFile?.name || 'No file'}
+- File size: ${webmFile?.size || 0} bytes
+- Event URL ID: ${eventUrlId || 'None'}
+- Event URL Path: ${eventUrlPath || 'None'}
+- Current User ID: ${currentUser?.id || 'None'}
+`);
+    
+    if (!name || !email || !webmFile) {
+      console.error('[VIDEO EMAIL API] Missing required fields in form data');
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    
+    // Create uploads directory if it doesn't exist
+    const publicDir = path.join(process.cwd(), 'public');
+    const uploadsDir = path.join(publicDir, 'uploads');
+    const videosDir = path.join(uploadsDir, 'videos');
+    
+    if (!existsSync(uploadsDir)) {
+      await mkdir(uploadsDir, { recursive: true });
+    }
+    
+    if (!existsSync(videosDir)) {
+      await mkdir(videosDir, { recursive: true });
+    }
+    
+    // Generate a unique filename based on timestamp, session ID, and original filename
+    const fileExtension = 'webm';
+    const uniqueFilename = `${timestamp}_${sessionId}.${fileExtension}`;
+    const filePath = path.join(videosDir, uniqueFilename);
+    
+    console.log(`[VIDEO EMAIL API] Generated file path: ${filePath}`);
+    
+    // Convert the File object to an ArrayBuffer
+    const arrayBuffer = await webmFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Write the file to disk
+    await writeFile(filePath, buffer);
+    
+    // URL path for retrieving the video (relative to the public dir)
+    const webmUrl = `/uploads/videos/${uniqueFilename}`;
+    console.log(`[VIDEO EMAIL API] File saved successfully at: ${webmUrl}`);
+    
+    // Now make an API call to process the video and send the email
+    const processingApiUrl = new URL('/api/video/process-and-email', request.nextUrl.origin).href;
+    console.log(`[VIDEO EMAIL API] Sending processing request to: ${processingApiUrl}`);
+    
+    // Data to send to the processing endpoint
+    const processingData = {
+      videoId,
+      sessionId,
+      name,
+      email,
+      webmUrl,
+      userId: currentUser?.id, // Pass the user ID to associate with the session
+      analyticsId: formData.get('analyticsId') as string,
+      eventUrlId: eventUrlId || null,
+      eventUrlPath: eventUrlPath || null
+    };
+    
+    console.log(`[VIDEO EMAIL API] Processing data payload:`, JSON.stringify(processingData, null, 2));
+    
+    // Call the processing API
+    const processingResponse = await fetch(processingApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(processingData),
+    });
+    
+    const processingResult = await processingResponse.json();
+    
+    console.log(`[VIDEO EMAIL API] Processing result:`, JSON.stringify(processingResult, null, 2));
+    
+    if (!processingResponse.ok) {
+      console.error('[VIDEO EMAIL API] Failed to process video:', processingResult);
       return NextResponse.json(
-        { error: { message: 'No video file provided' } },
-        { status: 400 }
+        { 
+          error: 'Failed to process video',
+          details: processingResult.error
+        }, 
+        { status: 500 }
       );
     }
-
-    console.log(`Received video for processing:
-User Name: ${name}
-Session ID: ${sessionId}
-User Email: ${email}
-Video Size: ${videoFile.size} bytes
-Video Type: ${videoFile.type}
-    `);
-    
-    // Create unique ID for this video if not provided
-    const videoId = uuidv4();
-    const videosDir = await ensurePublicVideosDir();
-    
-    // Save the WebM file to public directory
-    const webmPath = path.join(videosDir, `${videoId}.webm`);
-    await writeFile(webmPath, Buffer.from(await videoFile.arrayBuffer()));
-    
-    // Video URL relative to public directory (WebM)
-    const webmUrl = `/videos/${videoId}.webm`;
-    
-    // Simulate the path the MP4 will have when conversion is complete
-    const mp4Url = `/videos/${videoId}.mp4`;
-    
-    // Log processing status
-    console.log(`Video processing initiated:
-User Name: ${name}
-Session ID: ${sessionId}
-User Email: ${email}
-Preview WebM URL: ${webmUrl}
-Final MP4 URL: ${mp4Url} (processing)
-Email Status: Pending
-    `);
-    
-    // Trigger background processing (in a real app, this would be a job queue)
-    // Here we use setTimeout to simulate an asynchronous background process
-    setTimeout(async () => {
-      try {
-        // Call the processing endpoint
-        const response = await fetch(new URL('/api/video/process-and-email', request.url).toString(), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            videoId,
-            sessionId,
-            name,
-            email,
-            webmUrl,
-            analyticsId
-          }),
-        });
-        
-        if (!response.ok) {
-          console.error('Background processing failed:', await response.text());
-        }
-      } catch (error) {
-        console.error('Error triggering background processing:', error);
-      }
-    }, 2000); // Simulate a 2-second delay before starting processing
     
     return NextResponse.json({
       success: true,
-      message: "Video received and processing initiated",
+      message: 'Video uploaded successfully and email sent',
       webmUrl,
-      mp4Url,
+      mp4Url: processingResult.mp4Url,
       videoId,
-      sessionId,
-      emailSent: false // Indicate email hasn't been sent yet
+      sessionId: processingResult.sessionId,
+      emailSent: processingResult.emailSent
     });
+    
   } catch (error) {
-    console.error('Error processing video:', error);
+    console.error('[VIDEO EMAIL API] Server error:', error);
+    
     return NextResponse.json(
       { 
-        error: { 
-          message: 'Failed to process video',
-          details: error instanceof Error ? error.message : String(error)
-        },
-        emailSent: false
-      },
+        error: 'Server error', 
+        message: error instanceof Error ? error.message : String(error)
+      }, 
       { status: 500 }
     );
   }

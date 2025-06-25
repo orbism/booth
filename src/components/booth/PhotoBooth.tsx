@@ -1,6 +1,6 @@
 // src/components/booth/PhotoBooth.tsx
 "use client";
-import React, { useState, useRef, useEffect, RefObject } from 'react';
+import React, { useState, useRef, useEffect, RefObject, useMemo } from 'react';
 import Webcam from 'react-webcam';
 import UserInfoForm from '@/components/forms/UserInfoForm';
 import CountdownTimer from '@/components/booth/CountdownTimer';
@@ -60,6 +60,25 @@ interface PhotoBoothProps {
   eventUrlId?: string;
 }
 
+/**
+ * Ensure proper typing of boolean values
+ * 
+ * In some cases, boolean values come in as strings from props,
+ * which can lead to unexpected behavior.
+ */
+function ensureBoolean(value: any): boolean {
+  // If it's already a boolean, return it directly
+  if (typeof value === 'boolean') return value;
+  
+  // Handle string/number conversions
+  if (value === '1' || value === 1 || value === 'true' || value === 'TRUE' || value === true) {
+    return true;
+  }
+  
+  // Everything else is false
+  return false;
+}
+
 const PhotoBooth: React.FC<PhotoBoothProps> = ({
   countdownSeconds = 3,
   resetTimeSeconds = 60,
@@ -92,7 +111,56 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   enabledFilters = null,
   eventUrlId = null,
 }) => {
-  const [stage, setStage] = useState<BoothStage>(splashPageEnabled ? 'splash' : 'collect-info');
+  // Log received props for debugging
+  console.log(`[PhotoBooth] Received props:`, {
+    captureMode,
+    customJourneyEnabled: customJourneyEnabled,
+    typeof_customJourneyEnabled: typeof customJourneyEnabled,
+  });
+  
+  // Enhanced boolean conversion with detailed logging
+  const isCJEnabled = useMemo(() => {
+    const result = typeof customJourneyEnabled === 'boolean' 
+      ? customJourneyEnabled 
+      : customJourneyEnabled === 1 || customJourneyEnabled === '1' || customJourneyEnabled === 'true';
+    
+    console.log(`[PhotoBooth] customJourneyEnabled: ${customJourneyEnabled} (${typeof customJourneyEnabled}) → ${result}`);
+    return result;
+  }, [customJourneyEnabled]);
+  
+  // Ensure capture mode is valid
+  const effectiveCaptureMode = useMemo(() => {
+    const validMode = captureMode === 'video' ? 'video' : 'photo';
+    
+    if (validMode !== captureMode) {
+      console.log(`[PhotoBooth] Invalid captureMode: ${captureMode}, using ${validMode}`);
+    }
+    
+    return validMode;
+  }, [captureMode]);
+  
+  // Ensure proper boolean types
+  const isSplashPageEnabled = ensureBoolean(splashPageEnabled);
+  const isPrinterEnabled = ensureBoolean(printerEnabled);
+  const isAIImageCorrection = ensureBoolean(aiImageCorrection);
+  const isFiltersEnabled = ensureBoolean(filtersEnabled);
+  
+  // Ensure capture mode is one of the expected values
+  const safeMode = effectiveCaptureMode === 'video' ? 'video' : 'photo';
+  
+  // Log props for debugging
+  useEffect(() => {
+    console.log('[PhotoBooth] Initialized with props:', {
+      captureMode: safeMode, 
+      rawCaptureMode: captureMode,
+      customJourneyEnabled: isCJEnabled,
+      rawCJ: customJourneyEnabled,
+      splashPageEnabled: isSplashPageEnabled,
+      journeyPagesCount: journeyPages?.length || 0
+    });
+  }, [safeMode, captureMode, isCJEnabled, customJourneyEnabled, isSplashPageEnabled, journeyPages]);
+  
+  const [stage, setStage] = useState<BoothStage>(isSplashPageEnabled ? 'splash' : 'collect-info');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -149,7 +217,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setBrowserCompatibility(capabilities);
     
     // Get recommendations for browser if needed
-    if (!capabilities.filtersSupported && filtersEnabled) {
+    if (!capabilities.filtersSupported && isFiltersEnabled) {
       const recommendations = getBrowserRecommendations(capabilities);
       if (recommendations.length > 0) {
         setCompatibilityWarning(recommendations[0]);
@@ -157,7 +225,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     }
     
     console.log('Browser compatibility check:', capabilities);
-  }, [filtersEnabled]);
+  }, [isFiltersEnabled]);
 
   // Parse the enabledFilters JSON string
   useEffect(() => {
@@ -291,9 +359,9 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       });
     }
 
-    if (!customJourneyEnabled) {
+    if (!isCJEnabled) {
       // Show filter selection for **both** photo and video modes if filters are enabled
-      if (filtersEnabled) {
+      if (isFiltersEnabled) {
         setStage('select-filter');
       } else {
         setStage('countdown');
@@ -322,7 +390,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
   const handleJourneyComplete = () => {
     setJourneyCompleted(true);
 
-    if (filtersEnabled) {
+    if (isFiltersEnabled) {
       setStage('select-filter');
     } else {
       setStage('countdown');
@@ -332,12 +400,14 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     if (analyticsId) {
       trackBoothEvent(analyticsId, 'journey_complete');
     }
+
+    console.log('Journey completed, moving to next stage');
   };
 
   // Handle countdown completion
   const handleCountdownComplete = async () => {
     // For photo capture with filter
-    if (captureMode === 'photo') {
+    if (safeMode === 'photo') {
       if (webcamRef.current) {
         const screenshot = webcamRef.current.getScreenshot();
         
@@ -659,7 +729,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     setVideoUrl(null); // Reset video URL
     
     // Go back to filter selection if filters are enabled, otherwise to countdown
-    if (filtersEnabled) {
+    if (isFiltersEnabled) {
       setStage('select-filter');
     } else {
       setStage('countdown');
@@ -667,9 +737,9 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     
     // Track retake with media type info
     if (analyticsId) {
-      await trackBoothEvent(analyticsId, captureMode === 'photo' ? 'retake_photo' : 'retake_video', {
-        mediaType: captureMode,
-        captureMode: captureMode
+      await trackBoothEvent(analyticsId, safeMode === 'photo' ? 'retake_photo' : 'retake_video', {
+        mediaType: safeMode,
+        captureMode: safeMode
       });
     }
   };
@@ -691,6 +761,11 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       formData.append('name', userData.name);
       formData.append('email', userData.email);
       
+      // Add event URL information if available
+      if (eventUrlId) {
+        formData.append('eventUrlId', eventUrlId);
+      }
+      
       // Add analytics ID if available
       if (analyticsId) {
         formData.append('analyticsId', analyticsId);
@@ -698,12 +773,13 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
       
       // Track media approved
       if (analyticsId) {
-        await trackBoothEvent(analyticsId, captureMode === 'photo' ? 'photo_approved' : 'video_approved', {
-          ...(captureMode === 'video' ? {
+        await trackBoothEvent(analyticsId, safeMode === 'photo' ? 'photo_approved' : 'video_approved', {
+          ...(safeMode === 'video' ? {
             duration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0,
             resolution: videoResolution,
           } : {}),
-          captureMode: captureMode
+          captureMode: safeMode,
+          eventUrlId: eventUrlId || null
         });
       }
       
@@ -728,6 +804,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         await trackBoothEvent(analyticsId, 'email_sent', {
           duration,
           boothSessionId: data.sessionId,
+          eventUrlId: eventUrlId || null
         });
         
         // Record session completion
@@ -742,7 +819,8 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
             boothSessionId: data.sessionId,
             emailDomain: userData.email.split('@')[1],
             duration,
-            mediaType: captureMode
+            mediaType: safeMode,
+            eventUrlId: eventUrlId || null
           }),
         });
       }
@@ -765,6 +843,7 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
         await trackBoothEvent(analyticsId, 'error', {
           type: 'email_error',
           message: error instanceof Error ? error.message : 'Unknown error',
+          eventUrlId: eventUrlId || null
         });
       }
       
@@ -820,6 +899,7 @@ User Name: ${userData.name}
 Session ID: ${currentSessionId}
 User Email: ${userData.email}
 Preview WebM URL: ${videoUrl}
+Event URL ID: ${eventUrlId || 'none'}
       `);
       
       // Create form data for upload
@@ -828,6 +908,12 @@ Preview WebM URL: ${videoUrl}
       formData.append('email', userData.email);
       formData.append('name', userData.name);
       formData.append('sessionId', currentSessionId);
+      
+      // Add event URL information if available
+      if (eventUrlId) {
+        formData.append('eventUrlId', eventUrlId);
+        formData.append('eventUrlPath', ''); // We don't have this in props currently
+      }
       
       // Add analytics ID if available
       if (analyticsId) {
@@ -862,7 +948,7 @@ Preview WebM URL: ${videoUrl}
         
         // Log the response including final MP4 URL when available
         console.log(`Final MP4 URL: ${responseData.mp4Url || 'Processing'}
-Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
+          Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
         `);
 
         // Track email sent event only if it was actually sent immediately
@@ -894,7 +980,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
 
   // Reset the booth to initial state
   const resetBooth = () => {
-    setStage(splashPageEnabled ? 'splash' : 'collect-info');
+    setStage(isSplashPageEnabled ? 'splash' : 'collect-info');
     
     // Clean up object URLs before resetting state
     if (videoUrl) {
@@ -1013,6 +1099,40 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
     facingMode: "user"
   };
 
+  // Create analytics session ID if not already created
+  useEffect(() => {
+    if (!analyticsId) {
+      setAnalyticsId(uuidv4());
+    }
+  }, [analyticsId]);
+  
+  // Parse any enabled filters
+  const enabledFiltersArray = useMemo(() => {
+    if (!enabledFilters) return ['normal'];
+    try {
+      return typeof enabledFilters === 'string' ? enabledFilters.split(',') : ['normal'];
+    } catch (e) {
+      console.error('Error parsing enabled filters:', e);
+      return ['normal'];
+    }
+  }, [enabledFilters]);
+
+  // Listen for keyboard shortcuts
+  useEffect(() => {
+    // Add your keyboard shortcut handling logic here
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Example: Reset booth on Escape key
+      if (e.key === 'Escape') {
+        resetBooth();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // Render different stages
   const renderStage = () => {
     // Add compatibility warning at the top of the content if needed
@@ -1078,25 +1198,85 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
           }
           
           // After user info is collected, show custom journey if enabled and not completed
-          if (customJourneyEnabled && !journeyCompleted) {
-            return (
-              <JourneyContainer
-                pages={journeyPages}
-                primaryColor={themeSettings.primaryColor}
-                buttonColor={themeSettings.buttonColor}
-                onComplete={handleJourneyComplete}
-                analyticsId={analyticsId}
-              />
-            );
+          if (isCJEnabled && !journeyCompleted) {
+            console.log('Rendering custom journey with', journeyPages?.length, 'pages');
+            
+            // Log journey pages for debugging
+            if (journeyPages?.length > 0) {
+              console.log('Journey pages available:', journeyPages.map(p => p.title).join(', '));
+            } else {
+              console.log('No journey pages found even though customJourneyEnabled is true');
+            }
+            
+            // Only render journey if we have pages
+            if (journeyPages && journeyPages.length > 0) {
+              return (
+                <JourneyContainer
+                  pages={journeyPages}
+                  primaryColor={themeSettings.primaryColor}
+                  buttonColor={themeSettings.buttonColor}
+                  onComplete={handleJourneyComplete}
+                  analyticsId={analyticsId}
+                />
+              );
+            } else {
+              // If no journey pages but journey enabled, log and skip to next stage
+              console.log('Skipping empty journey - no pages defined');
+              
+              // Auto-complete the journey since there's nothing to show
+              setTimeout(() => {
+                handleJourneyComplete();
+              }, 0);
+              
+              // Show loading indicator briefly
+              return (
+                <div className="flex items-center justify-center p-10">
+                  <div className="animate-pulse flex flex-col items-center">
+                    <div className="h-12 w-12 rounded-full bg-blue-400 mb-4"></div>
+                    <div className="h-4 w-32 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 w-24 bg-gray-200 rounded"></div>
+                    <p className="mt-4 text-gray-500 text-sm">Loading journey...</p>
+                  </div>
+                </div>
+              );
+            }
           }
-
-          // Select filter overlay
+          
+          // If journey is disabled or completed, move to next stage
+          if (isFiltersEnabled) {
+            // Create a simple array of filter IDs from the comma-separated list
+            const filterIds = enabledFilters 
+              ? enabledFilters.split(',') 
+              : ['normal'];
+              
+            return <FiltersSelector 
+              enabledFilters={filterIds}
+              onSelectFilter={handleFilterSelect}
+              onConfirm={handleFilterConfirm}
+              selectedFilter={selectedFilter}
+              videoElement={webcamRef.current?.video || null}
+            />;
+          }
+          
+          return withCompatibilityWarning(
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-4">Ready to capture!</h2>
+              <button
+                className="px-6 py-3 rounded-lg text-white font-medium"
+                style={{ backgroundColor: themeSettings.buttonColor || '#3B82F6' }}
+                onClick={() => setStage('countdown')}
+              >
+                Start
+              </button>
+            </div>
+          );
+        
           case 'select-filter':
             return (
               <div className="relative">
                 <div className="aspect-video bg-black rounded overflow-hidden relative">
                   <Webcam
-                    audio={captureMode === 'video'}
+                    audio={safeMode === 'video'}
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
                     videoConstraints={videoConstraints}
@@ -1114,8 +1294,8 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
                     enabledFilters={parsedFilters}
                     onSelectFilter={handleFilterSelect}
                     onConfirm={handleFilterConfirm}
-                    videoElement={videoElement}
                     selectedFilter={selectedFilter}
+                    videoElement={videoElement}
                   />
                 </div>
               </div>
@@ -1126,7 +1306,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
               <div className="relative">
                 <div className="aspect-video bg-black rounded overflow-hidden">
                   <Webcam
-                    audio={captureMode === 'video'} // Enable audio for video recording
+                    audio={safeMode === 'video'} // Enable audio for video recording
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
                     videoConstraints={videoConstraints}
@@ -1136,7 +1316,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
                   />
                   
                   {/* Recording indicator - only shown when video is recording */}
-                  {captureMode === 'video' && isRecording && (
+                  {safeMode === 'video' && isRecording && (
                     <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white">
                       <div className="w-3 h-3 rounded-full bg-red-600 animate-pulse"></div>
                       <span className="font-medium">REC</span>
@@ -1147,7 +1327,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
                   {/* Control buttons */}
                   <div className="absolute bottom-4 left-4 z-10">
                     {/* "I'm Done" button - only shown when recording */}
-                    {captureMode === 'video' && isRecording && (
+                    {safeMode === 'video' && isRecording && (
                       <button
                         onClick={stopVideoRecording}
                         className="bg-blue-600 text-white font-medium px-4 py-2 rounded-full 
@@ -1162,7 +1342,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center">
                   {/* Only show countdown if we're not recording, not stopping recording, and no video URL exists */}
-                  {!(captureMode === 'video' && (isRecording || isStoppingRecording)) && !videoUrl && (
+                  {!(safeMode === 'video' && (isRecording || isStoppingRecording)) && !videoUrl && (
                     <CountdownTimer
                       seconds={countdownSeconds}
                       onComplete={handleCountdownComplete}
@@ -1185,7 +1365,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
             );
         
             case 'preview':
-              return userData && (captureMode === 'photo' ? photoDataUrl : videoUrl) ? (
+              return userData && (safeMode === 'photo' ? photoDataUrl : videoUrl) ? (
                 withCompatibilityWarning(
                   <>
                     {error && (
@@ -1196,7 +1376,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
                         className="mb-4"
                       />
                     )}
-                    {captureMode === 'photo' ? (
+                    {safeMode === 'photo' ? (
                       <PhotoPreview
                         photoDataUrl={photoDataUrl as string}
                         userName={userData.name}
@@ -1254,7 +1434,7 @@ Email Sent: ${responseData.emailSent ? 'Successful' : 'Pending'}
           <div className="p-6 text-center">
             <div className="text-3xl text-green-600 mb-4">Thank You!</div>
             <p className="mb-8">
-              {captureMode === 'photo' 
+              {safeMode === 'photo' 
                 ? "Your photo has been sent to your email."
                 : "You will receive an email with a download link for your video as soon as it is prepared for you!"}
               <br />

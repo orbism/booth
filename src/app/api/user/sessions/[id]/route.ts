@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser, checkResourceOwnership } from '@/lib/auth-utils';
+import { canManageSession, UserInfo } from '@/lib/permission-utils';
 
 /**
  * GET /api/user/sessions/[id]
@@ -8,28 +9,48 @@ import { getCurrentUser, checkResourceOwnership } from '@/lib/auth-utils';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     
     // Get user from auth utils
     const user = await getCurrentUser();
     
     // Check if user is authenticated
     if (!user) {
+      console.log('[API] GET session unauthorized - no user found');
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    console.log(`[API] GET session ${id} requested by user ${user.id} (${user.role})`);
     
-    // Check if the user owns this booth session or is an admin
-    const hasAccess = await checkResourceOwnership('boothSession', id);
+    // Check permission using both systems for backward compatibility
+    // 1. Legacy permission check
+    const hasLegacyAccess = await checkResourceOwnership('boothSession', id);
+    
+    // 2. New permission system check
+    const currentUser: UserInfo = {
+      id: user.id,
+      role: user.role,
+      username: user.username
+    };
+    
+    const permissionResult = await canManageSession(currentUser, id, 'read');
+    
+    // Only grant access if at least one system approves
+    const hasAccess = hasLegacyAccess || permissionResult.allowed;
     
     if (!hasAccess) {
+      console.log(`[API] GET session access denied for user ${user.id} to session ${id}`);
       return NextResponse.json(
-        { success: false, error: 'You do not have permission to access this session' },
+        { 
+          success: false, 
+          error: permissionResult.reason || 'You do not have permission to access this session'
+        },
         { status: 403 }
       );
     }
@@ -64,11 +85,14 @@ export async function GET(
       : null;
     
     if (!session) {
+      console.log(`[API] GET session not found: ${id}`);
       return NextResponse.json(
         { success: false, error: 'Session not found' },
         { status: 404 }
       );
     }
+    
+    console.log(`[API] GET session success for ${id}`);
     
     // Return the session details
     return NextResponse.json({
@@ -77,7 +101,7 @@ export async function GET(
     });
     
   } catch (error) {
-    console.error('Error fetching session:', error);
+    console.error('[API] Error fetching session:', error);
     
     return NextResponse.json(
       { 
@@ -96,28 +120,48 @@ export async function GET(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     
     // Get user from auth utils
     const user = await getCurrentUser();
     
     // Check if user is authenticated
     if (!user) {
+      console.log('[API] DELETE session unauthorized - no user found');
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
+
+    console.log(`[API] DELETE session ${id} requested by user ${user.id} (${user.role})`);
     
-    // Check if the user owns this booth session or is an admin
-    const hasAccess = await checkResourceOwnership('boothSession', id);
+    // Check permission using both systems for backward compatibility
+    // 1. Legacy permission check
+    const hasLegacyAccess = await checkResourceOwnership('boothSession', id);
+    
+    // 2. New permission system check
+    const currentUser: UserInfo = {
+      id: user.id,
+      role: user.role,
+      username: user.username
+    };
+    
+    const permissionResult = await canManageSession(currentUser, id, 'delete');
+    
+    // Only grant access if at least one system approves
+    const hasAccess = hasLegacyAccess || permissionResult.allowed;
     
     if (!hasAccess) {
+      console.log(`[API] DELETE session access denied for user ${user.id} to session ${id}`);
       return NextResponse.json(
-        { success: false, error: 'You do not have permission to delete this session' },
+        { 
+          success: false, 
+          error: permissionResult.reason || 'You do not have permission to delete this session'
+        },
         { status: 403 }
       );
     }
@@ -132,6 +176,7 @@ export async function DELETE(
       : null;
     
     if (!existingSession) {
+      console.log(`[API] DELETE session not found: ${id}`);
       return NextResponse.json(
         { success: false, error: 'Session not found' },
         { status: 404 }
@@ -143,13 +188,15 @@ export async function DELETE(
       DELETE FROM BoothSession WHERE id = ${id}
     `;
     
+    console.log(`[API] DELETE session success for ${id}`);
+    
     return NextResponse.json({
       success: true,
       message: 'Session deleted successfully'
     });
     
   } catch (error) {
-    console.error('Error deleting session:', error);
+    console.error('[API] Error deleting session:', error);
     
     return NextResponse.json(
       { 

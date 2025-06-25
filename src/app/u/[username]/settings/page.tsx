@@ -4,7 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import SettingsForm from '@/components/forms/SettingsForm';
+import EventUrlSelector from '@/components/EventUrlSelector';
 import { useToast } from '@/context/ToastContext';
+import { invalidateSettingsCache } from '@/lib/client-settings';
 
 type Settings = {
   id: string;
@@ -72,14 +74,25 @@ type Settings = {
   enableSocialStep?: boolean;
 };
 
+type EventUrl = {
+  id: string;
+  urlPath: string;
+  eventName: string;
+  isActive: boolean;
+};
+
 type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
 
 export default function CustomerSettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { showToast } = useToast();
+  
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [eventUrls, setEventUrls] = useState<EventUrl[]>([]);
+  const [selectedEventUrlId, setSelectedEventUrlId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingEventUrls, setIsLoadingEventUrls] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
@@ -88,15 +101,52 @@ export default function CustomerSettingsPage() {
       return;
     }
     
-    fetchSettings();
-  }, [status, router]);
+    fetchEventUrls();
+    fetchSettings(selectedEventUrlId);
+  }, [status, router, selectedEventUrlId]);
   
-  const fetchSettings = async () => {
+  const fetchEventUrls = async () => {
+    try {
+      setIsLoadingEventUrls(true);
+      
+      const response = await fetch('/api/user/event-urls');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch event URLs');
+      }
+      
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        setEventUrls(data);
+        console.log(`[CUSTOMER_SETTINGS] Fetched ${data.length} event URLs`);
+        
+        // If we have event URLs but no selected one, select the first one
+        if (data.length > 0 && !selectedEventUrlId) {
+          // We'll set this in the useEffect in the EventUrlSelector component
+          // to avoid the loop from dependencies
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching event URLs:', err);
+      // Don't block the entire page for event URL loading failures
+    } finally {
+      setIsLoadingEventUrls(false);
+    }
+  };
+  
+  const fetchSettings = async (eventUrlId: string | null) => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/user/settings');
+      const url = eventUrlId 
+        ? `/api/user/settings?eventUrlId=${eventUrlId}`
+        : '/api/user/settings';
+      
+      console.log(`[CUSTOMER_SETTINGS] Fetching settings from: ${url}`);
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error('Failed to fetch settings');
@@ -105,7 +155,8 @@ export default function CustomerSettingsPage() {
       const data = await response.json();
       
       // Make sure we're properly setting the initial values
-      setSettings(data.settings);
+      setSettings(data);
+      console.log('[CUSTOMER_SETTINGS] Settings loaded:', { id: data.id, eventUrlId });
     } catch (err) {
       console.error('Error fetching settings:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -114,13 +165,28 @@ export default function CustomerSettingsPage() {
     }
   };
   
+  const handleEventUrlChange = (eventUrlId: string | null) => {
+    console.log(`[CUSTOMER_SETTINGS] Selected event URL changed to: ${eventUrlId || 'default'}`);
+    setSelectedEventUrlId(eventUrlId);
+    // Settings will be loaded via the useEffect dependency on selectedEventUrlId
+  };
+  
   const handleUpdateSettings = async (updatedSettings: Partial<Settings>) => {
     try {
       // Show loading UI
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('/api/user/settings', {
+      console.log(`[CUSTOMER_SETTINGS] Updating settings for${selectedEventUrlId ? ` event URL ${selectedEventUrlId}` : ' general user'}:`, {
+        captureMode: updatedSettings.captureMode,
+        customJourneyEnabled: updatedSettings.customJourneyEnabled
+      });
+      
+      const url = selectedEventUrlId 
+        ? `/api/user/settings?eventUrlId=${selectedEventUrlId}`
+        : '/api/user/settings';
+      
+      const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -144,12 +210,40 @@ export default function CustomerSettingsPage() {
       const data = await response.json();
 
       // Update local state with new settings
-      setSettings(data.settings);
+      setSettings(data);
+      
+      // Immediately invalidate all caches for this user's booths
+      try {
+        // Find the event URL path if we have an ID
+        const eventUrlPath = selectedEventUrlId 
+          ? eventUrls.find(u => u.id === selectedEventUrlId)?.urlPath
+          : undefined;
+        
+        // Invalidate the specific URL cache if applicable
+        if (eventUrlPath) {
+          await invalidateSettingsCache('booth-settings', eventUrlPath, true);
+          console.log(`[CUSTOMER_SETTINGS] Invalidated booth-settings cache for ${eventUrlPath}`);
+        } else {
+          // If no specific URL or it's general settings, invalidate all URL caches
+          await invalidateSettingsCache('booth-settings', undefined, true);
+          console.log('[CUSTOMER_SETTINGS] Invalidated general booth-settings cache');
+          
+          // Invalidate each URL's cache
+          for (const url of eventUrls) {
+            await invalidateSettingsCache('booth-settings', url.urlPath, true);
+            console.log(`[CUSTOMER_SETTINGS] Invalidated cache for URL: ${url.urlPath}`);
+          }
+        }
+      } catch (cacheError) {
+        console.error('[CUSTOMER_SETTINGS] Failed to invalidate cache:', cacheError);
+        // Don't fail the whole operation just because cache invalidation failed
+      }
       
       // Show success message
       showToast('Your booth settings have been updated successfully.', 'success', 5000);
 
-      await fetchSettings();
+      // Refetch to make sure we have the latest data
+      await fetchSettings(selectedEventUrlId);
       
       return data;
     } catch (err) {
@@ -191,7 +285,7 @@ export default function CustomerSettingsPage() {
               <div className="mt-4">
                 <button
                   type="button"
-                  onClick={fetchSettings}
+                  onClick={() => fetchSettings(selectedEventUrlId)}
                   className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
                   Try again
@@ -219,6 +313,16 @@ export default function CustomerSettingsPage() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Booth Settings</h1>
+      
+      {/* Event URL Selector */}
+      <EventUrlSelector
+        eventUrls={eventUrls}
+        selectedEventUrlId={selectedEventUrlId}
+        onEventUrlChange={handleEventUrlChange}
+        isLoading={isLoadingEventUrls}
+      />
+      
+      {/* Settings Form */}
       <SettingsForm 
         initialSettings={{
           id: settings.id || '',

@@ -77,6 +77,10 @@ type SettingsData = {
   blobVercelEnabled: boolean;
   localUploadPath: string;
   storageBaseUrl: string | null;
+  showBoothBossLogo?: boolean;
+  enablePreviewStep?: boolean;
+  enableEffectsStep?: boolean;
+  enableSocialStep?: boolean;
 };
 
 // Settings schema
@@ -162,6 +166,14 @@ const settingsSchema = z.object({
   blobVercelEnabled: z.boolean().default(true),
   localUploadPath: z.string().default("uploads"),
   storageBaseUrl: z.string().optional().nullable(),
+  
+  // Branding settings
+  showBoothBossLogo: z.boolean().default(true),
+  
+  // User Journey Steps
+  enablePreviewStep: z.boolean().default(true),
+  enableEffectsStep: z.boolean().default(false),
+  enableSocialStep: z.boolean().default(false),
 });
 
 export type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -169,6 +181,8 @@ export type SettingsFormValues = z.infer<typeof settingsSchema>;
 interface SettingsFormProps {
   initialSettings: SettingsData;
   onSubmit: (data: SettingsFormValues) => Promise<void>;
+  isAdmin?: boolean;
+  isLoading?: boolean;
 }
 
 export default function SettingsForm({ initialSettings, onSubmit }: SettingsFormProps) {
@@ -237,6 +251,10 @@ export default function SettingsForm({ initialSettings, onSubmit }: SettingsForm
       blobVercelEnabled: initialSettings.blobVercelEnabled || true,
       localUploadPath: initialSettings.localUploadPath || 'uploads',
       storageBaseUrl: initialSettings.storageBaseUrl || null,
+      showBoothBossLogo: initialSettings.showBoothBossLogo || true,
+      enablePreviewStep: initialSettings.enablePreviewStep || true,
+      enableEffectsStep: initialSettings.enableEffectsStep || false,
+      enableSocialStep: initialSettings.enableSocialStep || false,
     },
     mode: 'onBlur'
   });

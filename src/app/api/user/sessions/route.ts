@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth-utils';
 import { getUserByIdentifier, hasUserAccess } from '@/lib/user-utils';
+import { canAccessUserData, UserInfo } from '@/lib/permission-utils';
 
 /**
  * GET /api/user/sessions
@@ -58,13 +59,29 @@ export async function GET(request: NextRequest) {
       
       console.log(`[SESSIONS API] Target user found: ${targetUser.id}, checking access`);
       
-      // Check if current user has access to target user's data
-      const hasAccess = await hasUserAccess(currentUser.id, targetUser.id, currentUser.role);
+      // Check permissions using both systems for backward compatibility
+      // 1. Legacy permission check
+      const hasLegacyAccess = await hasUserAccess(currentUser.id, targetUser.id, currentUser.role);
+      
+      // 2. New permission system check
+      const user: UserInfo = {
+        id: currentUser.id,
+        role: currentUser.role,
+        username: currentUser.username
+      };
+      
+      const permissionResult = await canAccessUserData(user, targetUser.id);
+      
+      // Only grant access if at least one system approves
+      const hasAccess = hasLegacyAccess || permissionResult.allowed;
       
       if (!hasAccess) {
-        console.log(`[SESSIONS API] Access denied for user ${currentUser.id} to access sessions for ${targetUser.id}`);
+        console.log(`[SESSIONS API] Access denied for user ${currentUser.id} to access sessions for ${targetUser.id}: ${permissionResult.reason || 'Unknown reason'}`);
         return NextResponse.json(
-          { success: false, error: 'Forbidden: You do not have access to this user\'s sessions' },
+          { 
+            success: false, 
+            error: permissionResult.reason || 'Forbidden: You do not have access to this user\'s sessions'
+          },
           { status: 403 }
         );
       }
@@ -109,59 +126,93 @@ export async function GET(request: NextRequest) {
       WHERE ${whereClause}
     `;
     
-    const countResult = await prisma.$queryRawUnsafe<{ count: number }[]>(
-      countQuery, 
-      ...whereParams
-    );
-    
-    const totalCount = countResult[0]?.count || 0;
-    
-    console.log(`[SESSIONS API] Total sessions found: ${totalCount}`);
-    
-    // Get the sessions with pagination
-    const sessionsQuery = `
-      SELECT 
-        b.id, 
-        b.userName, 
-        b.userEmail, 
-        b.photoPath, 
-        b.createdAt, 
-        b.shared, 
-        b.emailSent, 
-        b.templateUsed,
-        b.eventName,
-        b.mediaType,
-        b.filter,
-        b.eventUrlId,
-        b.eventUrlPath,
-        e.urlPath,
-        e.eventName as eventUrlName
-      FROM BoothSession b
-      LEFT JOIN EventUrl e ON b.eventUrlId = e.id
-      WHERE ${whereClause}
-      ORDER BY b.createdAt DESC
-      LIMIT ? OFFSET ?
-    `;
-    
-    const sessions = await prisma.$queryRawUnsafe(
-      sessionsQuery, 
-      ...whereParams, 
-      limit, 
-      skip
-    );
-    
-    console.log(`[SESSIONS API] Fetched ${Array.isArray(sessions) ? sessions.length : 0} sessions for page ${page}`);
-    
-    return NextResponse.json({
-      success: true,
-      sessions: sessions || [],
-      pagination: {
-        totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit)
+    try {
+      const countResult = await prisma.$queryRawUnsafe<{ count: number }[]>(
+        countQuery, 
+        ...whereParams
+      );
+      
+      const totalCount = countResult[0]?.count || 0;
+      
+      console.log(`[SESSIONS API] Total sessions found: ${totalCount}`);
+      
+      // If no sessions found, return an empty array instead of a failure
+      if (totalCount === 0) {
+        console.log(`[SESSIONS API] No sessions found for user ${targetUserId}`);
+        return NextResponse.json({
+          success: true,
+          sessions: [],
+          pagination: {
+            totalCount: 0,
+            page,
+            limit,
+            totalPages: 0
+          }
+        });
       }
-    });
+      
+      // Get the sessions with pagination
+      const sessionsQuery = `
+        SELECT 
+          b.id, 
+          b.userName, 
+          b.userEmail, 
+          b.photoPath, 
+          b.createdAt, 
+          b.shared, 
+          b.emailSent, 
+          b.templateUsed,
+          b.eventName,
+          b.mediaType,
+          b.filter,
+          b.eventUrlId,
+          b.eventUrlPath,
+          e.urlPath,
+          e.eventName as eventUrlName
+        FROM BoothSession b
+        LEFT JOIN EventUrl e ON b.eventUrlId = e.id
+        WHERE ${whereClause}
+        ORDER BY b.createdAt DESC
+        LIMIT ? OFFSET ?
+      `;
+      
+      const sessions = await prisma.$queryRawUnsafe(
+        sessionsQuery, 
+        ...whereParams, 
+        limit, 
+        skip
+      );
+      
+      console.log(`[SESSIONS API] Fetched ${Array.isArray(sessions) ? sessions.length : 0} sessions for page ${page}`);
+      
+      // Add mediaUrl and status fields for backward compatibility with frontend
+      const enhancedSessions = Array.isArray(sessions) ? sessions.map((session: any) => ({
+        ...session,
+        mediaUrl: session.photoPath, // Backward compatibility
+        status: session.emailSent ? 'complete' : 'incomplete', // Backward compatibility
+      })) : [];
+      
+      return NextResponse.json({
+        success: true,
+        sessions: enhancedSessions,
+        pagination: {
+          totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit)
+        }
+      });
+    } catch (dbError) {
+      console.error('[SESSIONS API] Database error:', dbError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Database error occurred', 
+          message: dbError instanceof Error ? dbError.message : 'Unknown database error' 
+        },
+        { status: 500 }
+      );
+    }
     
   } catch (error) {
     console.error('[SESSIONS API] Error fetching sessions:', error);

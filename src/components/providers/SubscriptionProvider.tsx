@@ -114,7 +114,27 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // Check if user has a specific feature
   const checkFeature = (featureName: keyof Subscription): boolean => {
-    return hasFeature(subscription, featureName as any);
+    if (!subscription) return false;
+    
+    // Only pass feature names that are in the subscriptionFeatures object
+    const isFeatureName = 
+      featureName === 'customDomain' ||
+      featureName === 'analyticsAccess' ||
+      featureName === 'filterAccess' ||
+      featureName === 'videoAccess' ||
+      featureName === 'aiEnhancement' ||
+      featureName === 'journeyBuilder' ||
+      featureName === 'brandingRemoval' ||
+      featureName === 'prioritySupport';
+      
+    if (isFeatureName) {
+      const result = hasFeature(subscription, featureName as any);
+      // Convert the result to boolean explicitly
+      return result === true;
+    }
+    
+    // For non-feature properties, check if they exist in the subscription
+    return Boolean(subscription[featureName]);
   };
 
   // Calculate remaining media

@@ -2,7 +2,8 @@
 
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+// Import the PrismaClient directly instead of using the adapter
+// import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcryptjs from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "./lib/prisma";
@@ -43,7 +44,8 @@ async function getUser(email: string) {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // We'll use JWT instead of database sessions - removing adapter
+  // adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },

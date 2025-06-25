@@ -1,8 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SubscriptionTier, TierLimits, tierLimits } from './subscription-features';
+import { SubscriptionTier, subscriptionFeatures } from './subscription-features';
 import { useSession } from 'next-auth/react';
+
+// Define TierLimits type directly since it's not exported from subscription-features
+export type TierLimits = typeof subscriptionFeatures[SubscriptionTier.FREE];
 
 // Define the Subscription data interface
 export interface SubscriptionData {
