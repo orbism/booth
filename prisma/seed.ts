@@ -128,7 +128,7 @@ async function main() {
             adminEmail: process.env.SMTP_USER || 'admin@example.com',
             countdownTime: 3,
             resetTime: 60,
-            emailSubject: 'Your Photo Booth Picture',
+            emailSubject: 'Your photo from NFT.NYC',
             emailTemplate: 'Thank you for using our photo booth! Here is your photo from our event.',
             smtpHost: process.env.SMTP_HOST || 'smtp.dreamhost.com',
             smtpPort: parseInt(process.env.SMTP_PORT || '587'),

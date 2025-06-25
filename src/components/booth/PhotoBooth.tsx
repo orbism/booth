@@ -1402,7 +1402,7 @@ Event URL ID: ${eventUrlId || 'none'}
                   
                   {/* Photo overlay - positioned above camera but below UI elements */}
                   {safeMode === 'photo' && (
-                    <div className="absolute inset-0 pointer-events-none z-10">
+                    <div className="absolute inset-0 pointer-events-none z-5">
                       <img 
                         src="/overlay.png" 
                         alt="Photo overlay" 
@@ -1412,15 +1412,13 @@ Event URL ID: ${eventUrlId || 'none'}
                     </div>
                   )}
                   
-                  <div className="relative z-20">
-                    <FiltersSelector
-                      enabledFilters={parsedFilters}
-                      onSelectFilter={handleFilterSelect}
-                      onConfirm={handleFilterConfirm}
-                      selectedFilter={selectedFilter}
-                      videoElement={videoElement}
-                    />
-                  </div>
+                  <FiltersSelector
+                    enabledFilters={parsedFilters}
+                    onSelectFilter={handleFilterSelect}
+                    onConfirm={handleFilterConfirm}
+                    selectedFilter={selectedFilter}
+                    videoElement={videoElement}
+                  />
                 </div>
               </div>
             );
@@ -1442,7 +1440,7 @@ Event URL ID: ${eventUrlId || 'none'}
                   
                   {/* Photo overlay - positioned above camera but below UI elements */}
                   {safeMode === 'photo' && (
-                    <div className="absolute inset-0 pointer-events-none z-10">
+                    <div className="absolute inset-0 pointer-events-none z-5">
                       <img 
                         src="/overlay.png" 
                         alt="Photo overlay" 

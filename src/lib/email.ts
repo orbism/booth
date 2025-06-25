@@ -200,8 +200,22 @@ export async function sendBoothPhoto(
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Hello ${userName}!</h2>
           <p>${settings.emailTemplate}</p>
-          <p>Thank you for using our photo booth.</p>
-          <p>Best regards,<br>${settings.companyName} Team</p>
+          <p>Don't forget to share it on social media and tag us! </p>
+          
+          <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #333;">Follow us on social media:</h3>
+            <p style="margin: 10px 0;">
+              <a href="https://x.com/BIC_dao" style="color: #1DA1F2; text-decoration: none; font-weight: bold;">🌐 Bureau of Internet Culture</a>
+            </p>
+            <p style="margin: 10px 0;">
+              <a href="https://x.com/ownthedoge" style="color: #1DA1F2; text-decoration: none; font-weight: bold;">🐕 Own the Doge</a>
+            </p>
+            <p style="margin: 10px 0;">
+              <a href="https://x.com/ElonRWA" style="color: #1DA1F2; text-decoration: none; font-weight: bold;">🚀 ElonRWA</a>
+            </p>
+          </div>
+          
+          <p>You're doing a great job. Go you.</p>
         </div>
       `,
       attachments: [
@@ -288,6 +302,20 @@ export async function sendBoothVideo(
           </div>
           <p>If the button above doesn't work, copy and paste this link into your browser:</p>
           <p><a href="${videoUrl}">${videoUrl}</a></p>
+          
+          <div style="margin: 30px 0; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #333;">Follow us on social media:</h3>
+            <p style="margin: 10px 0;">
+              <a href="https://x.com/BIC_dao" style="color: #1DA1F2; text-decoration: none; font-weight: bold;">🌐 Bureau of Internet Culture</a>
+            </p>
+            <p style="margin: 10px 0;">
+              <a href="https://x.com/ownthedoge" style="color: #1DA1F2; text-decoration: none; font-weight: bold;">🐕 Own the Doge</a>
+            </p>
+            <p style="margin: 10px 0;">
+              <a href="https://x.com/ElonRWA" style="color: #1DA1F2; text-decoration: none; font-weight: bold;">🚀 ElonRWA</a>
+            </p>
+          </div>
+          
           <p>Best regards,<br>${settings.companyName} Team</p>
         </div>
       `,

@@ -7,6 +7,7 @@ import SettingsForm from '@/components/forms/SettingsForm';
 import EventUrlSelector from '@/components/EventUrlSelector';
 import { useToast } from '@/context/ToastContext';
 import { invalidateSettingsCache } from '@/lib/client-settings';
+import { EventUrl } from '@prisma/client';
 
 type Settings = {
   id: string;
@@ -74,12 +75,7 @@ type Settings = {
   enableSocialStep?: boolean;
 };
 
-type EventUrl = {
-  id: string;
-  urlPath: string;
-  eventName: string;
-  isActive: boolean;
-};
+
 
 type ThemeOption = 'midnight' | 'pastel' | 'bw' | 'custom';
 

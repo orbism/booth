@@ -35,13 +35,13 @@ const FiltersSelector: React.FC<FiltersSelectorProps> = ({
       {/* Confirm button - positioned at the top right of the container */}
       <button
         onClick={onConfirm}
-        className="absolute top-4 right-4 z-20 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
+        className="absolute top-4 right-4 z-30 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
       >
         Use this filter
       </button>
       
       {/* Filters carousel - with transparent background */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 py-3">
+      <div className="absolute bottom-0 left-0 right-0 z-30 py-3">
         <div className="flex overflow-x-auto px-4 space-x-3 pb-2">
           {activeFilters.map((filter) => (
             <div

@@ -3,8 +3,8 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { getSettingsByUrlPath } from '@/lib/settings-service';
 
-export default async function BoothDebugPage({ params }: { params: { urlPath: string } }) {
-  const urlPath = params.urlPath;
+export default async function BoothDebugPage({ params }: { params: Promise<{ urlPath: string }> }) {
+  const { urlPath } = await params;
   
   // Use raw SQL to find the event URL
   const eventUrlResults = await prisma.$queryRaw`

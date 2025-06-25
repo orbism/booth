@@ -119,7 +119,7 @@ export function createSettingsInput(data: SettingsInput, userId: string): Prisma
     textColor: processedData.textColor,
     notes: processedData.notes,
     journeyConfig: processedData.journeyConfig ? 
-      JSON.stringify(processedData.journeyConfig) : null,
+      JSON.stringify(processedData.journeyConfig) : undefined,
     activeJourneyId: processedData.activeJourneyId,
     splashPageTitle: processedData.splashPageTitle,
     splashPageContent: processedData.splashPageContent,
@@ -164,7 +164,7 @@ export function updateSettingsInput(data: SettingsInput): Prisma.SettingsUpdateI
   if (processedData.textColor !== undefined) input.textColor = processedData.textColor;
   if (processedData.customJourneyEnabled !== undefined) input.customJourneyEnabled = processedData.customJourneyEnabled;
   if (processedData.journeyConfig !== undefined) input.journeyConfig = processedData.journeyConfig ? 
-    JSON.stringify(processedData.journeyConfig) : null;
+    JSON.stringify(processedData.journeyConfig) : undefined;
   if (processedData.activeJourneyId !== undefined) input.activeJourneyId = processedData.activeJourneyId;
   if (processedData.splashPageEnabled !== undefined) input.splashPageEnabled = processedData.splashPageEnabled;
   if (processedData.splashPageTitle !== undefined) input.splashPageTitle = processedData.splashPageTitle;

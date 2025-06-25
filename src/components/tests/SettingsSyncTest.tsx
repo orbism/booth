@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getUserSettings, updateUserSettings, getBoothSettings, invalidateSettingsCache } from '@/lib/client-settings';
-import { ensureBoolean } from '@/lib/settings-factory';
+import { ensureBoolean } from '@/lib/settings-service';
 
 type SettingsSyncTestProps = {
   userId?: string;
