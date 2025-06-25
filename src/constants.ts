@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS = {
   smtpPort: 587,
   smtpUser: 'user',
   smtpPassword: 'password',
-  companyName: 'BoothBoss',
+  companyName: 'Bureau of Internet Culture',
   primaryColor: '#3B82F6',
   secondaryColor: '#1E40AF',
   theme: 'custom',

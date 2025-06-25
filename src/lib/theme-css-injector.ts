@@ -13,6 +13,15 @@ export function generateThemeCssOverrides(theme: ThemeColors): string {
   const buttonColor = theme.buttonColor;
   const textColor = theme.textColor;
   
+  // console.log('Generating CSS overrides with theme colors:', {
+  //   primaryColor,
+  //   secondaryColor,
+  //   bgColor,
+  //   borderColor,
+  //   buttonColor,
+  //   textColor
+  // });
+  
   // Generate text contrasting color based on background
   const getContrastColor = (hexColor: string): string => {
     // Simple contrast calculator
@@ -38,6 +47,10 @@ export function generateThemeCssOverrides(theme: ThemeColors): string {
     }
     
     /* Base element styling */
+    html {
+      background-color: ${bgColor};
+    }
+    
     body {
       background-color: ${bgColor};
       color: ${textColor};
@@ -79,6 +92,32 @@ export function generateThemeCssOverrides(theme: ThemeColors): string {
     
     .focus\\:border-blue-500:focus {
       border-color: ${primaryColor} !important;
+    }
+    
+    /* PhotoBooth component text styling */
+    .photo-booth {
+      color: ${textColor} !important;
+    }
+    
+    .photo-booth p, 
+    .photo-booth div:not(button), 
+    .photo-booth span:not(button span), 
+    .photo-booth label, 
+    .photo-booth h1, 
+    .photo-booth h2, 
+    .photo-booth h3, 
+    .photo-booth h4, 
+    .photo-booth h5, 
+    .photo-booth h6 {
+      color: ${textColor} !important;
+    }
+    
+    /* Preserve button text colors */
+    .photo-booth button,
+    .photo-booth button *,
+    button,
+    button * {
+      color: ${buttonTextColor} !important;
     }
   `;
 }

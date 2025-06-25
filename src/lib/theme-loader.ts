@@ -12,13 +12,17 @@ export async function getThemeSettings(): Promise<ThemeColors | null> {
       // console.log('Theme settings loaded from DB:', {
       //   theme: settings?.theme,
       //   primaryColor: settings?.primaryColor,
-      //   secondaryColor: settings?.secondaryColor
+      //   secondaryColor: settings?.secondaryColor,
+      //   backgroundColor: settings?.backgroundColor,
+      //   borderColor: settings?.borderColor,
+      //   buttonColor: settings?.buttonColor,
+      //   textColor: settings?.textColor
       // });
       
       if (!settings) {
         return {
           ...THEME_PRESETS.custom,
-          companyName: 'BoothBoss', // Default company name
+          companyName: 'Bureau of Internet Culture', // Default company name
           companyLogo: null
         };
       }
@@ -29,15 +33,22 @@ export async function getThemeSettings(): Promise<ThemeColors | null> {
       if (themeOption && themeOption !== 'custom' && themeOption in THEME_PRESETS) {
         const themeColors = THEME_PRESETS[themeOption];
         
-        return {
+        const finalTheme = {
           ...themeColors,
           // Allow database values to override if explicitly set
           primaryColor: settings.primaryColor || themeColors.primaryColor,
           secondaryColor: settings.secondaryColor || themeColors.secondaryColor,
+          backgroundColor: settings.backgroundColor || themeColors.backgroundColor,
+          borderColor: settings.borderColor || themeColors.borderColor,
+          buttonColor: settings.buttonColor || themeColors.buttonColor,
+          textColor: settings.textColor || themeColors.textColor,
           // Add company info
           companyName: settings.companyName || 'BoothBoss',
           companyLogo: settings.companyLogo,
         };
+        
+        // console.log('Final theme settings for preset theme:', finalTheme);
+        return finalTheme;
       }
       
       // For custom theme, use stored values with fallbacks
@@ -56,7 +67,7 @@ export async function getThemeSettings(): Promise<ThemeColors | null> {
       // Return default theme colors with company info as fallback
       return {
         ...THEME_PRESETS.custom,
-        companyName: 'BoothBoss',
+        companyName: 'Bureau of Internet Culture',
         companyLogo: null
       };
     }

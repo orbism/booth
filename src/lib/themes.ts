@@ -39,7 +39,7 @@ export const THEME_PRESETS: Record<ThemeOption, ThemeColors> = {
   bw: {
     primaryColor: '#000000',
     secondaryColor: '#4b5563', // gray-600
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f0e6d2', // even brighter beige for main background
     borderColor: '#d1d5db', // gray-300
     buttonColor: '#111827', // gray-900
     textColor: '#111827', // gray-900

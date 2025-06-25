@@ -7,7 +7,7 @@ import { generateThemeCssOverrides } from "@/lib/theme-css-injector";
 import { ToastProvider } from "@/context/ToastContext";
 import SessionProviderWrapper from "@/components/providers/SessionProviderWrapper";
 import { SubscriptionProvider } from "@/components/providers/SubscriptionProvider";
-import Navbar from "@/components/layouts/Navbar";
+// import Navbar from "@/components/layouts/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const themeSettings = await getThemeSettings();
    
   return {
-    title: `${themeSettings?.companyName || 'BoothBoss'} - Photo Booth App`,
+    title: `${themeSettings?.companyName || 'Bureau of Internet Culture'} - Photo Booth App`,
     description: "Photo Booth Software",
   };
 }
@@ -54,7 +54,7 @@ export default async function RootLayout({
         <SessionProviderWrapper>
           <SubscriptionProvider>
             <ToastProvider>
-              <Navbar />
+              {/* <Navbar /> */}
               {children}
             </ToastProvider>
           </SubscriptionProvider>

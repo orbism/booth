@@ -43,7 +43,7 @@ coverage/
 # Media files
 public/**/*.jpg
 public/**/*.jpeg
-public/**/*.png
+
 public/**/*.webm
 public/**/*.mp4
 public/**/*.mov

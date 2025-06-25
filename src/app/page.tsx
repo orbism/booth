@@ -131,17 +131,18 @@ export default async function Home({
       showBranding={settings.showBoothBossLogo !== false}
       eventUrlId={eventUrlId}
     >
-      <div className="p-4">
-        <h1 className="text-2xl font-bold text-center mb-6">
-          {eventUrl?.eventName || settings.eventName}
-        </h1>
+      <div className="p-4" style={{ 
+        backgroundColor: themeSettings?.backgroundColor || '#f0e6d2',
+        color: themeSettings?.textColor || '#111827',
+        minHeight: '100vh'
+      }}>
         <PhotoBooth 
           countdownSeconds={settings.countdownTime}
           resetTimeSeconds={settings.resetTime}
           themeSettings={{
             primaryColor: themeSettings?.primaryColor || settings.primaryColor || '#3B82F6',
             secondaryColor: themeSettings?.secondaryColor || '#1E40AF',
-            backgroundColor: themeSettings?.backgroundColor || '#ffffff',
+            backgroundColor: '#e6d7c3', // form container - slightly darker beige
             borderColor: themeSettings?.borderColor || '#e5e7eb', 
             buttonColor: themeSettings?.buttonColor || '#3B82F6',
             textColor: themeSettings?.textColor || '#111827',

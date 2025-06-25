@@ -842,7 +842,7 @@ export class CanvasVideoRecorder {
       return null;
     }
     
-    return this.canvas.toDataURL('image/jpeg', 0.85);
+          return this.canvas.toDataURL('image/jpeg', 0.95);
   }
   
   /**

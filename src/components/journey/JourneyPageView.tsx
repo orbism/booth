@@ -52,18 +52,18 @@ const JourneyPageView: React.FC<JourneyPageViewProps> = ({
   
   return (
     <div className={`relative flex flex-col justify-between ${
-      isPreview ? 'h-full' : 'min-h-[60vh]'
+      isPreview ? 'h-full' : 'min-h-[80vh]'
     } p-6`}>
       {backgroundImage && (
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-x-0 z-0" style={{ top: '25%', bottom: '25%' }}>
           <OptimizedImage 
             src={backgroundImage}
             alt="Background"
             fill
-            className="object-cover"
+            className="object-cover rounded-lg"
           />
           {/* Semi-transparent overlay for better text contrast */}
-          <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+          <div className="absolute inset-0 bg-opacity-20 rounded-lg"></div>
         </div>
       )}
       
@@ -74,7 +74,9 @@ const JourneyPageView: React.FC<JourneyPageViewProps> = ({
         >
           {title}
         </h2>
-        {renderContent()}
+        <div className="mt-8">
+          {renderContent()}
+        </div>
       </div>
       
       <div className="relative z-10 flex justify-center mt-8 space-x-4">

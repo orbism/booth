@@ -134,7 +134,7 @@ async function main() {
             smtpPort: parseInt(process.env.SMTP_PORT || '587'),
             smtpUser: process.env.SMTP_USER || 'youremail@yourdomain.com',
             smtpPassword: process.env.SMTP_PASS || 'your-email-password',
-            companyName: 'BoothBoss',
+            companyName: 'Bureau of Internet Culture',
             primaryColor: '#3B82F6',
             secondaryColor: '#1E40AF',
             theme: 'custom',

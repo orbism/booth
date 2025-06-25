@@ -409,48 +409,93 @@ const PhotoBooth: React.FC<PhotoBoothProps> = ({
     // For photo capture with filter
     if (safeMode === 'photo') {
       if (webcamRef.current) {
-        const screenshot = webcamRef.current.getScreenshot();
+        // Capture high-quality screenshot with custom dimensions
+        const screenshot = webcamRef.current.getScreenshot(photoSettings.dimensions);
         
-        // If there's a selected filter other than 'normal', apply it
-        if (selectedFilter !== 'normal') {
-          // Apply filter to the image
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            
-            if (ctx) {
-              // Draw the original image
-              ctx.drawImage(img, 0, 0);
-              
-              // Apply filter - FIXED: Make sure we're mapping CSS filter to canvas filter correctly
-              const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css;
-              if (filterCSS) {
-                ctx.filter = filterCSS;
-                // Draw the image again with the filter applied
-                ctx.drawImage(img, 0, 0);
-                ctx.filter = 'none'; // Reset filter
-              }
-              
-              // Convert back to data URL
-              const filteredDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-              setPhotoDataUrl(filteredDataUrl);
-              setStage('preview');
-            }
-          };
-          img.src = screenshot as string;
-        } else {
-          // No filter, use original image
-          setPhotoDataUrl(screenshot);
-          setStage('preview');
+        if (!screenshot) {
+          console.error('Failed to capture screenshot');
+          return;
         }
         
-        // Track photo captured
+        // Process the captured photo with filters and overlay
+        const processPhoto = async (baseImageSrc: string) => {
+          let processedImageSrc = baseImageSrc;
+          
+          // Apply filter if selected
+          if (selectedFilter !== 'normal') {
+            processedImageSrc = await new Promise<string>((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = photoSettings.dimensions.width;
+                canvas.height = photoSettings.dimensions.height;
+                const ctx = canvas.getContext('2d');
+                
+                if (ctx) {
+                  // Enable high-quality image rendering
+                  ctx.imageSmoothingEnabled = true;
+                  ctx.imageSmoothingQuality = 'high';
+                  
+                  // Draw the original image scaled to target dimensions
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  
+                  // Apply filter
+                  const filterCSS = AVAILABLE_FILTERS.find(f => f.id === selectedFilter)?.css;
+                  if (filterCSS) {
+                    ctx.filter = filterCSS;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    ctx.filter = 'none';
+                  }
+                  
+                  // Convert back to data URL with enhanced quality
+                  const filteredDataUrl = canvas.toDataURL('image/jpeg', photoSettings.quality);
+                  resolve(filteredDataUrl);
+                } else {
+                  resolve(baseImageSrc);
+                }
+              };
+              img.src = baseImageSrc;
+            });
+          } else if (photoResolution === 'high') {
+            // For high resolution without filters, still enhance quality
+            processedImageSrc = await new Promise<string>((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = photoSettings.dimensions.width;
+                canvas.height = photoSettings.dimensions.height;
+                const ctx = canvas.getContext('2d');
+                
+                if (ctx) {
+                  ctx.imageSmoothingEnabled = true;
+                  ctx.imageSmoothingQuality = 'high';
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  const enhancedDataUrl = canvas.toDataURL('image/jpeg', photoSettings.quality);
+                  resolve(enhancedDataUrl);
+                } else {
+                  resolve(baseImageSrc);
+                }
+              };
+              img.src = baseImageSrc;
+            });
+          }
+          
+          // Apply overlay to the processed image
+          const finalImageWithOverlay = await applyOverlayToPhoto(processedImageSrc);
+          setPhotoDataUrl(finalImageWithOverlay);
+          setStage('preview');
+        };
+        
+        // Start photo processing
+        await processPhoto(screenshot);
+        
+        // Track photo captured with quality info
         if (analyticsId) {
           await trackBoothEvent(analyticsId, 'photo_captured', {
-            filter: selectedFilter
+            filter: selectedFilter,
+            resolution: photoResolution,
+            dimensions: `${photoSettings.dimensions.width}x${photoSettings.dimensions.height}`,
+            quality: photoSettings.quality
           });
         }
       }
@@ -1099,6 +1144,68 @@ Event URL ID: ${eventUrlId || 'none'}
     facingMode: "user"
   };
 
+  // Photo capture settings - enhanced for better quality
+  const photoSettings = {
+    // Higher quality JPEG compression (0.95 instead of 0.92)
+    quality: 0.95,
+    // Screenshot dimensions based on photo resolution setting
+    dimensions: photoResolution === 'high' ? { width: 1920, height: 1080 } :
+                photoResolution === 'medium' ? { width: 1280, height: 720 } :
+                { width: 640, height: 360 }
+  };
+
+  // Helper function to apply overlay to captured photo
+  const applyOverlayToPhoto = (baseImageSrc: string, overlayImageSrc: string = '/overlay.png'): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        resolve(baseImageSrc); // Fallback to original if canvas not available
+        return;
+      }
+
+      const baseImage = new Image();
+      const overlayImage = new Image();
+      let imagesLoaded = 0;
+
+      const checkComplete = () => {
+        imagesLoaded++;
+        if (imagesLoaded === 2) {
+          // Set canvas dimensions to match photo settings
+          canvas.width = photoSettings.dimensions.width;
+          canvas.height = photoSettings.dimensions.height;
+          
+          // Enable high-quality rendering
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Draw base image (photo) scaled to canvas size
+          ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+          
+          // Draw overlay image on top, scaled to canvas size
+          ctx.drawImage(overlayImage, 0, 0, canvas.width, canvas.height);
+          
+          // Convert to high-quality data URL
+          const compositeDataUrl = canvas.toDataURL('image/jpeg', photoSettings.quality);
+          resolve(compositeDataUrl);
+        }
+      };
+
+      baseImage.onload = checkComplete;
+      overlayImage.onload = checkComplete;
+      
+      // Handle overlay load error - continue without overlay
+      overlayImage.onerror = () => {
+        console.warn('Could not load overlay image, using photo without overlay');
+        resolve(baseImageSrc);
+      };
+
+      baseImage.src = baseImageSrc;
+      overlayImage.src = overlayImageSrc;
+    });
+  };
+
   // Create analytics session ID if not already created
   useEffect(() => {
     if (!analyticsId) {
@@ -1230,11 +1337,11 @@ Event URL ID: ${eventUrlId || 'none'}
               
               // Show loading indicator briefly
               return (
-                <div className="flex items-center justify-center p-10">
-                  <div className="animate-pulse flex flex-col items-center">
+                <div className="min-h-[80vh] flex flex-col items-center justify-center p-6">
+                  <div className="animate-pulse flex flex-col items-center space-y-4">
                     <div className="h-12 w-12 rounded-full bg-blue-400 mb-4"></div>
-                    <div className="h-4 w-32 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-3 w-24 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-32 rounded mb-2"></div>
+                    <div className="h-3 w-24 rounded"></div>
                     <p className="mt-4 text-gray-500 text-sm">Loading journey...</p>
                   </div>
                 </div>
@@ -1259,15 +1366,17 @@ Event URL ID: ${eventUrlId || 'none'}
           }
           
           return withCompatibilityWarning(
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-4">Ready to capture!</h2>
-              <button
-                className="px-6 py-3 rounded-lg text-white font-medium"
-                style={{ backgroundColor: themeSettings.buttonColor || '#3B82F6' }}
-                onClick={() => setStage('countdown')}
-              >
-                Start
-              </button>
+            <div className="min-h-[80vh] flex flex-col items-center justify-center p-6">
+              <div className="text-center space-y-6">
+                <h2 className="text-2xl font-bold mb-4">Ready to capture!</h2>
+                <button
+                  className="px-6 py-3 rounded-lg text-white font-medium"
+                  style={{ backgroundColor: themeSettings.buttonColor || '#3B82F6' }}
+                  onClick={() => setStage('countdown')}
+                >
+                  Start
+                </button>
+              </div>
             </div>
           );
         
@@ -1279,6 +1388,7 @@ Event URL ID: ${eventUrlId || 'none'}
                     audio={safeMode === 'video'}
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
+                    screenshotQuality={photoSettings.quality}
                     videoConstraints={videoConstraints}
                     className="w-full h-full object-cover"
                     mirrored={true}
@@ -1290,13 +1400,27 @@ Event URL ID: ${eventUrlId || 'none'}
                     }}
                   />
                   
-                  <FiltersSelector
-                    enabledFilters={parsedFilters}
-                    onSelectFilter={handleFilterSelect}
-                    onConfirm={handleFilterConfirm}
-                    selectedFilter={selectedFilter}
-                    videoElement={videoElement}
-                  />
+                  {/* Photo overlay - positioned above camera but below UI elements */}
+                  {safeMode === 'photo' && (
+                    <div className="absolute inset-0 pointer-events-none z-10">
+                      <img 
+                        src="/overlay.png" 
+                        alt="Photo overlay" 
+                        className="w-full h-full object-cover"
+                        style={{ mixBlendMode: 'normal' }}
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="relative z-20">
+                    <FiltersSelector
+                      enabledFilters={parsedFilters}
+                      onSelectFilter={handleFilterSelect}
+                      onConfirm={handleFilterConfirm}
+                      selectedFilter={selectedFilter}
+                      videoElement={videoElement}
+                    />
+                  </div>
                 </div>
               </div>
             );
@@ -1309,15 +1433,28 @@ Event URL ID: ${eventUrlId || 'none'}
                     audio={safeMode === 'video'} // Enable audio for video recording
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
+                    screenshotQuality={photoSettings.quality}
                     videoConstraints={videoConstraints}
                     className="w-full h-full object-cover"
                     mirrored={true}
                     onUserMediaError={() => setIsCameraError(true)}
                   />
                   
+                  {/* Photo overlay - positioned above camera but below UI elements */}
+                  {safeMode === 'photo' && (
+                    <div className="absolute inset-0 pointer-events-none z-10">
+                      <img 
+                        src="/overlay.png" 
+                        alt="Photo overlay" 
+                        className="w-full h-full object-cover"
+                        style={{ mixBlendMode: 'normal' }}
+                      />
+                    </div>
+                  )}
+                  
                   {/* Recording indicator - only shown when video is recording */}
                   {safeMode === 'video' && isRecording && (
-                    <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white">
+                    <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black bg-opacity-50 px-3 py-1 rounded-full text-white">
                       <div className="w-3 h-3 rounded-full bg-red-600 animate-pulse"></div>
                       <span className="font-medium">REC</span>
                       <span className="ml-2">{remainingTime}s</span>
@@ -1325,7 +1462,7 @@ Event URL ID: ${eventUrlId || 'none'}
                   )}
                   
                   {/* Control buttons */}
-                  <div className="absolute bottom-4 left-4 z-10">
+                  <div className="absolute bottom-4 left-4 z-20">
                     {/* "I'm Done" button - only shown when recording */}
                     {safeMode === 'video' && isRecording && (
                       <button
@@ -1340,7 +1477,7 @@ Event URL ID: ${eventUrlId || 'none'}
                     )}
                   </div>
                 </div>
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center z-30">
                   {/* Only show countdown if we're not recording, not stopping recording, and no video URL exists */}
                   {!(safeMode === 'video' && (isRecording || isStoppingRecording)) && !videoUrl && (
                     <CountdownTimer
@@ -1385,7 +1522,7 @@ Event URL ID: ${eventUrlId || 'none'}
                         onRetake={handleRetake}
                       />
                     ) : isProcessingVideo ? (
-                      <div className="p-6 flex flex-col items-center justify-center">
+                      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6">
                         <div className="text-center mb-6">
                           <h3 className="text-xl font-bold mb-2">Processing Video</h3>
                           <p className="text-gray-600">
@@ -1415,37 +1552,41 @@ Event URL ID: ${eventUrlId || 'none'}
                   </>
                 )
               ) : (
-                <div className="p-6 text-center">
-                  <ErrorMessage
-                    title="Missing Data"
-                    message="Error: Missing photo or user data"
-                  />
-                  <button
-                    onClick={() => setStage('collect-info')}
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    Start Over
-                  </button>
+                <div className="min-h-[80vh] flex flex-col items-center justify-center p-6">
+                  <div className="text-center space-y-4 max-w-md mx-auto">
+                    <ErrorMessage
+                      title="Missing Data"
+                      message="Error: Missing photo or user data"
+                    />
+                    <button
+                      onClick={() => setStage('collect-info')}
+                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      Start Over
+                    </button>
+                  </div>
                 </div>
               );
         
       case 'complete':
         return (
-          <div className="p-6 text-center">
-            <div className="text-3xl text-green-600 mb-4">Thank You!</div>
-            <p className="mb-8">
-              {safeMode === 'photo' 
-                ? "Your photo has been sent to your email."
-                : "You will receive an email with a download link for your video as soon as it is prepared for you!"}
-              <br />
-              This booth will reset in {resetTimeSeconds} seconds.
-            </p>
-            <button
-              onClick={resetBooth}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Start Over
-            </button>
+          <div className="min-h-[80vh] flex flex-col items-center justify-center p-6">
+            <div className="text-center space-y-6 max-w-md mx-auto">
+              <div className="text-3xl text-green-600 mb-4">Thank You!</div>
+              <p className="mb-8">
+                {safeMode === 'photo' 
+                  ? "Your photo has been sent to your email."
+                  : "You will receive an email with a download link for your video as soon as it is prepared for you!"}
+                <br />
+                This booth will reset in {resetTimeSeconds} seconds.
+              </p>
+              <button
+                onClick={resetBooth}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Start Over
+              </button>
+            </div>
           </div>
         );
     }
@@ -1453,18 +1594,28 @@ Event URL ID: ${eventUrlId || 'none'}
 
   if (isCameraError) {
     return (
-      <div className="p-6 text-center text-red-600">
-        <p className="text-xl font-bold mb-2">Camera Error</p>
-        <p>Failed to access camera. Please ensure camera access is granted and try refreshing the page.</p>
-        <p className="mt-4 text-sm">
-          Please ensure camera access is granted and try refreshing the page.
-        </p>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6">
+        <div className="text-center text-red-600 space-y-4 max-w-md mx-auto">
+          <p className="text-xl font-bold mb-2">Camera Error</p>
+          <p>Failed to access camera. Please ensure camera access is granted and try refreshing the page.</p>
+          <p className="mt-4 text-sm">
+            Please ensure camera access is granted and try refreshing the page.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="photo-booth">
+    <div 
+      className="photo-booth" 
+      style={{ 
+        backgroundColor: themeSettings.backgroundColor || '#e6d7c3',
+        color: '#111827', // Force black text
+        minHeight: '100vh',
+        padding: '1rem'
+      }}
+    >
       {renderStage()}
     </div>
   );

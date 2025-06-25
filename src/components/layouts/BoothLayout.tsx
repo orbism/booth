@@ -28,7 +28,7 @@ const BoothLayout: React.FC<BoothLayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <header className="text-white p-4 shadow-md" style={headerStyle}>
         <div className="container mx-auto flex items-center justify-between">
           {companyLogo ? (
@@ -50,7 +50,8 @@ const BoothLayout: React.FC<BoothLayoutProps> = ({
           
           {companyName && (
             <div className="text-sm font-medium">
-              Presented by {companyName}
+              {/* Presented by {companyName}*/}
+              Presented by the Bureau of Internet Culture 
             </div>
           )}
         </div>

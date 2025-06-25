@@ -152,8 +152,8 @@ export function useCamera({ onPhotoCapture }: UseCameraProps = {}): UseCameraRet
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0);
 
-      // Convert to data URL
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      // Convert to data URL with high quality
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
       setPhotoDataUrl(dataUrl);
       
       if (onPhotoCapture) {
