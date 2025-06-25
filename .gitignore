@@ -41,10 +41,10 @@ coverage/
 .next/
 
 # Media files
-public/**/*.jpg
+
 public/**/*.jpeg
 
-public/**/*.webm
+
 public/**/*.mp4
 public/**/*.mov
 
