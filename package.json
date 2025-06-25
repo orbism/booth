@@ -29,6 +29,7 @@
     "framer-motion": "^12.7.3",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.487.0",
+    "mysql2": "^3.14.1",
     "next": "15.3.0",
     "next-auth": "^4.24.11",
     "nodemailer": "^6.10.0",
